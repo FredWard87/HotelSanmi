@@ -4,21 +4,21 @@ const morgan = require('morgan');
 const mongoose = require('mongoose');
 require('dotenv').config();
 
-// Importar rutas
+// Importar rutas y modelos
 const indexRoutes = require('./routes/index');
 const Room = require('./models/Room');
+const User = require('./models/User'); // Importamos el modelo de Usuario
 const seedRooms = require('./data/roomsSeed');
 
 class App {
   constructor() {
     this.app = express();
-    this.connectDB(); // Conectar a la DB al iniciar
+    this.connectDB();
     this.config();
     this.routes();
   }
 
   async connectDB() {
-    // Evitar múltiples conexiones en serverless
     if (mongoose.connection.readyState >= 1) return;
 
     try {
@@ -26,14 +26,43 @@ class App {
       await mongoose.connect(process.env.MONGODB_URI);
       console.log('✅ MongoDB conectado');
       
-      // Lógica de Seed rápida para producción
-      const count = await Room.countDocuments();
-      if (count === 0) {
-        console.log('🌱 Sembrando datos iniciales...');
+      // 1. Seed de Habitaciones
+      const roomCount = await Room.countDocuments();
+      if (roomCount === 0) {
+        console.log('🌱 Sembrando habitaciones...');
         await Room.insertMany(seedRooms);
       }
+
+      // 2. Seed de Usuarios (Admin y Empleado)
+      await this.seedUsers();
+
     } catch (err) {
       console.error('❌ Error de conexión:', err.message);
+    }
+  }
+
+  async seedUsers() {
+    try {
+      const adminEmail = process.env.ADMIN_EMAIL || 'admin@lacapillahotel.com';
+      const adminPass = process.env.ADMIN_PASSWORD || 'admin1234';
+      const employeeEmail = process.env.EMPLOYEE_EMAIL || 'employee@lacapillahotel.com';
+      const employeePass = process.env.EMPLOYEE_PASSWORD || 'employee1234';
+
+      // Crear Admin si no existe
+      const adminExists = await User.findOne({ email: adminEmail.toLowerCase() });
+      if (!adminExists) {
+        await User.create({ name: 'Admin', email: adminEmail, password: adminPass, role: 'admin' });
+        console.log(`🌱 Usuario admin creado: ${adminEmail}`);
+      }
+
+      // Crear Empleado si no existe
+      const empExists = await User.findOne({ email: employeeEmail.toLowerCase() });
+      if (!empExists) {
+        await User.create({ name: 'Empleado', email: employeeEmail, password: employeePass, role: 'employee' });
+        console.log(`🌱 Usuario empleado creado: ${employeeEmail}`);
+      }
+    } catch (error) {
+      console.error('❌ Error en seed de usuarios:', error.message);
     }
   }
 
@@ -55,11 +84,7 @@ class App {
     });
 
     this.app.use('*', (req, res) => {
-      res.status(404).json({ error: 'Ruta no encontrada', path: req.originalUrl });
-    });
-
-    this.app.use((error, req, res, next) => {
-      res.status(500).json({ error: 'Error interno' });
+      res.status(404).json({ error: 'Ruta no encontrada' });
     });
   }
 
