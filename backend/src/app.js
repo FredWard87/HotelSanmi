@@ -57,4 +57,7 @@ class App {
   }
 }
 
-module.exports = App;
+// CAMBIO CLAVE PARA VERCEL: 
+// Creamos la instancia y exportamos directamente el objeto app de Express.
+const myApp = new App();
+module.exports = myApp.getApp();
