@@ -1,0 +1,769 @@
+/* Importar las fuentes Cormorant y Montserrat */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap');
+
+/* --- Estilos para el Video Hero (Full Screen) --- */
+.video-hero-luxury {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.video-background-luxury {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  min-width: 100%;
+  min-height: 100%;
+  width: auto;
+  height: auto;
+  z-index: 1;
+  transform: translate(-50%, -50%);
+  object-fit: cover;
+}
+
+.hero-overlay-luxury {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(1px);
+  z-index: 2;
+}
+
+.hero-content-luxury-home {
+  position: relative;
+  z-index: 3;
+  color: #ffffff;
+  padding: 20px;
+  animation: slideInDown 1.5s ease-out;
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.luxury-brand-header-home {
+  margin-bottom: 20px;
+}
+
+.brand-ornament-home {
+  width: 60px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #D4AF37, transparent);
+  margin: 10px auto;
+}
+
+.luxury-hotel-name-home {
+  font-family: 'Cormorant', serif;
+  font-size: 5.175rem; /* Aumentado 15%: 4.5rem × 1.15 = 5.175rem */
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  text-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  letter-spacing: 2px;
+}
+
+.brand-subtitle-home {
+  font-family: 'Cormorant', serif;
+  font-size: 1.38rem; /* Aumentado 15%: 1.2rem × 1.15 = 1.38rem */
+  font-weight: 400;
+  color: #D4AF37;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  margin-top: 5px;
+  text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+.hero-tagline-home {
+  margin-top: 30px;
+}
+
+.tagline-text-home {
+  font-family: 'Cormorant', serif;
+  font-size: 1.725rem; /* Aumentado 15%: 1.5rem × 1.15 = 1.725rem */
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.5;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* --- Sección Principal de Contenido --- */
+.luxury-main-home {
+  padding: 80px 40px;
+  background: #fcfcfc;
+}
+
+/* Frase y Subtítulo */
+.intro-section-luxury {
+  max-width: 1000px;
+  margin: 0 auto 60px;
+  text-align: center;
+  padding: 0 20px;
+}
+
+.section-header-intro {
+  margin-bottom: 40px;
+}
+
+.section-title-intro {
+  font-family: 'Cormorant', serif;
+  font-size: 2.415rem; /* Aumentado 15%: 2.1rem × 1.15 = 2.415rem */
+  font-weight: 200;
+  color: #1a1a1a;
+  margin: 0 0 15px 0;
+  line-height: 1.3;
+}
+
+.section-subtitle-intro {
+  font-size: 1.265rem; /* Aumentado 15%: 1.1rem × 1.15 = 1.265rem */
+  color: #666;
+  line-height: 1.6;
+  max-width: 700px;
+  margin: 0 auto;
+  letter-spacing: 0.7px;
+  font-family: 'Montserrat', sans-serif;
+}
+
+/* Carrusel Simple (SimpleCarousel) */
+.carousel-wrapper-home {
+  max-width: 1000px;
+  margin: 40px auto;
+  border-radius: 18px;
+  box-shadow: 0 15px 45px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(212, 175, 55, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.image-carousel-container {
+  width: 100%;
+  position: relative;
+}
+
+.carousel-image-wrapper {
+  width: 100%;
+  height: 550px;
+  overflow: hidden;
+  position: relative;
+}
+
+.carousel-image-fade {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  transition: opacity 0.8s ease-in-out;
+  will-change: opacity;
+}
+
+.carousel-image-fade.active {
+  opacity: 1;
+  z-index: 1;
+}
+
+.carousel-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 1s ease-in-out;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.carousel-image.active {
+  opacity: 1;
+}
+
+.image-carousel-controls {
+  position: absolute;
+  bottom: 25px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  padding: 10px 25px;
+  border-radius: 50px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+}
+
+.carousel-indicators-luxury {
+  display: flex;
+  gap: 8px;
+}
+
+.indicator-dot-luxury {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.indicator-dot-luxury.active {
+  background: #D4AF37;
+  border-color: #D4AF37;
+  transform: scale(1.2);
+}
+
+.image-counter-luxury {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1.035rem; /* Aumentado 15%: 0.9rem × 1.15 = 1.035rem */
+  font-weight: 500;
+  color: #ffffff;
+}
+
+.carousel-track {
+  display: flex;
+  transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+  width: 100%;
+}
+
+.carousel-slide {
+  flex: 0 0 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 10px;
+}
+
+.slide-icon {
+  font-size: 3.45rem; /* Aumentado 15%: 3rem × 1.15 = 3.45rem */
+  margin-bottom: 15px;
+  color: #D4AF37;
+}
+
+.slide-text {
+  font-family: 'Cormorant', serif; /* Cambiado de Playfair Display a Cormorant */
+  font-size: 1.84rem; /* Aumentado 15%: 1.6rem × 1.15 = 1.84rem */
+  font-weight: 500;
+  color: #1a1a1a;
+  margin: 0;
+  max-width: 600px;
+}
+
+.carousel-indicators {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.indicator-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ccc;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.indicator-dot.active {
+  background: #D4AF37;
+  width: 12px;
+  height: 12px;
+}
+
+/* --- Cards de Navegación (HomeCard) --- */
+.navigation-cards-section {
+  padding: 40px 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.cards-grid-luxury {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+}
+
+.home-card {
+  height: 400px;
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+  transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: flex-end;
+}
+
+.home-card.hotel-boutique-bg {
+  background-image: url('https://picsum.photos/seed/boutique/800/400');
+}
+
+.home-card.casa-hotel-bg {
+  background-image: url('https://picsum.photos/seed/casa/800/400');
+}
+
+.home-card:hover {
+  transform: translateY(-8px) scale(1.01);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+}
+
+.card-overlay-luxury {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.1) 100%);
+  transition: all 0.5s ease;
+}
+
+.home-card:hover .card-overlay-luxury {
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.3) 100%);
+}
+
+.card-content-luxury {
+  position: relative;
+  z-index: 2;
+  color: #ffffff;
+  padding: 30px;
+  width: 100%;
+}
+
+.card-title-luxury {
+  font-family: 'Cormorant', serif; /* Cambiado de Playfair Display a Cormorant */
+  font-size: 2.53rem; /* Aumentado 15%: 2.2rem × 1.15 = 2.53rem */
+  font-weight: 700;
+  margin: 0 0 10px 0;
+  text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+.card-subtitle-luxury {
+  font-family: 'Montserrat', sans-serif; /* Cambiado de Inter a Montserrat */
+  font-size: 1.15rem; /* Aumentado 15%: 1rem × 1.15 = 1.15rem */
+  font-weight: 300;
+  margin-bottom: 20px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.card-cta-luxury {
+  background: linear-gradient(135deg, #D4AF37 0%, #F4D03F 100%);
+  color: #000000;
+  border: none;
+  padding: 12px 25px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.0925rem; /* Aumentado 15%: 0.95rem × 1.15 = 1.0925rem */
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.card-cta-luxury:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(212, 175, 55, 0.5);
+}
+
+.cta-icon-luxury {
+  font-size: 1.38rem; /* Aumentado 15%: 1.2rem × 1.15 = 1.38rem */
+  transition: transform 0.3s ease;
+}
+
+.card-cta-luxury:hover .cta-icon-luxury {
+  transform: translateX(5px);
+}
+
+/* --- Sección de Cards de Navegación (Nuevo Estilo) --- */
+.navigation-cards-section-new {
+  background-color: #f7f5f2;
+  padding: 80px 40px;
+  max-width: 1200px;
+  margin: 0 auto;
+  text-align: center;
+  border-radius: 10px;
+}
+
+.card-section-header {
+  margin-bottom: 50px;
+}
+
+.card-section-title {
+  font-family: 'Cormorant', serif; /* Cambiado de Playfair Display a Cormorant */
+  font-size: 2.875rem; /* Aumentado 15%: 2.5rem × 1.15 = 2.875rem */
+  font-weight: 400;
+  color: #1a1a1a;
+  line-height: 1.4;
+  padding-top: 30px;
+}
+
+.cards-grid-new-luxury {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+}
+
+.home-card-new-style {
+  background: #ffffff;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border-radius: 10px;
+}
+
+.home-card-new-style:hover {
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.card-image-container-new {
+  width: 100%;
+  height: 500px;
+  overflow: hidden;
+}
+
+.card-image-new {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.home-card-new-style:hover .card-image-new {
+  transform: scale(1.05);
+}
+
+.card-content-new {
+  padding: 30px 40px;
+  text-align: center;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.card-title-new {
+  font-family: 'Cormorant', serif; /* Cambiado de Playfair Display a Cormorant */
+  font-size: 2.07rem; /* Aumentado 15%: 1.8rem × 1.15 = 2.07rem */
+  font-weight: 600;
+  margin: 0 0 15px 0;
+  color: #1a1a1a;
+}
+
+.card-description-new {
+  font-family: 'Montserrat', sans-serif; /* Cambiado de Inter a Montserrat */
+  font-size: 1.0925rem; /* Aumentado 15%: 0.95rem × 1.15 = 1.0925rem */
+  font-weight: 400;
+  color: #666;
+  line-height: 1.6;
+  margin-bottom: 25px;
+}
+
+.card-cta-new {
+  background: #000000;
+  color: #ffffff;
+  border: none;
+  padding: 12px 25px;
+  border-radius: 4px;
+  font-family: 'Montserrat', sans-serif; /* Cambiado de Inter a Montserrat */
+  font-weight: 100;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1.035rem; /* Aumentado 15%: 0.9rem × 1.15 = 1.035rem */
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  width: auto;
+  align-self: center;
+}
+
+.card-cta-new:hover {
+  background: #D4AF37;
+  color: #000000;
+}
+
+/* --- Sección de Bodas/Eventos --- */
+.events-section-luxury {
+  max-width: 800px;
+  margin: 80px auto 60px;
+  text-align: center;
+  padding: 0 20px;
+}
+
+.events-description {
+  font-size: 1.3225rem; /* Aumentado 15%: 1.15rem × 1.15 = 1.3225rem */
+  color: #333;
+  line-height: 1.6;
+  margin-bottom: 25px;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.events-subtitle {
+  font-size: 1.15rem; /* Aumentado 15%: 1rem × 1.15 = 1.15rem */
+  color: #666;
+  margin-bottom: 30px;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.events-cta-btn {
+  background: #36454F;
+  color: #ffffff;
+  border: none;
+  padding: 14px 30px;
+  border-radius: 4px;
+  font-family: 'Montserrat', sans-serif; /* Cambiado de Inter a Montserrat */
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1.035rem; /* Aumentado 15%: 0.9rem × 1.15 = 1.035rem */
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.events-cta-btn:hover {
+  background: #D4AF37;
+  color: #1a1a1a;
+  box-shadow: 0 6px 15px rgba(212, 175, 55, 0.4);
+}
+
+/* --- Sección Más Razones para Quedarse --- */
+.reasons-section-luxury {
+  padding: 40px 20px 80px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.reasons-header {
+  text-align: center;
+  margin-bottom: 50px;
+}
+
+.reasons-title {
+  font-family: 'Cormorant', serif; /* Cambiado de Playfair Display a Cormorant */
+  font-size: 2.53rem; /* Aumentado 15%: 2.2rem × 1.15 = 2.53rem */
+  font-weight: 400;
+  color: #1a1a1a;
+  margin-bottom: 5px;
+}
+
+.reasons-title .playfair-display {
+  font-weight: 600;
+  color: #D4AF37;
+}
+
+.reasons-subtitle {
+  font-size: 1.15rem; /* Aumentado 15%: 1rem × 1.15 = 1.15rem */
+  color: #666;
+  font-weight: 300;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.reasons-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 15px;
+}
+
+.reason-grid-item {
+  position: relative;
+  overflow: hidden;
+  border-radius: 4px;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+  aspect-ratio: 4/3;
+}
+
+.reason-grid-item:hover {
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.reason-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.8s ease;
+}
+
+.reason-grid-item:hover .reason-image {
+  transform: scale(1.08);
+}
+
+.reason-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.75), transparent);
+}
+
+.reason-title {
+  font-family: 'Cormorant', serif; /* Cambiado de Playfair Display a Cormorant */
+  font-size: 1.725rem; /* Aumentado 15%: 1.5rem × 1.15 = 1.725rem */
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+  text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+  text-transform: capitalize;
+}
+
+.hero-logo-container {
+  position: absolute;
+  top: 1vh;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  width: 100%;
+  max-width: 200px;
+  text-align: center;
+}
+
+.luxury-logo {
+  width: 100%;
+  height: auto;
+  opacity: 0.95;
+}
+
+/* --- Responsive --- */
+@media (max-width: 992px) {
+  .luxury-hotel-name-home {
+    font-size: 4.025rem; /* Aumentado 15%: 3.5rem × 1.15 = 4.025rem */
+  }
+  
+  .brand-subtitle-home {
+    font-size: 1.15rem; /* Aumentado 15%: 1rem × 1.15 = 1.15rem */
+    letter-spacing: 4px;
+  }
+  
+  .tagline-text-home {
+    font-size: 1.495rem; /* Aumentado 15%: 1.3rem × 1.15 = 1.495rem */
+  }
+  
+  .cards-grid-luxury {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .card-section-title {
+    font-size: 2.3rem; /* Aumentado 15%: 2rem × 1.15 = 2.3rem */
+  }
+  
+  .cards-grid-new-luxury {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+  
+  .card-image-container-new {
+    height: 460px; /* Aumentado 15%: 400px × 1.15 = 460px */
+  }
+  
+  .card-content-new {
+    padding: 25px;
+  }
+}
+
+@media (max-width: 768px) {
+  .luxury-main-home {
+    padding: 60px 20px;
+  }
+  
+  .section-title-intro {
+    font-size: 2.3rem; /* Aumentado 15%: 2rem × 1.15 = 2.3rem */
+  }
+  
+  .luxury-hotel-name-home {
+    font-size: 3.22rem; /* Aumentado 15%: 2.8rem × 1.15 = 3.22rem */
+  }
+  
+  .brand-subtitle-home {
+    font-size: 1.035rem; /* Aumentado 15%: 0.9rem × 1.15 = 1.035rem */
+    letter-spacing: 3px;
+  }
+  
+  .tagline-text-home {
+    font-size: 1.265rem; /* Aumentado 15%: 1.1rem × 1.15 = 1.265rem */
+  }
+  
+  .simple-carousel-container {
+    padding: 20px;
+  }
+  
+  .slide-text {
+    font-size: 1.495rem; /* Aumentado 15%: 1.3rem × 1.15 = 1.495rem */
+  }
+  
+  .home-card {
+    height: 345px; /* Aumentado 15%: 300px × 1.15 = 345px */
+  }
+  
+  .card-title-luxury {
+    font-size: 2.07rem; /* Aumentado 15%: 1.8rem × 1.15 = 2.07rem */
+  }
+  
+  .card-subtitle-luxury {
+    font-size: 1.035rem; /* Aumentado 15%: 0.9rem × 1.15 = 1.035rem */
+  }
+  
+  .card-section-title {
+    font-size: 2.07rem; /* Aumentado 15%: 1.8rem × 1.15 = 2.07rem */
+  }
+  
+  .navigation-cards-section-new {
+    padding: 46px 23px; /* Aumentado 15%: 40px/20px × 1.15 = 46px/23px */
+  }
+  
+  .card-image-container-new {
+    height: 345px; /* Aumentado 15%: 300px × 1.15 = 345px */
+  }
+  
+  .card-title-new {
+    font-size: 1.725rem; /* Aumentado 15%: 1.5rem × 1.15 = 1.725rem */
+  }
+  
+  .reasons-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .reasons-grid > div .reason-image {
+    min-height: 230px; /* Aumentado 15%: 200px × 1.15 = 230px */
+  }
+  
+  .reasons-title {
+    font-size: 2.07rem; /* Aumentado 15%: 1.8rem × 1.15 = 2.07rem */
+  }
+}

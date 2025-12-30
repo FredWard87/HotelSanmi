@@ -1,0 +1,522 @@
+/* ==================== ESTILO PREMIUM AMPLIADO - TARJETAS UNIFORMES ==================== */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap');
+
+/* --- Animación de aparición con scroll --- */
+.reveal {
+  opacity: 0;
+  transform: translateY(60px);
+  transition: all 1s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+/* Agrega esto al final de tu RoomCard.css */
+/* RoomCard.css - CLASES ADICIONALES PARA DISPONIBILIDAD */
+
+/* Badge de disponibilidad */
+.availability-badge {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.availability-badge.available {
+  background: linear-gradient(135deg, #4CAF50, #2E7D32);
+  color: white;
+}
+
+.availability-badge.unavailable {
+  background: linear-gradient(135deg, #f44336, #c62828);
+  color: white;
+}
+
+.available-text {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.unavailable-text {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Estado no disponible */
+.room-card.unavailable {
+  opacity: 0.85;
+  filter: saturate(0.8);
+}
+
+.room-card.unavailable:hover {
+  transform: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Imagen en escala de grises cuando no está disponible */
+.room-image.grayscale {
+  filter: grayscale(70%);
+  opacity: 0.7;
+}
+
+/* Botón deshabilitado */
+.reserve-btn.disabled {
+  background: linear-gradient(135deg, #9E9E9E, #757575);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.reserve-btn.disabled:hover {
+  transform: none;
+  background: linear-gradient(135deg, #9E9E9E, #757575);
+}
+
+/* Información de búsqueda */
+.search-info {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 10px;
+  margin: 10px 0;
+  border-left: 4px solid #8B4513;
+}
+
+.search-dates, .search-guests {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #5a5a5a;
+  margin-bottom: 5px;
+}
+
+.search-dates:last-child, .search-guests:last-child {
+  margin-bottom: 0;
+}
+
+.date-icon, .guests-icon {
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+/* Especificaciones de la habitación */
+.room-specs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0;
+}
+
+.room-specs p {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  color: #666;
+}
+
+.spec-icon {
+  font-size: 14px;
+  min-width: 20px;
+  opacity: 0.7;
+}
+
+/* Encabezado de la habitación */
+.room-header {
+  margin-bottom: 10px;
+}
+
+.room-type-label {
+  display: inline-block;
+  background: linear-gradient(135deg, #8B4513, #D2691E);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+/* Aviso de no disponible */
+.unavailable-notice {
+  text-align: center;
+  font-size: 12px;
+  color: #f44336;
+  margin-top: 8px;
+  font-style: italic;
+  padding: 5px;
+  background: #ffebee;
+  border-radius: 4px;
+}
+
+/* Efecto hover para tarjetas disponibles */
+.room-card:not(.unavailable):hover .availability-badge.available {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+/* Precio original tachado */
+.original-price {
+  text-decoration: line-through;
+  color: #999;
+  font-size: 14px;
+  margin-left: 8px;
+}
+
+/* Badge recomendado */
+.recommended-badge {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  background: linear-gradient(135deg, #FFD700, #FFC107);
+  color: #8B4513;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  z-index: 10;
+  box-shadow: 0 2px 6px rgba(255, 193, 7, 0.3);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .availability-badge {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+  
+  .room-specs p {
+    font-size: 12px;
+  }
+  
+  .search-info {
+    padding: 8px;
+    font-size: 12px;
+  }
+}
+/* 🔥 PRECIO REDUCIDO 60% */
+.price-small {
+  font-size: 1.84rem !important; /* Reducido 60%: 4.6rem × 0.4 = 1.84rem */
+  font-weight: 500 !important;
+}
+
+/* Tamaños responsive para el precio reducido */
+@media (max-width: 1200px) {
+  .price-small {
+    font-size: 1.36rem !important; /* 3.91rem × 0.4 = 1.564rem ≈ 1.36rem */
+  }
+}
+
+@media (max-width: 992px) {
+  .price-small {
+    font-size: 1.38rem !important; /* 3.45rem × 0.4 = 1.38rem */
+  }
+}
+
+@media (max-width: 576px) {
+  .price-small {
+    font-size: 1.15rem !important; /* 2.875rem × 0.4 = 1.15rem */
+  }
+}
+
+/* Agregar a RoomCard.css */
+.image-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.room-image {
+  opacity: 0;
+  transition: opacity 0.5s ease-in;
+}
+
+.room-image.loaded {
+  opacity: 1;
+}
+
+/* --- Contenedor general --- */
+.suites-section {
+  margin-bottom: 200px;
+  padding-top: 100px;
+}
+
+.suites-list {
+  display: flex;
+  flex-direction: column;
+  gap: 120px;
+  max-width: 1500px;
+  margin: 0 auto;
+}
+
+/* --- Tarjeta principal - 🔥 TAMAÑO FIJO --- */
+.room-card {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  max-width: 1500px;
+  width: 100%;
+  height: 600px; /* 🔥 ALTURA FIJA PARA TODAS */
+  margin: 0 auto;
+  gap: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  opacity: 0;
+  transform: translateY(80px);
+  transition: all 1.2s ease;
+}
+
+.room-card.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* --- Imagen izquierda - 🔥 TAMAÑO FIJO --- */
+.room-image-container {
+  flex: 0 0 880px; /* 🔥 ANCHO FIJO en lugar de flex: 1.5 */
+  height: 600px;
+  overflow: hidden;
+  border-radius: 10px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  position: relative;
+}
+
+.room-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* 🔥 CUBRE TODO EL ESPACIO sin deformar */
+  object-position: center;
+  transform: scale(1.05);
+  transition: transform 1.5s ease, opacity 0.4s ease;
+  opacity: 0;
+}
+
+.room-image.loaded {
+  opacity: 1;
+}
+
+.room-card:hover .room-image {
+  transform: scale(1.1);
+}
+
+/* --- Panel blanco - 🔥 TAMAÑO FIJO --- */
+.room-info-panel {
+  flex: 0 0 520px; /* Mantiene el ancho fijo */
+  background: #fff;
+  height: 600px; /* 🔥 ALTURA FIJA */
+  padding: 80px 70px;
+  margin-left: -140px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-radius: 10px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+  z-index: 2;
+  transition: all 0.6s ease;
+}
+
+.room-card:hover .room-info-panel {
+  transform: translateY(-8px);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2);
+}
+
+/* --- Título --- */
+.room-title {
+  font-family: 'Cormorant', serif;
+  font-size: 3.45rem; /* Aumentado 15%: 3rem × 1.15 = 3.45rem */
+  font-weight: 600;
+  color: #1a1a1a;
+  line-height: 1.2;
+  margin-bottom: 25px;
+  letter-spacing: 0.5px;
+  transition: color 0.3s ease;
+}
+
+.room-card:hover .room-title {
+  color: #b4975a;
+}
+
+/* --- Detalles --- */
+.room-capacity,
+.room-size {
+  font-family: 'Cormorant', serif;
+  font-size: 1.38rem; /* Aumentado 15%: 1.2rem × 1.15 = 1.38rem */
+  color: #555;
+  margin-bottom: 8px;
+  letter-spacing: 0.3px;
+}
+
+/* --- Línea "Más información" --- */
+.more-info-link {
+  font-family: 'Cormorant', serif;
+  font-size: 1.15rem; /* Aumentado 15%: 1rem × 1.15 = 1.15rem */
+  color: #444;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 35px 0;
+}
+
+.info-line {
+  flex: 1;
+  height: 1px;
+  background-color: #ccc;
+}
+
+/* --- Precio --- */
+.price-display {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  margin-bottom: 25px;
+}
+
+.price-value {
+  font-family: 'Cormorant', serif;
+  font-size: 4.6rem; /* Aumentado 15%: 4rem × 1.15 = 4.6rem */
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.price-period {
+  font-family: 'Cormorant', serif;
+  font-size: 1.15rem; /* Aumentado 15%: 1rem × 1.15 = 1.15rem */
+  color: #777;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* --- Botón --- */
+.reserve-btn {
+  border: 2px solid #1a1a1a;
+  background: transparent;
+  color: #1a1a1a;
+  padding: 18px 0;
+  font-size: 1.265rem; /* Aumentado 15%: 1.1rem × 1.15 = 1.265rem */
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: all 0.4s ease;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.reserve-btn:hover {
+  background: #1a1a1a;
+  color: #fff;
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+/* --- Animaciones suaves al scrollear --- */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(80px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* --- RESPONSIVE --- */
+@media (max-width: 1200px) {
+  .room-card {
+    max-width: 95%;
+  }
+  
+  .room-image-container {
+    flex: 0 0 700px;
+  }
+  
+  .room-info-panel {
+    flex: 0 0 450px;
+    padding: 60px 50px;
+  }
+  
+  .room-title {
+    font-size: 2.99rem; /* Aumentado 15%: 2.6rem × 1.15 = 2.99rem */
+  }
+  
+  .price-value {
+    font-size: 3.91rem; /* Aumentado 15%: 3.4rem × 1.15 = 3.91rem */
+  }
+}
+
+@media (max-width: 992px) {
+  .room-card {
+    flex-direction: column;
+    max-width: 100%;
+    height: auto; /* Permite altura dinámica en móvil */
+    margin: 0 1rem;
+  }
+
+  .room-image-container {
+    flex: 0 0 auto;
+    width: 100%;
+    height: 420px;
+  }
+
+  .room-info-panel {
+    flex: 0 0 auto;
+    margin-left: 0;
+    margin-top: -40px;
+    height: auto;
+    width: 100%;
+    padding: 60px 40px;
+  }
+
+  .room-title {
+    font-size: 2.76rem; /* Aumentado 15%: 2.4rem × 1.15 = 2.76rem */
+  }
+
+  .price-value {
+    font-size: 3.45rem; /* Aumentado 15%: 3rem × 1.15 = 3.45rem */
+  }
+}
+
+@media (max-width: 576px) {
+  .room-card {
+    margin: 0 0.5rem;
+  }
+  
+  .room-image-container {
+    height: 320px;
+  }
+  
+  .room-info-panel {
+    padding: 40px 30px;
+  }
+  
+  .room-title {
+    font-size: 2.3rem; /* Aumentado 15%: 2rem × 1.15 = 2.3rem */
+  }
+  
+  .price-value {
+    font-size: 2.875rem; /* Aumentado 15%: 2.5rem × 1.15 = 2.875rem */
+  }
+  
+  .reserve-btn {
+    padding: 14px 0;
+    font-size: 1.15rem; /* Aumentado 15%: 1rem × 1.15 = 1.15rem */
+  }
+}

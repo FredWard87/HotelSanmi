@@ -1,0 +1,1723 @@
+/* Importar las fuentes Cormorant y Montserrat */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Montserrat', sans-serif;
+  background: #ffffff;
+  color: #1a1a1a;
+  line-height: 1.6;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
+.App {
+  min-height: 100vh;
+  position: relative;
+  opacity: 1;
+  transition: opacity 0.5s ease;
+  padding-top: 0;
+}
+
+.App.loaded {
+  opacity: 1;
+}
+
+/* Botón para volver */
+.back-btn {
+  background: transparent;
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  color: #D4AF37;
+  padding: 14px 30px;
+  border-radius: 50px;
+  font-size: 1.15rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  position: relative;
+  overflow: hidden;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-left: 15px;
+}
+
+.back-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.2), transparent);
+  transition: left 0.6s;
+}
+
+.back-btn:hover::before {
+  left: 100%;
+}
+
+.back-btn:hover {
+  border-color: #D4AF37;
+  background: rgba(212, 175, 55, 0.1);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(212, 175, 55, 0.3);
+}
+
+.back-text {
+  position: relative;
+  z-index: 1;
+}
+
+/* Hero Section de Lujo - MEJORADO PARA RESPONSIVIDAD */
+.luxury-hero {
+  height: 100vh;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.hero-background-luxury {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+}
+
+.hero-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(circle at 20% 80%, rgba(212, 175, 55, 0.1) 0%, transparent 100%),
+    radial-gradient(circle at 80% 20%, rgba(212, 175, 55, 0.05) 0%, transparent 100%);
+  z-index: 1;
+}
+
+.hero-content-luxury {
+  text-align: center;
+  color: #ffffff;
+  z-index: 1;
+  animation: heroEntrance 1.5s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@keyframes heroEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(60px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.luxury-brand-header {
+  margin-bottom: 40px;
+}
+
+.brand-ornament {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #D4AF37, transparent);
+  margin: 20px auto;
+  width: 100px;
+}
+
+.brand-ornament.top {
+  margin-bottom: 30px;
+}
+
+.brand-ornament.bottom {
+  margin-top: 30px;
+}
+
+.luxury-hotel-name {
+  font-family: 'Cormorant', serif;
+  font-size: 5.75rem;
+  font-weight: 400;
+  letter-spacing: 8px;
+  margin: 0;
+  text-transform: uppercase;
+  color: #ffffff;
+  text-shadow: 0 5px 30px rgba(0, 0, 0, 0.5);
+  position: relative;
+}
+
+.luxury-hotel-name::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100px;
+  height: 2px;
+  background: #D4AF37;
+}
+
+.luxury-hotel-name::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100px;
+  height: 2px;
+  background: #D4AF37;
+}
+
+.brand-subtitle {
+  font-size: 1.38rem;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: #D4AF37;
+  margin-top: 10px;
+  font-weight: 300;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.hero-tagline {
+  margin-bottom: 60px;
+  animation: fadeInUp 1s ease 0.8s both;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tagline-text {
+  font-size: 1.61rem;
+  font-weight: 300;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.9);
+  font-style: italic;
+  max-width: 600px;
+  margin: 0 auto;
+  line-height: 1.8;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.hero-cta-luxury {
+  animation: fadeInUp 1s ease 1.2s both;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.discover-btn {
+  background: transparent;
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  color: #D4AF37;
+  padding: 18px 40px;
+  border-radius: 50px;
+  font-size: 1.265rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  position: relative;
+  overflow: hidden;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.discover-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.2), transparent);
+  transition: left 0.6s;
+}
+
+.discover-btn:hover::before {
+  left: 100%;
+}
+
+.discover-btn:hover {
+  border-color: #D4AF37;
+  background: rgba(212, 175, 55, 0.1);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(212, 175, 55, 0.3);
+}
+
+.discover-text {
+  margin-right: 15px;
+}
+
+.discover-arrow {
+  font-size: 1.38rem;
+  transition: transform 0.3s ease;
+}
+
+.discover-btn:hover .discover-arrow {
+  transform: translateY(3px);
+}
+
+.scroll-indicator-luxury {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  animation: bounce 2s infinite;
+}
+
+.scroll-line {
+  width: 1px;
+  height: 40px;
+  background: linear-gradient(to bottom, #D4AF37, transparent);
+  position: relative;
+}
+
+.scroll-line::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: -4px;
+  width: 9px;
+  height: 9px;
+  border-right: 1px solid #D4AF37;
+  border-bottom: 1px solid #D4AF37;
+  transform: rotate(45deg);
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  40% {
+    transform: translateX(-50%) translateY(-10px);
+  }
+  60% {
+    transform: translateX(-50%) translateY(-5px);
+  }
+}
+
+/* Main Content de Lujo */
+.luxury-main {
+  padding: 120px 2rem;
+  background: #ffffff;
+}
+
+.section-header-luxury {
+  text-align: center;
+  margin-bottom: 80px;
+  position: relative;
+}
+
+.section-ornament {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #D4AF37, transparent);
+  margin: 30px auto;
+  width: 150px;
+}
+
+.section-title-luxury {
+  font-family: 'Cormorant', serif;
+  font-size: 4.025rem;
+  font-weight: 400;
+  color: #1a1a1a;
+  margin: 0 0 20px 0;
+  letter-spacing: 2px;
+  position: relative;
+}
+
+.section-title-luxury::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 2px;
+  background: #D4AF37;
+}
+
+.section-subtitle-luxury {
+  font-size: 1.495rem;
+  color: #666;
+  max-width: 700px;
+  margin: 0 auto;
+  line-height: 1.8;
+  font-weight: 300;
+  letter-spacing: 0.5px;
+  font-family: 'Montserrat', sans-serif;
+}
+
+/* Suites Section */
+.suites-section {
+  margin-bottom: 140px;
+}
+
+.suites-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 50px;
+  margin-top: 80px;
+  max-width: 1300px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Services Section */
+.services-section {
+  padding: 100px 0;
+  background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+  margin: 0 -2rem;
+  padding-left: 2rem;
+  padding-right: 2rem;
+}
+
+.services-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.service-card {
+  background: #ffffff;
+  padding: 50px 30px;
+  border-radius: 20px;
+  text-align: center;
+  box-shadow: 
+    0 10px 40px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(212, 175, 55, 0.05);
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  border: 1px solid rgba(212, 175, 55, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.service-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.03), transparent);
+  transition: left 0.6s;
+}
+
+.service-card:hover::before {
+  left: 100%;
+}
+
+.service-card:hover {
+  transform: translateY(-10px);
+  box-shadow: 
+    0 25px 60px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(212, 175, 55, 0.2);
+}
+
+.service-icon {
+  height: 50px;
+  margin-bottom: 15px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.service-icon-img {
+  width: 50px;
+  height: 50px; 
+  object-fit: contain;
+}
+
+.service-card h3 {
+  font-family: 'Cormorant', serif;
+  font-size: 1.725rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 15px;
+}
+
+.service-card p {
+  color: #666;
+  line-height: 1.7;
+  font-size: 1.15rem;
+  font-weight: 400;
+  font-family: 'Montserrat', sans-serif;
+}
+
+/* Responsive para servicios */
+@media (max-width: 768px) {
+  .services-grid {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+}
+
+/* --- Estilos del Nuevo Hero (Imagen 2) --- */
+.luxury-hero.new-hero {
+  align-items: flex-start;
+  padding-top: 10vh;
+  height: 100vh;
+  position: relative;
+}
+
+.hero-overlay.new-hero-overlay {
+  background: none;
+}
+
+.hero-content-luxury.new-hero-content {
+  text-align: center;
+  color: #ffffff;
+  z-index: 10;
+  animation: heroEntrance 1.5s cubic-bezier(0.23, 1, 0.32, 1);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  height: 100%;
+  padding: 8vh 1rem 6vh;
+  position: relative;
+}
+
+.new-tagline-small {
+  font-size: 1.265rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #ffffff;
+  font-weight: 400;
+  margin-bottom: 20px;
+  font-family: 'Montserrat', sans-serif;
+  line-height: 1.4;
+}
+
+.new-hero-title {
+  font-family: 'Cormorant', serif;
+  font-size: 4.6rem;
+  font-weight: 100;
+  letter-spacing: 0.5px;
+  margin: 0 auto;
+  max-width: 900px;
+  line-height: 1.2;
+  color: #ffffff;
+  text-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+  padding: 0 2rem;
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+/* Panel de Búsqueda - VERSIÓN PROFESIONAL TRANSPARENTE PARA MÓVIL */
+.luxury-search-panel {
+  background: #ffffff;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+  display: flex;
+  gap: 20px;
+  align-items: flex-end;
+  max-width: 1400px;
+  width: 95%;
+  margin: 0 auto;
+  border-bottom: 4px solid #D4AF37;
+  position: absolute;
+  bottom: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  transition: all 0.3s ease;
+}
+
+.luxury-search-panel2 {
+  background: #ffffff;
+  padding: 30px;
+  border-radius: 4px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  display: flex;
+  gap: 65px;
+  align-items: flex-end;
+  max-width: 1300px;
+  width: 90%;
+  margin: 0 auto;
+  border-bottom: 3px solid #D4AF37;
+}
+
+.search-field {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+}
+
+.search-field label {
+  font-size: 0.95rem;
+  color: #666;
+  margin-bottom: 8px;
+  font-weight: 600;
+  text-align: left;
+  font-family: 'Montserrat', sans-serif;
+  display: block;
+}
+
+.search-field input[type="date"],
+.search-field select {
+  padding: 12px 15px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 1.05rem;
+  color: #1a1a1a;
+  font-family: 'Montserrat', sans-serif;
+  appearance: none;
+  background: #f9f9f9;
+  transition: border-color 0.3s ease;
+  width: 100%;
+}
+
+.search-field input[type="date"]:focus,
+.search-field select:focus {
+  outline: none;
+  border-color: #D4AF37;
+  background: #fff;
+}
+
+.search-field.select-field {
+  max-width: 100px;
+}
+
+/* Botón Buscar - MEJORADO */
+.search-btn {
+  background: #1a1a1a;
+  color: #ffffff;
+  padding: 14px 35px;
+  border: none;
+  border-radius: 6px;
+  font-size: 1.15rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  letter-spacing: 1px;
+  height: 48px;
+  font-family: 'Montserrat', sans-serif;
+  text-transform: uppercase;
+  min-width: 140px;
+}
+
+.search-btn:hover {
+  background: #D4AF37;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(212, 175, 55, 0.3);
+}
+
+/* 🔥 FOOTER CON MAPA GRANDE */
+.luxury-footer {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  color: #ffffff;
+  padding: 80px 40px 30px;
+  position: relative;
+  overflow: hidden;
+}
+
+.luxury-footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #D4AF37, transparent);
+}
+
+.footer-content-luxury {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 400px 1fr;
+  gap: 60px;
+  align-items: start;
+}
+
+/* COLUMNA IZQUIERDA */
+.footer-left {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.footer-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+.footer-logo-image {
+  margin-bottom: 10px;
+}
+
+.footer-logo-text {
+  font-family: 'Cormorant', serif;
+  font-size: 2.3rem;
+  font-weight: 600;
+  color: #D4AF37;
+  margin: 0;
+  letter-spacing: 2px;
+}
+
+.footer-hotel-subtitle {
+  font-size: 1.035rem;
+  color: #999;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin: 0;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.footer-contact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.footer-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 12px 20px;
+  background: rgba(212, 175, 55, 0.05);
+  border: 1px solid rgba(212, 175, 55, 0.1);
+  border-radius: 8px;
+  color: #ffffff;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  font-size: 1.0925rem;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.footer-contact-item:hover {
+  background: rgba(212, 175, 55, 0.1);
+  border-color: rgba(212, 175, 55, 0.3);
+  transform: translateX(5px);
+}
+
+.contact-icon {
+  font-size: 1.495rem;
+}
+
+/* 🔥 MAPA MÁS GRANDE */
+.map-container-large {
+  width: 130%;
+  height: 590px;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 
+    0 10px 40px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(212, 175, 55, 0.2);
+  border: 2px solid rgba(212, 175, 55, 0.2);
+}
+
+.map-container-large iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* COPYRIGHT */
+.footer-bottom-luxury {
+  height: 150px;
+  width: auto;
+  margin-top: 60px;
+  border-top: 1px solid rgba(212, 175, 55, 0.1);
+}
+
+.footer-bottom-luxury p {
+  font-size: 0.9775rem;
+  color: #999;
+  font-family: 'Montserrat', sans-serif;
+}
+
+/* ===================== FOOTER DE LUJO - LA CAPILLA (VERSIÓN FINAL FLEX) ===================== */
+.luxury-footer {
+  background: linear-gradient(to bottom, #faf8f3 0%, #f5f1e8 100%);
+  font-family: "Cormorant", serif;
+  position: relative;
+}
+
+/* CONTENEDOR PRINCIPAL */
+.footer-content-luxury {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 60px 0 60px 8%;
+  max-width: 100%;
+  margin: 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  flex-wrap: nowrap;
+  gap: 40px;
+}
+
+/* ===== COLUMNA IZQUIERDA ===== */
+.footer-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+.footer-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.footer-logo-image svg {
+  width: 70px;
+  height: auto;
+}
+
+.footer-logo-text {
+  font-size: 2.415rem;
+  color: #2a2a2a;
+  margin: 0;
+}
+
+.footer-hotel-subtitle {
+  font-size: 0.8625rem;
+  color: #8b7355;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.footer-contact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.footer-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #2a2a2a;
+  text-decoration: none;
+  font-size: 1.15rem;
+  font-family: 'Montserrat', sans-serif;
+  transition: color 0.3s ease, transform 0.3s ease;
+}
+
+.footer-contact-item:hover {
+  color: #b8964f;
+  transform: translateX(5px);
+}
+
+/* ===== COLUMNA CENTRAL ===== */
+.footer-center {
+  flex: 0.8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.footer-section-title {
+  font-size: 1.38rem;
+  color: #2a2a2a;
+  font-weight: 600;
+}
+
+.footer-social {
+  display: flex;
+  gap: 16px;
+}
+
+.social-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background-color: #b8964f;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.social-btn:hover {
+  background-color: #d4a853;
+  transform: translateY(-3px);
+}
+
+/* ===== COLUMNA DERECHA ===== */
+.footer-map {
+  flex: 1.2;
+  height: 260px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+  display: flex;
+}
+
+.footer-map iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
+
+/* ===== COPYRIGHT ===== */
+.footer-bottom-luxury {
+  background-color: #1a1a1a;
+  color: #d4d4d4;
+  text-align: center;
+  padding: 24px 10px;
+  font-size: 1.035rem;
+  letter-spacing: 1px;
+  font-family: 'Montserrat', sans-serif;
+}
+
+/* Botón Scroll to Top de Lujo */
+.luxury-scroll-top {
+  position: fixed;
+  bottom: 40px;
+  right: 40px;
+  background: linear-gradient(135deg, #D4AF37 0%, #F4D03F 100%);
+  color: #000000;
+  border: none;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  font-size: 1.495rem;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  box-shadow: 0 10px 30px rgba(212, 175, 55, 0.4);
+  z-index: 1000;
+  animation: fadeInUp 0.5s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.luxury-scroll-top:hover {
+  transform: translateY(-5px) scale(1.1);
+  box-shadow: 0 15px 40px rgba(212, 175, 55, 0.6);
+}
+
+.scroll-icon {
+  font-weight: 300;
+}
+
+/* ===================== SECCIÓN CARRUSEL DE LUJO ===================== */
+.luxury-carousel-section {
+  text-align: center;
+  margin-top: 100px;
+  margin-bottom: -160px;
+  background: #fff;
+  position: relative;
+  overflow-x: hidden;
+  width: 100%;
+}
+
+/* Títulos */
+.luxury-text-top h2 {
+  font-family: 'Cormorant', serif;
+  font-size: 2.76rem;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 35px;
+  animation: fadeInDown 1.5s ease both;
+}
+
+.luxury-text-bottom h3 {
+  font-family: 'Cormorant', serif;
+  font-size: 2.3rem;
+  font-weight: 600;
+  color: #b38b2e;
+  margin-top: 40px;
+  animation: fadeInUp 1.5s ease both;
+}
+
+/* ===================== CARRUSEL ===================== */
+.luxury-carousel-wrapper {
+  position: relative;
+  overflow: hidden; 
+  width: 100%;
+  background: linear-gradient(to bottom, #fff 30%, #fdf7f2 100%);
+  padding: 3rem 0;
+  margin-top: 40px;
+  margin-bottom: 0;
+}
+
+.luxury-carousel-track {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  width: max-content;
+  animation: scrollLoop 20s linear infinite;
+}
+
+.luxury-slide {
+  flex-shrink: 0;
+  border-radius: 24px;
+  overflow: hidden;
+  position: relative;
+  width: 588px;
+  height: 364px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  transition: transform 0.8s ease, box-shadow 0.8s ease;
+}
+
+.luxury-slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 24px;
+  transition: transform 1.2s ease, filter 1s ease;
+  filter: brightness(0.92) contrast(1.05);
+}
+
+/* Efectos elegantes */
+.luxury-slide:hover img {
+  transform: scale(1.1);
+  filter: brightness(1.05);
+}
+
+.luxury-slide:hover {
+  transform: scale(1.05);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
+}
+
+/* Pequeñas variaciones */
+.slide-2,
+.slide-5 {
+  width: 616px;
+}
+.slide-3,
+.slide-6 {
+  width: 672px;
+}
+.slide-4 {
+  width: 728px;
+}
+
+/* Reflejo lateral */
+.luxury-carousel-wrapper::before,
+.luxury-carousel-wrapper::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 10%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.luxury-carousel-wrapper::before {
+  left: 0;
+  background: linear-gradient(to right, #fff 85%, transparent);
+}
+
+.luxury-carousel-wrapper::after {
+  right: 0;
+  background: linear-gradient(to left, #fff 85%, transparent);
+}
+
+/* ✨ ANIMACIÓN SIN CORTES ✨ */
+@keyframes scrollLoop {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* Pausa opcional al pasar el mouse */
+.luxury-carousel-wrapper:hover .luxury-carousel-track {
+  animation-play-state: paused;
+}
+
+/* ===================== ANIMACIONES DE TEXTO ===================== */
+@keyframes fadeInDown {
+  0% {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Nueva Sección: Hotel Boutique */
+.boutique-section {
+  padding: 0 2rem 40px 2rem;
+  margin-top: -200px;
+  background: #ffffff;
+  text-align: center;
+}
+
+.boutique-content {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.boutique-text {
+  font-size: 1.495rem;
+  color: #1a1a1a;
+  line-height: 1.7;
+  margin-bottom: 30px;
+  font-weight: 300;
+  letter-spacing: 0.5px;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.boutique-text strong {
+  font-weight: 600;
+  color: #D4AF37;
+}
+
+.boutique-btn {
+  background: transparent;
+  border: 1px solid #D4AF37;
+  color: #D4AF37;
+  padding: 15px 35px;
+  border-radius: 50px;
+  font-size: 1.15rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.boutique-btn:hover {
+  background: #D4AF37;
+  color: #ffffff;
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(212, 175, 55, 0.3);
+}
+
+/* ===================== RESPONSIVE MEJORADO ===================== */
+
+/* Pantallas Muy Grandes (27" - 32") */
+@media (min-width: 1920px) {
+  .hero-content-luxury.new-hero-content {
+    padding: 10vh 2rem 8vh;
+  }
+  
+  .new-hero-title {
+    font-size: 5rem;
+    max-width: 1000px;
+  }
+  
+  .luxury-search-panel {
+    max-width: 1600px;
+    gap: 30px;
+    padding: 30px;
+    bottom: -20px;
+  }
+}
+
+/* Pantallas Grandes (24" - 27") */
+@media (min-width: 1600px) and (max-width: 1919px) {
+  .hero-content-luxury.new-hero-content {
+    padding: 8vh 2rem 6vh;
+  }
+  
+  .new-hero-title {
+    font-size: 4.6rem;
+  }
+  
+  .luxury-search-panel {
+    max-width: 1400px;
+    gap: 25px;
+    bottom: -15px;
+  }
+}
+
+/* Tablets Horizontales y Laptops */
+@media (max-width: 1200px) {
+  .hero-content-luxury.new-hero-content {
+    padding: 7vh 1.5rem 5vh;
+  }
+  
+  .luxury-search-panel {
+    max-width: 95%;
+    gap: 20px;
+    bottom: -12px;
+    padding: 22px;
+    flex-wrap: nowrap;
+  }
+  
+  .search-field {
+    min-width: auto;
+    flex: 1;
+  }
+  
+  .search-field.select-field {
+    max-width: 90px;
+  }
+  
+  .new-hero-title {
+    font-size: 4rem;
+  }
+  
+  .search-btn {
+    min-width: 120px;
+    padding: 14px 25px;
+  }
+}
+
+/* Tablets Verticales */
+@media (max-width: 1024px) {
+  .luxury-hotel-name {
+    font-size: 4.6rem;
+    letter-spacing: 6px;
+  }
+  
+  .section-title-luxury {
+    font-size: 3.45rem;
+  }
+  
+  .suites-grid {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+  
+  .luxury-slide {
+    width: 448px;
+    height: 280px;
+  }
+  
+  .luxury-carousel-track {
+    animation-duration: 12s;
+  }
+  
+  .footer-content-luxury {
+    grid-template-columns: 1fr;
+    gap: 50px;
+  }
+  
+  .map-container-large {
+    height: 400px;
+  }
+  
+  .footer-content-luxury {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 40px;
+  }
+
+  .footer-left,
+  .footer-center,
+  .footer-map {
+    flex: 1 1 100%;
+    text-align: center;
+  }
+
+  .footer-map {
+    height: 240px;
+  }
+
+  .footer-left {
+    align-items: center;
+  }
+  
+  .luxury-search-panel {
+    bottom: -10px;
+  }
+}
+
+/* VERSIÓN MÓVIL - DISEÑO TRANSPARENTE PROFESIONAL */
+@media (max-width: 768px) {
+  .luxury-main {
+    padding: 100px 1rem 80px;
+  }
+  
+  .hero-content-luxury.new-hero-content {
+    padding: 6vh 1rem 0;
+    justify-content: flex-start;
+  }
+  
+  .new-tagline-small {
+    font-size: 1.1rem;
+    letter-spacing: 2px;
+    margin-bottom: 15px;
+    line-height: 1.3;
+    padding: 0 10px;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  }
+  
+  .new-hero-title {
+    font-size: 2.8rem;
+    margin: 20px 0 40px;
+    padding: 0 1rem;
+    line-height: 1.1;
+    text-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
+  }
+  
+  /* PANEL DE BÚSQUEDA TRANSPARENTE PARA MÓVIL - DISEÑO ELEGANTE */
+  .luxury-search-panel {
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    padding: 25px 20px;
+    bottom: 0;
+    position: relative;
+    width: 100%;
+    margin: 0 auto;
+    box-shadow: 0 -5px 30px rgba(0, 0, 0, 0.15);
+    border-radius: 20px 20px 0 0;
+    flex-direction: column;
+    gap: 20px;
+    transform: none;
+    left: 0;
+    max-width: 100%;
+    border-bottom: 4px solid #D4AF37;
+    border-top: 3px solid #D4AF37;
+  }
+  
+  .search-field {
+    min-width: 100%;
+    margin-bottom: 0;
+  }
+  
+  .search-field.select-field {
+    max-width: 100%;
+  }
+  
+  .search-field label {
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+    color: #555;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+  }
+  
+  .search-field label::before {
+    content: '';
+    display: inline-block;
+    width: 4px;
+    height: 4px;
+    background: #D4AF37;
+    border-radius: 50%;
+    margin-right: 8px;
+  }
+  
+  .search-field input[type="date"],
+  .search-field select {
+    padding: 16px 15px;
+    font-size: 1rem;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1.5px solid #e0e0e0;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+  }
+  
+  .search-field input[type="date"]:focus,
+  .search-field select:focus {
+    border-color: #D4AF37;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+  }
+  
+  .search-btn {
+    width: 100%;
+    height: 56px;
+    margin-top: 10px;
+    font-size: 1.1rem;
+    padding: 18px;
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    border-radius: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+  }
+  
+  .search-btn:hover {
+    background: linear-gradient(135deg, #D4AF37 0%, #C19A3C 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(212, 175, 55, 0.3);
+  }
+  
+  /* Layout de grid para campos en móvil */
+  .luxury-search-panel {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-gap: 15px;
+  }
+  
+  /* Los campos de fecha ocupan toda la fila */
+  .search-field:nth-child(1),
+  .search-field:nth-child(2) {
+    grid-column: span 2;
+  }
+  
+  /* Adultos y niños se colocan en la misma fila */
+  .search-field:nth-child(3),
+  .search-field:nth-child(4) {
+    grid-column: span 1;
+  }
+  
+  /* El botón ocupa toda la fila */
+  .search-btn {
+    grid-column: span 2;
+  }
+  
+  .section-title-luxury {
+    font-size: 2.875rem;
+  }
+  
+  .section-subtitle-luxury {
+    font-size: 1.265rem;
+    padding: 0 1rem;
+  }
+  
+  .suites-grid {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+  
+  .footer-content-luxury {
+    grid-template-columns: 1fr;
+    gap: 40px;
+    text-align: center;
+  }
+  
+  .footer-info {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+  
+  .services-grid {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+  
+  .luxury-scroll-top {
+    bottom: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    font-size: 1.265rem;
+  }
+  
+  .hero-cta-luxury {
+    flex-direction: column;
+  }
+  
+  .back-btn {
+    margin-left: 0;
+  }
+  
+  .luxury-slide {
+    width: 320px;
+    height: 200px;
+  }
+  
+  .luxury-text-top h2 {
+    font-size: 1.955rem;
+    padding: 0 1rem;
+  }
+  
+  .luxury-text-bottom h3 {
+    font-size: 1.725rem;
+  }
+  
+  .luxury-carousel-track {
+    animation-duration: 14s;
+  }
+  
+  .luxury-footer {
+    padding: 60px 20px 30px;
+  }
+  
+  .map-container-large {
+    height: 300px;
+    width: 100%;
+  }
+  
+  .footer-contact-item {
+    font-size: 1.035rem;
+    padding: 10px 15px;
+  }
+  
+  .reasons-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .reasons-grid > div .reason-image {
+    min-height: 230px;
+  }
+  
+  .reasons-title {
+    font-size: 2.07rem;
+  }
+  
+  .footer-content-luxury {
+    padding: 40px 5%;
+  }
+  
+  .luxury-hero.new-hero {
+    padding-top: 8vh;
+    height: auto;
+    min-height: 100vh;
+  }
+  
+  .luxury-carousel-section {
+    margin-top: 0;
+    padding-top: 60px;
+  }
+  
+  .boutique-section {
+    margin-top: 0;
+    padding: 40px 1rem;
+  }
+  
+  .boutique-text {
+    font-size: 1.2rem;
+    padding: 0 1rem;
+  }
+}
+
+/* Móviles Medianos - Optimización adicional */
+@media (max-width: 480px) {
+  .luxury-hotel-name {
+    font-size: 3.45rem;
+    letter-spacing: 4px;
+  }
+  
+  .brand-subtitle {
+    font-size: 1.035rem;
+    letter-spacing: 3px;
+  }
+  
+  .tagline-text {
+    font-size: 1.265rem;
+  }
+  
+  .new-tagline-small {
+    font-size: 1rem;
+    letter-spacing: 1.5px;
+    margin-bottom: 10px;
+  }
+  
+  .new-hero-title {
+    font-size: 2.4rem;
+    margin: 15px 0 35px;
+    padding: 0 0.5rem;
+    line-height: 1.1;
+  }
+  
+  .luxury-footer {
+    padding: 50px 15px 25px;
+  }
+  
+  .map-container-large {
+    height: 250px;
+  }
+  
+  .footer-logo-text {
+    font-size: 1.84rem;
+  }
+  
+  .footer-content-luxury {
+    padding: 30px 5% 20px;
+  }
+  
+  .footer-contact-list {
+    width: 100%;
+    gap: 12px;
+  }
+  
+  .footer-contact-item {
+    font-size: 1rem;
+    padding: 8px 12px;
+  }
+  
+  .hero-content-luxury.new-hero-content {
+    padding: 5vh 0.5rem 0;
+  }
+  
+  /* Panel más compacto en móviles pequeños */
+  .luxury-search-panel {
+    padding: 20px 15px;
+    gap: 15px;
+  }
+  
+  .search-field input[type="date"],
+  .search-field select {
+    padding: 14px 12px;
+    font-size: 0.95rem;
+  }
+  
+  .search-btn {
+    height: 52px;
+    font-size: 1rem;
+    padding: 16px;
+  }
+  
+  .luxury-carousel-section {
+    padding-top: 50px;
+  }
+}
+
+/* Móviles Pequeños (iPhone SE, etc.) - Ajustes finales */
+@media (max-width: 375px) {
+  .new-hero-title {
+    font-size: 2.2rem;
+    margin: 10px 0 30px;
+  }
+  
+  .new-tagline-small {
+    font-size: 0.95rem;
+    letter-spacing: 1px;
+  }
+  
+  .luxury-search-panel {
+    padding: 18px 12px;
+    gap: 12px;
+    border-radius: 15px 15px 0 0;
+  }
+  
+  .search-field input[type="date"],
+  .search-field select {
+    padding: 13px 10px;
+    font-size: 0.9rem;
+  }
+  
+  .search-btn {
+    height: 50px;
+    font-size: 0.95rem;
+    padding: 15px;
+  }
+  
+  .luxury-slide {
+    width: 280px;
+    height: 180px;
+  }
+  
+  .luxury-text-top h2 {
+    font-size: 1.8rem;
+  }
+  
+  .boutique-text {
+    font-size: 1.1rem;
+  }
+  
+  /* Layout de 1 columna en móviles muy pequeños */
+  .luxury-search-panel {
+    grid-template-columns: 1fr;
+  }
+  
+  .search-field:nth-child(1),
+  .search-field:nth-child(2),
+  .search-field:nth-child(3),
+  .search-field:nth-child(4) {
+    grid-column: span 1;
+  }
+  
+  .search-btn {
+    grid-column: span 1;
+  }
+}
+
+/* Ajustes específicos para pantallas altas */
+@media (min-height: 900px) {
+  .hero-content-luxury.new-hero-content {
+    padding: 10vh 2rem 10vh;
+  }
+  
+  .new-hero-title {
+    margin: 30px 0 50px;
+  }
+  
+  .luxury-search-panel {
+    bottom: -25px;
+  }
+}
+
+/* Ajustes específicos para pantallas cortas */
+@media (max-height: 700px) and (min-width: 769px) {
+  .hero-content-luxury.new-hero-content {
+    padding: 5vh 2rem 4vh;
+  }
+  
+  .new-hero-title {
+    font-size: 3.5rem;
+    margin: 10px 0 20px;
+  }
+  
+  .luxury-search-panel {
+    padding: 20px;
+    bottom: -15px;
+  }
+  
+  .new-tagline-small {
+    margin-bottom: 10px;
+  }
+}
+
+/* Mejoras de scroll personalizadas */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #D4AF37, #F4D03F);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #C19B2C, #E5C158);
+}
+
+/* Efectos de selección */
+::selection {
+  background: rgba(212, 175, 55, 0.3);
+  color: #1a1a1a;
+}
+
+::-moz-selection {
+  background: rgba(212, 175, 55, 0.3);
+  color: #1a1a1a;
+}

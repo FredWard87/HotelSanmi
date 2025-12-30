@@ -1,0 +1,85 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant:wght@300;400;500;600;700&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Cormorant', serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: #ffffff;
+  color: #1a1a1a;
+  line-height: 1.6;
+  overflow-x: hidden;
+  /* Global +40% font scaling applied via App.css */
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* Smooth scrolling for the whole app */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Prevent horizontal page scroll caused by wide elements */
+html, body, #root {
+  overflow-x: hidden;
+}
+
+/* Make media elements responsive to avoid accidental overflow */
+img, video, iframe {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Remove default button styles */
+button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* Remove default input styles */
+input, textarea {
+  border: none;
+  background: none;
+  font-family: inherit;
+  outline: none;
+}
+
+/* Custom selection colors */
+::selection {
+  background: rgba(212, 175, 55, 0.3);
+  color: #1a1a1a;
+}
+
+::-moz-selection {
+  background: rgba(212, 175, 55, 0.3);
+  color: #1a1a1a;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #D4AF37, #F4D03F);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #C19B2C, #E5C158);
+}

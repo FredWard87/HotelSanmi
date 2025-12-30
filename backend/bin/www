@@ -1,0 +1,215 @@
+#!/usr/bin/env node
+
+/**
+ * Module dependencies.
+ */
+
+const App = require('../src/app');
+const mongoose = require('mongoose');
+// Model y datos para seed automático
+const Room = require('../src/models/Room');
+const seedRooms = require('../src/data/roomsSeed');
+const http = require('http');
+
+/**
+ * Get port from environment and store in Express.
+ */
+
+const appClass = new App();
+const app = appClass.getApp();
+const port = normalizePort(process.env.PORT || '5000');
+app.set('port', port);
+
+/**
+ * Create HTTP server.
+ */
+
+const server = http.createServer(app);
+
+/**
+ * Connect to MongoDB
+ */
+
+const connectDatabase = async () => {
+  try {
+    console.log('🔗 Intentando conectar a MongoDB...');
+    console.log(`📦 URI: ${process.env.MONGODB_URI}`);
+    
+    const conn = await mongoose.connect(process.env.MONGODB_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+
+    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+    console.log(`📊 Database: ${conn.connection.name}`);
+    // Force reseed en development: eliminar y recrear habitaciones en cada inicio
+    try {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔄 Modo development: realizando reseed completo...');
+        await Room.deleteMany({});
+        const created = await Room.insertMany(seedRooms);
+        console.log(`✅ Reseed completado: ${created.length} habitaciones restauradas con campo 'lugar'.`);
+      } else {
+        // Production: solo seed si está vacío
+        const count = await Room.countDocuments();
+        if (count === 0) {
+          console.log('🌱 No se detectaron habitaciones. Sembrando datos iniciales...');
+          const created = await Room.insertMany(seedRooms);
+          console.log(`🌱 Se sembraron ${created.length} habitaciones en la base de datos.`);
+        } else {
+          console.log(`✅ Base de datos tiene ${count} habitaciones. Conectado y listo.`);
+        }
+      }
+    } catch (seedErr) {
+      console.error('❌ Error durante el seed:', seedErr.message || seedErr);
+    }
+    
+    // Seed inicial de usuarios: admin + empleado
+    try {
+      const User = require('../src/models/User');
+      const adminEmail = process.env.ADMIN_EMAIL || 'admin@lacapillahotel.com';
+      const adminPass = process.env.ADMIN_PASSWORD || 'admin1234';
+      const employeeEmail = process.env.EMPLOYEE_EMAIL || 'employee@lacapillahotel.com';
+      const employeePass = process.env.EMPLOYEE_PASSWORD || 'employee1234';
+
+      const adminExists = await User.findOne({ email: adminEmail.toLowerCase() });
+      if (!adminExists) {
+        await User.create({ name: 'Admin', email: adminEmail, password: adminPass, role: 'admin' });
+        console.log(`🌱 Usuario admin creado: ${adminEmail}`);
+      } else {
+        console.log(`🔐 Usuario admin ya existe: ${adminEmail}`);
+      }
+
+      const empExists = await User.findOne({ email: employeeEmail.toLowerCase() });
+      if (!empExists) {
+        await User.create({ name: 'Empleado', email: employeeEmail, password: employeePass, role: 'employee' });
+        console.log(`🌱 Usuario empleado creado: ${employeeEmail}`);
+      } else {
+        console.log(`🔐 Usuario empleado ya existe: ${employeeEmail}`);
+      }
+    } catch (userSeedErr) {
+      console.error('❌ Error durante el seed de usuarios:', userSeedErr.message || userSeedErr);
+    }
+    
+    // Event listeners para la conexión de MongoDB
+    mongoose.connection.on('error', (err) => {
+      console.error('❌ MongoDB connection error:', err);
+    });
+
+    mongoose.connection.on('disconnected', () => {
+      console.log('⚠️ MongoDB disconnected');
+    });
+
+  } catch (error) {
+    console.error('❌ Error connecting to MongoDB:', error.message);
+    process.exit(1);
+  }
+};
+
+/**
+ * Normalize a port into a number, string, or false.
+ */
+
+function normalizePort(val) {
+  const port = parseInt(val, 10);
+
+  if (isNaN(port)) {
+    // named pipe
+    return val;
+  }
+
+  if (port >= 0) {
+    // port number
+    return port;
+  }
+
+  return false;
+}
+
+/**
+ * Event listener for HTTP server "error" event.
+ */
+
+function onError(error) {
+  if (error.syscall !== 'listen') {
+    throw error;
+  }
+
+  const bind = typeof port === 'string'
+    ? 'Pipe ' + port
+    : 'Port ' + port;
+
+  // handle specific listen errors with friendly messages
+  switch (error.code) {
+    case 'EACCES':
+      console.error(bind + ' requires elevated privileges');
+      process.exit(1);
+      break;
+    case 'EADDRINUSE':
+      console.error(bind + ' is already in use');
+      process.exit(1);
+      break;
+    default:
+      throw error;
+  }
+}
+
+/**
+ * Event listener for HTTP server "listening" event.
+ */
+
+function onListening() {
+  const addr = server.address();
+  const bind = typeof addr === 'string'
+    ? 'pipe ' + addr
+    : 'port ' + addr.port;
+  console.log(`🚀 Servidor escuchando en ${bind}`);
+  console.log(`🌐 Ambiente: ${process.env.NODE_ENV}`);
+  console.log(`📅 Iniciado: ${new Date().toLocaleString()}`);
+  console.log(`🔗 Health check: http://localhost:${port}/health`);
+  console.log(`🔗 API: http://localhost:${port}/api`);
+}
+
+/**
+ * Initialize application
+ */
+
+const init = async () => {
+  try {
+    // Conectar a la base de datos
+    await connectDatabase();
+
+    // Listen on provided port, on all network interfaces.
+    server.listen(port);
+    server.on('error', onError);
+    server.on('listening', onListening);
+
+    // Manejo graceful shutdown
+    process.on('SIGINT', async () => {
+      console.log('\n🔻 Recibido SIGINT. Cerrando servidor...');
+      server.close(() => {
+        console.log('✅ Servidor cerrado');
+        mongoose.connection.close(false, () => {
+          console.log('✅ Conexión a MongoDB cerrada');
+          process.exit(0);
+        });
+      });
+    });
+
+    process.on('SIGTERM', async () => {
+      console.log('🔻 Recibido SIGTERM. Cerrando servidor...');
+      server.close(() => {
+        mongoose.connection.close(false, () => {
+          process.exit(0);
+        });
+      });
+    });
+
+  } catch (error) {
+    console.error('❌ Error al inicializar la aplicación:', error);
+    process.exit(1);
+  }
+};
+
+// Iniciar la aplicación
+init();

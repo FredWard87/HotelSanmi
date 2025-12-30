@@ -1,0 +1,19 @@
+.weddings-admin { padding: 16px; }
+.wa-header { margin-bottom: 12px; }
+.wa-sub { color: #666; margin-top: 4px; }
+.wa-table { width: 100%; border-collapse: collapse; }
+.wa-table th, .wa-table td { padding: 10px; border-bottom: 1px solid #eee; text-align: left; }
+.wa-btn { margin-right: 8px; padding: 6px 10px; border: 1px solid #ccc; background: #fff; cursor: pointer; border-radius: 4px; }
+.wa-btn.wa-danger { border-color: #e06; color: #a00; }
+.wa-btn.wa-primary { background: #1a73e8; color: #fff; border-color: #1765c1; }
+.wa-select { margin-left: 8px; padding: 6px; }
+.wa-badge { padding: 4px 8px; border-radius: 12px; font-size: 12px; }
+.wa-pending { background: #fff8e1; color: #a67c00; }
+.wa-confirmed { background: #e6f4ea; color: #1b7a2f; }
+.wa-cancelled { background: #fdecea; color: #a12b2b; }
+.wa-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+.wa-modal { background: #fff; padding: 18px; border-radius: 8px; width: 720px; max-width: 95%; box-shadow: 0 6px 18px rgba(0,0,0,0.12); }
+.wa-modal-body label { display: block; margin-top: 10px; font-size: 13px; color: #333; }
+.wa-modal-body input, .wa-modal-body textarea, .wa-modal-body select { width: 100%; padding: 8px; margin-top: 6px; border: 1px solid #ddd; border-radius: 4px; }
+.wa-modal-body textarea { min-height: 80px; }
+.wa-modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }

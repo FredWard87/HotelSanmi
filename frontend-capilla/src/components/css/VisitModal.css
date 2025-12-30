@@ -1,0 +1,16 @@
+:root{ --gold:#C9A961; --dark:#1A1A1A; --muted:#666 }
+.visit-modal-overlay{ position:fixed; inset:0; background:rgba(10,10,10,0.5); display:flex; align-items:center; justify-content:center; z-index:2000 }
+.visit-modal{ background:#fff; width:720px; max-width:92%; border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,0.4); padding:26px 28px; position:relative; font-family:inherit }
+.visit-close{ position:absolute; right:14px; top:10px; background:none; border:none; font-size:26px; cursor:pointer }
+.visit-modal h2{ margin:0 0 8px; font-size:22px; color:var(--dark) }
+.visit-sub{ color:var(--muted); margin-bottom:18px }
+.visit-form .row{ display:flex; flex-direction:column; margin-bottom:12px }
+.visit-form label{ font-size:13px; color:var(--muted); margin-bottom:6px }
+.visit-form input, .visit-form textarea{ padding:10px 12px; border:1px solid #e6e6e6; border-radius:8px; font-size:14px }
+.visit-form textarea{ min-height:90px; resize:vertical }
+.visit-actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:12px }
+.visit-cancel{ background:#f3f3f3; border:none; padding:10px 14px; border-radius:8px; cursor:pointer }
+.visit-submit{ background:var(--gold); color:var(--dark); border:none; padding:10px 14px; border-radius:8px; font-weight:700; cursor:pointer }
+.visit-error{ color:#b00020; background:#fff0f0; padding:8px 10px; border-radius:8px }
+.visit-success{ color:#0a7a0a; background:#f0fff0; padding:8px 10px; border-radius:8px }
+@media(max-width:600px){ .visit-modal{ padding:18px } }

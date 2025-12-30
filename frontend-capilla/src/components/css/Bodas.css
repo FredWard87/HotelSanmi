@@ -1,0 +1,974 @@
+/* Importar las fuentes Cormorant y Montserrat */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant:wght@300;400;500;600;700&family=Montserrat:wght@300;400;500;600;700&display=swap');
+
+/* Bodas.css */
+
+.bodas-page {
+  width: 100%;
+  min-height: 100vh;
+  background-color: #ffffff;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1.4625rem; /* Aumentado 30%: 1.125rem × 1.3 = 1.4625rem (23.4px) */
+}
+
+/* ===================================
+   HEADER
+   =================================== */
+.bodas-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background-color: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+  transition: all 0.3s ease;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.bodas-header.scrolled {
+  background-color: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.bodas-header-content {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 1rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.menu-button {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 0.5rem;
+  transition: color 0.3s;
+  display: flex;
+  align-items: center;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1.4625rem; /* Aumentado 30%: 1.125rem × 1.3 = 1.4625rem */
+}
+
+.bodas-header.scrolled .menu-button {
+  color: #4b5563;
+}
+
+.menu-button:hover {
+  color: #d1d5db;
+}
+
+.bodas-header.scrolled .menu-button:hover {
+  color: #1f2937;
+}
+
+.logo-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.logo {
+  height: 3rem;
+  font-family: 'Cormorant', serif;
+  font-size: 1.95rem; /* Aumentado 30%: 1.5rem × 1.3 = 1.95rem (31.2px) */
+  color: #b45309;
+  font-weight: 600;
+}
+
+.reservacion-button {
+  background: none;
+  border: none;
+  font-size: 1.3rem; /* Aumentado 30%: 1rem × 1.3 = 1.3rem (20.8px) */
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: #1f2937;
+  cursor: pointer;
+  transition: color 0.3s;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.reservacion-button:hover {
+  color: #b45309;
+}
+
+/* ===================================
+   HERO SECTION
+   =================================== */
+.bodas-hero-image {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  min-height: 600px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.3) 0%,
+    rgba(0, 0, 0, 0.4) 50%,
+    rgba(0, 0, 0, 0.5) 100%
+  );
+}
+
+.hero-content {
+  position: relative;
+  z-index: 10;
+  text-align: center;
+  padding: 2rem;
+  max-width: 1000px;
+}
+
+.hero-subtitle {
+  font-size: 1.3rem; /* Aumentado 30%: 1rem × 1.3 = 1.3rem (20.8px) */
+  letter-spacing: 0.3em;
+  color: white;
+  font-weight: 600;
+  margin-bottom: 2rem;
+  text-transform: uppercase;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.hero-title {
+  font-size: 3.25rem; /* Aumentado 30%: 2.5rem × 1.3 = 3.25rem (52px) */
+  line-height: 1.3;
+  color: white;
+  font-family: 'Cormorant', serif;
+  font-weight: 400;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* ===================================
+   SECCIÓN DE INTRODUCCIÓN
+   =================================== */
+.bodas-intro {
+  padding: 6rem 1.5rem;
+  background-color: #ffffff;
+}
+
+.bodas-intro-content {
+  max-width: 56rem;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.bodas-intro-title {
+  font-size: 2.6rem; /* Aumentado 30%: 2rem × 1.3 = 2.6rem (41.6px) */
+  line-height: 1.4;
+  color: #1f2937;
+  font-family: 'Cormorant', serif;
+  font-weight: 400;
+}
+
+.bodas-intro-title .highlight {
+  color: #b2995e;
+  font-style: italic;
+}
+
+/* ===================================
+   CAROUSEL
+   =================================== */
+.bodas-carousel {
+  position: relative;
+  width: 100%;
+  height: 500px;
+  overflow: hidden;
+  margin-bottom: 3rem;
+}
+
+.carousel-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+}
+
+.carousel-slide {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.5s ease-in-out;
+}
+
+.carousel-slide.active {
+  transform: translateX(0);
+}
+
+.carousel-slide.prev {
+  transform: translateX(-100%);
+}
+
+.carousel-slide.next {
+  transform: translateX(100%);
+}
+
+.carousel-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.carousel-nav-button {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: rgba(255, 255, 255, 0.8);
+  border: none;
+  padding: 0.75rem;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.carousel-nav-button:hover {
+  background-color: rgba(255, 255, 255, 1);
+}
+
+.carousel-nav-button.prev {
+  left: 1rem;
+}
+
+.carousel-nav-button.next {
+  right: 1rem;
+}
+
+.carousel-indicators {
+  position: absolute;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.5rem;
+  z-index: 10;
+}
+
+.carousel-indicator {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background-color: rgba(255, 255, 255, 0.5);
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.carousel-indicator.active {
+  width: 2rem;
+  background-color: white;
+}
+
+/* ===================================
+   MOMENTOS SECTION
+   =================================== */
+.momentos-section {
+  padding: 3rem 0;
+  text-align: center;
+}
+
+.momentos-title {
+  font-size: 1.1375rem; /* Aumentado 30%: 0.875rem × 1.3 = 1.1375rem (18.2px) */
+  letter-spacing: 0.3em;
+  font-weight: 600;
+  color: #1f2937;
+  font-family: 'Montserrat', sans-serif;
+}
+
+/* ===================================
+   DESTACADOS SECTION
+   =================================== */
+.destacados-section {
+  padding: 5rem 1.5rem;
+  background-color: #f9fafb;
+}
+
+.destacados-container {
+  max-width: 72rem;
+  margin: 0 auto;
+}
+
+.section-title-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 3rem;
+}
+
+.title-line {
+  flex: 1;
+  height: 1px;
+  background-color: #d1d5db;
+  max-width: 100px;
+}
+
+.section-title {
+  padding: 0 1.5rem;
+  font-size: 1.7875rem; /* Aumentado 30%: 1.375rem × 1.3 = 1.7875rem (28.6px) */
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: #1f2937;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.destacados-subtitle {
+  font-size: 3.25rem; /* Aumentado 30%: 2.5rem × 1.3 = 3.25rem (52px) */
+  font-family: 'Cormorant', serif;
+  text-align: center;
+  margin-bottom: 4rem;
+  color: #1f2937;
+  line-height: 1.3;
+  font-weight: 400;
+}
+
+/* ===================================
+   FEATURES GRID
+   =================================== */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 3rem 2rem;
+  margin-bottom: 4rem;
+}
+
+.feature-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.feature-icon {
+  width: 4rem;
+  height: 4rem;
+  margin-bottom: 1rem;
+  color: #b45309;
+}
+
+.feature-title {
+  font-size: 1.625rem; /* Aumentado 30%: 1.25rem × 1.3 = 1.625rem (26px) */
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #1f2937;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.feature-description {
+  font-family: 'Montserrat', sans-serif;
+  color: #6b7280;
+  line-height: 1.5;
+  font-size: 1.38125rem; /* Aumentado 30%: 1.0625rem × 1.3 = 1.38125rem (22.1px) */
+}
+
+/* ===================================
+   IMAGES GRID
+   =================================== */
+.images-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.image-container {
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 0.5rem;
+}
+
+.image-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.image-container:hover img {
+  transform: scale(1.05);
+}
+
+/* ===================================
+   GALERÍA DE MOMENTOS
+   =================================== */
+.galeria-momentos-section {
+  padding: 3rem 1.5rem;
+  background-color: #ffffff;
+}
+
+.galeria-momentos-container {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.galeria-momentos-header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.galeria-momentos-title {
+  font-size: 2.6rem; /* Aumentado 30%: 2rem × 1.3 = 2.6rem (41.6px) */
+  font-family: 'Cormorant', serif;
+  color: #1f2937;
+  margin-bottom: 0.75rem;
+  font-weight: 400;
+  line-height: 1.3;
+}
+
+.galeria-momentos-text {
+  font-size: 1.4625rem; /* Aumentado 30%: 1.125rem × 1.3 = 1.4625rem (23.4px) */
+  font-family: 'Montserrat', sans-serif;
+  color: #6b7280;
+  line-height: 1.6;
+  font-weight: 400;
+}
+
+.galeria-momentos-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  grid-auto-rows: 200px;
+}
+
+.galeria-momentos-item {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  cursor: pointer;
+  background-color: #f3f4f6;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.galeria-momentos-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+
+.galeria-momentos-item:hover img {
+  transform: scale(1.05);
+}
+
+.galeria-momentos-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.1);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.galeria-momentos-item:hover .galeria-momentos-overlay {
+  opacity: 1;
+}
+
+/* ===================================
+   MOMENTOS DESTACADOS
+   =================================== */
+.momentos-destacados-section {
+  padding: 3rem 1.5rem;
+  background-color: #f9fafb;
+}
+
+.momentos-destacados-grid {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+.momento-destacado-card {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #f0f0f0;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+}
+
+.momento-destacado-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.momento-destacado-image {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background-color: #f9fafb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.momento-destacado-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+
+.momento-destacado-card:hover .momento-destacado-image img {
+  transform: scale(1.03);
+}
+
+.momento-destacado-content {
+  padding: 1.75rem;
+  text-align: center;
+}
+
+.momento-destacado-title {
+  font-size: 1.7875rem; /* Aumentado 30%: 1.375rem × 1.3 = 1.7875rem (28.6px) */
+  font-family: 'Cormorant', serif;
+  color: #1f2937;
+  margin-bottom: 0.625rem;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.momento-destacado-description {
+  font-size: 1.38125rem; /* Aumentado 30%: 1.0625rem × 1.3 = 1.38125rem (22.1px) */
+  font-family: 'Montserrat', sans-serif;
+  color: #6b7280;
+  line-height: 1.6;
+  font-weight: 400;
+}
+
+/* ===================================
+   CTA FINAL
+   =================================== */
+.bodas-cta-section {
+  position: relative;
+  width: 100%;
+}
+
+.bodas-cta-background {
+  position: relative;
+  width: 100%;
+  min-height: 380px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bodas-cta-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(180, 83, 9, 0.8) 0%,
+    rgba(31, 41, 55, 0.8) 100%
+  );
+}
+
+.bodas-cta-content {
+  position: relative;
+  z-index: 10;
+  text-align: center;
+  padding: 2rem;
+  max-width: 650px;
+  margin: 0 auto;
+}
+
+.bodas-cta-title {
+  font-size: 2.925rem; /* Aumentado 30%: 2.25rem × 1.3 = 2.925rem (46.8px) */
+  font-family: 'Cormorant', serif;
+  color: white;
+  margin-bottom: 0.875rem;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.bodas-cta-text {
+  font-size: 1.54375rem; /* Aumentado 30%: 1.1875rem × 1.3 = 1.54375rem (24.7px) */
+  font-family: 'Montserrat', sans-serif;
+  color: rgba(255, 255, 255, 0.95);
+  margin-bottom: 1.75rem;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+.bodas-cta-button {
+  background: white;
+  color: #b45309;
+  border: none;
+  padding: 1.3rem 3.25rem; /* Aumentado 30%: 1rem × 1.3 = 1.3rem, 2.5rem × 1.3 = 3.25rem */
+  font-size: 1.38125rem; /* Aumentado 30%: 1.0625rem × 1.3 = 1.38125rem (22.1px) */
+  font-weight: 600;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.bodas-cta-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  background: #ffffff;
+}
+
+.bodas-cta-button:active {
+  transform: translateY(0);
+}
+
+/* ===================================
+   FOOTER
+   =================================== */
+.bodas-footer {
+  background-color: #111827;
+  color: white;
+  padding: 3rem 1.5rem;
+}
+
+.footer-content {
+  max-width: 72rem;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.footer-text {
+  font-size: 1.3rem; /* Aumentado 30%: 1rem × 1.3 = 1.3rem (20.8px) */
+  color: #9ca3af;
+  font-family: 'Montserrat', sans-serif;
+}
+
+/* ===================================
+   FEATURES GRID 3 COLUMNAS (2 filas)
+   =================================== */
+.features-grid-3x2 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem 1.5rem;
+  margin-bottom: 4rem;
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.feature-item-3x2 {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 1.5rem 1rem;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+}
+
+.feature-item-3x2:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  background-color: white;
+  border-color: #d1d5db;
+}
+
+.feature-item-3x2 .feature-icon {
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 1rem;
+  color: #b45309;
+}
+
+.feature-title-3x2 {
+  font-size: 1.4625rem; /* Aumentado 30%: 1.125rem × 1.3 = 1.4625rem (23.4px) */
+  font-weight: 500;
+  color: #1f2937;
+  line-height: 1.4;
+  font-family: 'Cormorant', serif;
+  margin: 0;
+}
+
+/* ===================================
+   LUXURY CAROUSEL TOP TEXT
+   =================================== */
+.luxury-text-top {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1rem 1.5rem;
+}
+
+.luxury-text-top h2 {
+  font-family: 'Cormorant', serif;
+  font-size: 4.225rem; /* Aumentado 30%: 3.25rem × 1.3 = 4.225rem (67.6px) */
+  line-height: 1.25;
+  color: #111111;
+  text-align: center;
+  max-width: 980px;
+  margin: 0 auto;
+  font-weight: 400;
+}
+
+.luxury-text-top h2 .highlight {
+  color: #C9A961;
+  font-style: italic;
+  font-weight: 600;
+}
+
+/* ===================================
+   RESPONSIVE
+   =================================== */
+
+/* Desktop */
+@media (min-width: 768px) {
+  .hero-title {
+    font-size: 4.55rem; /* Aumentado 30%: 3.5rem × 1.3 = 4.55rem (72.8px) */
+  }
+
+  .bodas-intro-title {
+    font-size: 3.25rem; /* Aumentado 30%: 2.5rem × 1.3 = 3.25rem (52px) */
+  }
+
+  .destacados-subtitle {
+    font-size: 3.9rem; /* Aumentado 30%: 3rem × 1.3 = 3.9rem (62.4px) */
+  }
+
+  .features-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .images-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .hero-title {
+    font-size: 5.2rem; /* Aumentado 30%: 4rem × 1.3 = 5.2rem (83.2px) */
+  }
+
+  .bodas-intro-title {
+    font-size: 3.9rem; /* Aumentado 30%: 3rem × 1.3 = 3.9rem (62.4px) */
+  }
+
+  .destacados-subtitle {
+    font-size: 4.55rem; /* Aumentado 30%: 3.5rem × 1.3 = 4.55rem (72.8px) */
+  }
+
+  .galeria-momentos-grid {
+    grid-template-columns: repeat(3, 1fr);
+    grid-auto-rows: 220px;
+  }
+
+  .galeria-momentos-title {
+    font-size: 2.925rem; /* Aumentado 30%: 2.25rem × 1.3 = 2.925rem (46.8px) */
+  }
+
+  .bodas-cta-title {
+    font-size: 2.6rem; /* Aumentado 30%: 2rem × 1.3 = 2.6rem (41.6px) */
+  }
+
+  .momento-destacado-image {
+    height: 850px;
+  }
+  
+  .luxury-text-top h2 {
+    font-size: 3.38rem; /* Aumentado 30%: 2.6rem × 1.3 = 3.38rem (54.1px) */
+    padding: 0 1rem;
+  }
+}
+
+/* Tablet */
+@media (max-width: 768px) {
+  .hero-title {
+    font-size: 2.6rem; /* Aumentado 30%: 2rem × 1.3 = 2.6rem (41.6px) */
+  }
+
+  .bodas-intro-title {
+    font-size: 2.275rem; /* Aumentado 30%: 1.75rem × 1.3 = 2.275rem (36.4px) */
+  }
+
+  .destacados-subtitle {
+    font-size: 2.6rem; /* Aumentado 30%: 2rem × 1.3 = 2.6rem (41.6px) */
+  }
+
+  .carousel-nav-button {
+    padding: 0.5rem;
+  }
+
+  .carousel-nav-button.prev {
+    left: 0.5rem;
+  }
+
+  .carousel-nav-button.next {
+    right: 0.5rem;
+  }
+
+  .galeria-momentos-section,
+  .momentos-destacados-section {
+    padding: 2.5rem 1rem;
+  }
+
+  .galeria-momentos-grid {
+    grid-template-columns: repeat(2, 1fr);
+    grid-auto-rows: 180px;
+    gap: 0.875rem;
+  }
+
+  .momentos-destacados-grid {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  .momento-destacado-image {
+    height: 220px;
+  }
+
+  .momento-destacado-content {
+    padding: 1.5rem;
+  }
+
+  .galeria-momentos-title {
+    font-size: 1.7875rem; /* Aumentado 30%: 1.375rem × 1.3 = 1.7875rem (28.6px) */
+  }
+
+  .galeria-momentos-text {
+    font-size: 1.3rem; /* Aumentado 30%: 1rem × 1.3 = 1.3rem (20.8px) */
+  }
+
+  .momento-destacado-title {
+    font-size: 1.625rem; /* Aumentado 30%: 1.25rem × 1.3 = 1.625rem (26px) */
+  }
+
+  .momento-destacado-description {
+    font-size: 1.3rem; /* Aumentado 30%: 1rem × 1.3 = 1.3rem (20.8px) */
+  }
+
+  .bodas-cta-title {
+    font-size: 2.4375rem; /* Aumentado 30%: 1.875rem × 1.3 = 2.4375rem (39px) */
+  }
+
+  .bodas-cta-text {
+    font-size: 1.4625rem; /* Aumentado 30%: 1.125rem × 1.3 = 1.4625rem (23.4px) */
+  }
+
+  .bodas-cta-button {
+    padding: 1.1375rem 2.925rem; /* Aumentado 30% */
+    font-size: 1.3rem; /* Aumentado 30%: 1rem × 1.3 = 1.3rem (20.8px) */
+  }
+
+  .bodas-cta-background {
+    min-height: 340px;
+  }
+
+  .features-grid-3x2 {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    max-width: 600px;
+  }
+  
+  .feature-title-3x2 {
+    font-size: 1.38125rem; /* Aumentado 30%: 1.0625rem × 1.3 = 1.38125rem (22.1px) */
+  }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .galeria-momentos-section,
+  .momentos-destacados-section {
+    padding: 2rem 1rem;
+  }
+
+  .galeria-momentos-grid {
+    grid-template-columns: repeat(2, 1fr);
+    grid-auto-rows: 160px;
+  }
+
+  .galeria-momentos-header {
+    margin-bottom: 2rem;
+  }
+
+  .galeria-momentos-title {
+    font-size: 1.95rem; /* Aumentado 30%: 1.5rem × 1.3 = 1.95rem (31.2px) */
+  }
+
+  .momento-destacado-image {
+    height: 180px;
+  }
+
+  .momento-destacado-content {
+    padding: 1.25rem;
+  }
+
+  .bodas-cta-title {
+    font-size: 2.1125rem; /* Aumentado 30%: 1.625rem × 1.3 = 2.1125rem (33.8px) */
+  }
+
+  .bodas-cta-text {
+    font-size: 1.38125rem; /* Aumentado 30%: 1.0625rem × 1.3 = 1.38125rem (22.1px) */
+    margin-bottom: 1.5rem;
+  }
+
+  .bodas-cta-button {
+    padding: 0.975rem 2.6rem; /* Aumentado 30% */
+    font-size: 1.21875rem; /* Aumentado 30%: 0.9375rem × 1.3 = 1.21875rem (19.5px) */
+  }
+
+  .bodas-cta-background {
+    min-height: 320px;
+  }
+  
+  .features-grid-3x2 {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+    max-width: 400px;
+  }
+  
+  .feature-item-3x2 {
+    padding: 1.25rem 1rem;
+  }
+  
+  .feature-item-3x2 .feature-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  .feature-title-3x2 {
+    font-size: 1.3rem; /* Aumentado 30%: 1rem × 1.3 = 1.3rem (20.8px) */
+  }
+  
+  .luxury-text-top h2 {
+    font-size: 2.08rem; /* Aumentado 30%: 1.6rem × 1.3 = 2.08rem (33.3px) */
+    line-height: 1.35;
+  }
+  
+  /* Ajustes adicionales para móvil con fuentes más grandes */
+  .bodas-page {
+    font-size: 1.3rem; /* Aumentado 30%: 1rem × 1.3 = 1.3rem (20.8px) */
+  }
+  
+  .feature-title {
+    font-size: 1.4625rem; /* Aumentado 30%: 1.125rem × 1.3 = 1.4625rem (23.4px) */
+  }
+  
+  .section-title {
+    font-size: 1.625rem; /* Aumentado 30%: 1.25rem × 1.3 = 1.625rem (26px) */
+  }
+}
