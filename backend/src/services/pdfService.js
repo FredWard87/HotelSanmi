@@ -6,11 +6,19 @@ const Room = require('../models/Room');
 
 // Configurar transporte de email
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false, // false para puerto 587
   auth: {
     user: process.env.EMAIL_USERNAME || 'audit3674@gmail.com',
     pass: process.env.EMAIL_PASSWORD || 'xarv ywnv gdkv jofm',
   },
+  tls: {
+    rejectUnauthorized: false, // Vital para evitar bloqueos en Vercel
+    minVersion: 'TLSv1.2'
+  },
+  connectionTimeout: 10000, // 10 segundos para conectar
+  greetingTimeout: 10000,   // 10 segundos para esperar el saludo de Gmail
 });
 
 // Leer el logo una sola vez
