@@ -1,3 +1,4 @@
+// index.js
 const express = require('express');
 const router = express.Router();
 
@@ -26,11 +27,11 @@ router.get('/users', (req, res) => {
 router.use('/rooms', require('./rooms'));
 router.use('/bookings', require('./bookings'));
 router.use('/weddings', require('./weddings'));
-router.use('/visits', require('./weddings'));
+//router.use('/visits', require('./visits'));
 // Auth routes
 router.use('/auth', require('./auth'));
 
-// ⭐ AGREGAR ESTA LÍNEA - Ruta para bloqueos de habitaciones
+// ⭐ Ruta para bloqueos de habitaciones
 router.use('/room-blocks', require('./roomBlocks'));
 
 module.exports = router;
