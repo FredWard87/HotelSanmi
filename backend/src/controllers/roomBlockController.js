@@ -6,10 +6,10 @@ const Booking = require('../models/Booking');
 // Obtener todos los bloqueos con filtros opcionales
 exports.getAllBlocks = async (req, res) => {
   try {
-    const { roomId, active, startDate, endDate } = req.query;
+    const { roomId, active, startDate, endDate, scope } = req.query;
     
     const filter = {};
-    if (roomId) filter.roomId = roomId;
+    if (scope) filter.scope = scope;
     if (active !== undefined) filter.active = active === 'true';
     
     if (startDate && endDate) {
@@ -18,8 +18,19 @@ exports.getAllBlocks = async (req, res) => {
       ];
     }
     
+    // Si se filtra por habitación, buscar bloqueos que la afecten
+    if (roomId) {
+      filter.$or = [
+        { scope: 'specific', roomId: roomId },
+        { scope: 'all' },
+        { scope: 'casaHotel', affectedRooms: roomId },
+        { scope: 'boutique', affectedRooms: roomId }
+      ];
+    }
+    
     const blocks = await RoomBlock.find(filter)
       .populate('roomId', 'name type totalUnits lugar')
+      .populate('affectedRooms', 'name type totalUnits lugar')
       .sort({ startDate: -1 });
       
     res.json(blocks);
@@ -38,14 +49,26 @@ exports.getBlocksByRoom = async (req, res) => {
     const { roomId } = req.params;
     const { active = true, future = false } = req.query;
     
-    const filter = { roomId };
+    const filter = {
+      $or: [
+        { scope: 'specific', roomId: roomId },
+        { scope: 'all' },
+        { scope: 'casaHotel', affectedRooms: roomId },
+        { scope: 'boutique', affectedRooms: roomId }
+      ]
+    };
+    
     if (active !== 'all') filter.active = active === 'true';
     
     if (future === 'true') {
       filter.startDate = { $gt: new Date() };
     }
     
-    const blocks = await RoomBlock.find(filter).sort({ startDate: 1 });
+    const blocks = await RoomBlock.find(filter)
+      .populate('roomId', 'name type totalUnits lugar')
+      .populate('affectedRooms', 'name type totalUnits lugar')
+      .sort({ startDate: 1 });
+      
     res.json(blocks);
   } catch (error) {
     console.error('Error al obtener bloqueos de habitación:', error);
@@ -60,6 +83,7 @@ exports.getBlocksByRoom = async (req, res) => {
 exports.createBlock = async (req, res) => {
   try {
     const { 
+      scope = 'specific',
       roomId, 
       startDate, 
       endDate, 
@@ -68,12 +92,6 @@ exports.createBlock = async (req, res) => {
       blockAll, 
       quantityBlocked 
     } = req.body;
-
-    // Validar que la habitación existe
-    const room = await Room.findById(roomId);
-    if (!room) {
-      return res.status(404).json({ message: 'Habitación no encontrada' });
-    }
 
     // Validar fechas
     const start = new Date(startDate);
@@ -93,82 +111,147 @@ exports.createBlock = async (req, res) => {
       });
     }
 
-    // Validar cantidad bloqueada
-    if (!blockAll) {
+    let rooms = [];
+    let filter = {};
+    
+    // Determinar qué habitaciones se verán afectadas
+    switch(scope) {
+      case 'specific':
+        if (!roomId) {
+          return res.status(400).json({ 
+            message: 'Para scope "specific" se requiere roomId' 
+          });
+        }
+        const room = await Room.findById(roomId);
+        if (!room) {
+          return res.status(404).json({ message: 'Habitación no encontrada' });
+        }
+        rooms = [room];
+        break;
+        
+      case 'casaHotel':
+        filter.lugar = 'casaHotel';
+        rooms = await Room.find(filter);
+        break;
+        
+      case 'boutique':
+        filter.lugar = 'boutique';
+        rooms = await Room.find(filter);
+        break;
+        
+      case 'all':
+        rooms = await Room.find({});
+        break;
+        
+      default:
+        return res.status(400).json({ 
+          message: 'Scope no válido. Use: specific, all, casaHotel, boutique' 
+        });
+    }
+
+    if (rooms.length === 0) {
+      return res.status(404).json({ 
+        message: `No se encontraron habitaciones para el scope: ${scope}` 
+      });
+    }
+
+    // Validar cantidad bloqueada para habitaciones específicas
+    if (scope === 'specific' && !blockAll) {
       if (!quantityBlocked || quantityBlocked <= 0) {
         return res.status(400).json({ 
           message: 'Debe especificar una cantidad válida a bloquear' 
         });
       }
-      if (quantityBlocked > room.totalUnits) {
+      if (quantityBlocked > rooms[0].totalUnits) {
         return res.status(400).json({ 
-          message: `La cantidad no puede exceder las ${room.totalUnits} unidades disponibles` 
+          message: `La cantidad no puede exceder las ${rooms[0].totalUnits} unidades disponibles` 
         });
       }
     }
 
-    // Verificar superposición con otros bloqueos activos
-    const overlappingBlocks = await RoomBlock.find({
-      roomId,
-      active: true,
-      $or: [
-        { startDate: { $lt: end }, endDate: { $gt: start } }
-      ]
-    });
+    // Para cada habitación, verificar disponibilidad
+    const availabilityResults = [];
+    
+    for (const room of rooms) {
+      // Verificar superposición con otros bloqueos activos
+      const overlappingBlocks = await RoomBlock.find({
+        $or: [
+          { scope: 'specific', roomId: room._id, active: true },
+          { scope: 'all', active: true },
+          { scope: 'casaHotel', affectedRooms: room._id, active: true },
+          { scope: 'boutique', affectedRooms: room._id, active: true }
+        ],
+        $or: [
+          { startDate: { $lt: end }, endDate: { $gt: start } }
+        ]
+      });
 
-    // Verificar también reservas activas
-    const overlappingBookings = await Booking.countDocuments({
-      roomId,
-      status: 'active',
-      $or: [
-        { checkIn: { $lt: end }, checkOut: { $gt: start } }
-      ]
-    });
+      // Verificar también reservas activas
+      const overlappingBookings = await Booking.countDocuments({
+        roomId: room._id,
+        status: 'active',
+        $or: [
+          { checkIn: { $lt: end }, checkOut: { $gt: start } }
+        ]
+      });
 
-    // Calcular unidades ya bloqueadas
-    let totalBlocked = overlappingBookings;
-    overlappingBlocks.forEach(block => {
-      if (block.blockAll) {
-        totalBlocked += room.totalUnits;
-      } else {
-        totalBlocked += block.quantityBlocked || 0;
-      }
-    });
-
-    const requestedBlock = blockAll ? room.totalUnits : quantityBlocked;
-    const available = Math.max(0, room.totalUnits - Math.min(totalBlocked, room.totalUnits));
-
-    if (requestedBlock > available) {
-      return res.status(400).json({
-        message: `No hay suficiente disponibilidad. Solo quedan ${available} unidades disponibles en esas fechas.`,
-        availableUnits: available,
-        details: {
-          totalUnits: room.totalUnits,
-          bookedUnits: overlappingBookings,
-          blockedUnits: totalBlocked - overlappingBookings,
-          requestedUnits: requestedBlock
+      // Calcular unidades ya bloqueadas
+      let totalBlocked = overlappingBookings;
+      overlappingBlocks.forEach(block => {
+        if (block.blockAll) {
+          totalBlocked += room.totalUnits;
+        } else {
+          totalBlocked += block.quantityBlocked || 0;
         }
       });
+
+      const requestedBlock = blockAll ? room.totalUnits : (quantityBlocked || 1);
+      const available = Math.max(0, room.totalUnits - Math.min(totalBlocked, room.totalUnits));
+
+      availabilityResults.push({
+        roomId: room._id,
+        roomName: room.name,
+        totalUnits: room.totalUnits,
+        bookedUnits: overlappingBookings,
+        blockedUnits: totalBlocked - overlappingBookings,
+        availableUnits: available,
+        isAvailable: available >= requestedBlock,
+        requestedUnits: requestedBlock
+      });
+
+      // Si no hay suficiente disponibilidad para esta habitación
+      if (available < requestedBlock) {
+        return res.status(400).json({
+          message: `No hay suficiente disponibilidad en ${room.name}. Solo quedan ${available} unidades disponibles.`,
+          scope: scope,
+          details: availabilityResults
+        });
+      }
     }
 
     // Crear bloqueo
     const newBlock = new RoomBlock({
-      roomId,
+      scope,
+      roomId: scope === 'specific' ? roomId : null,
       startDate: start,
       endDate: end,
       blockType: blockType || 'Mantenimiento',
       reason,
       blockAll: !!blockAll,
-      quantityBlocked: blockAll ? null : quantityBlocked,
-      active: true
+      quantityBlocked: blockAll ? null : (quantityBlocked || 1),
+      active: true,
+      affectedRooms: rooms.map(r => r._id)
     });
 
     await newBlock.save();
     await newBlock.populate('roomId', 'name type totalUnits lugar');
+    await newBlock.populate('affectedRooms', 'name type totalUnits lugar');
 
     res.status(201).json({
-      message: 'Bloqueo creado exitosamente',
-      block: newBlock
+      message: `Bloqueo creado exitosamente para ${rooms.length} habitación(es)`,
+      scope,
+      block: newBlock,
+      affectedRooms: rooms.length
     });
   } catch (error) {
     console.error('Error al crear bloqueo:', error);
@@ -184,6 +267,7 @@ exports.updateBlock = async (req, res) => {
   try {
     const { id } = req.params;
     const { 
+      scope,
       startDate, 
       endDate, 
       blockType, 
@@ -198,9 +282,50 @@ exports.updateBlock = async (req, res) => {
       return res.status(404).json({ message: 'Bloqueo no encontrado' });
     }
 
-    const room = await Room.findById(block.roomId);
-    if (!room) {
-      return res.status(404).json({ message: 'Habitación no encontrada' });
+    // Si se cambia el scope, necesitamos recalcular affectedRooms
+    let rooms = [];
+    if (scope && scope !== block.scope) {
+      let filter = {};
+      
+      switch(scope) {
+        case 'specific':
+          if (!block.roomId) {
+            return res.status(400).json({ 
+              message: 'Para scope "specific" se requiere roomId' 
+            });
+          }
+          const room = await Room.findById(block.roomId);
+          if (!room) {
+            return res.status(404).json({ message: 'Habitación no encontrada' });
+          }
+          rooms = [room];
+          break;
+          
+        case 'casaHotel':
+          filter.lugar = 'casaHotel';
+          rooms = await Room.find(filter);
+          break;
+          
+        case 'boutique':
+          filter.lugar = 'boutique';
+          rooms = await Room.find(filter);
+          break;
+          
+        case 'all':
+          rooms = await Room.find({});
+          break;
+          
+        default:
+          return res.status(400).json({ 
+            message: 'Scope no válido. Use: specific, all, casaHotel, boutique' 
+          });
+      }
+      
+      block.scope = scope;
+      block.affectedRooms = rooms.map(r => r._id);
+    } else {
+      // Mantener las habitaciones actuales
+      rooms = await Room.find({ _id: { $in: block.affectedRooms } });
     }
 
     // Validar fechas si se actualizan
@@ -215,43 +340,50 @@ exports.updateBlock = async (req, res) => {
       }
 
       // Verificar conflictos con otros bloqueos (excluyendo este)
-      const overlappingBlocks = await RoomBlock.find({
-        _id: { $ne: id },
-        roomId: block.roomId,
-        active: true,
-        $or: [
-          { startDate: { $lt: end }, endDate: { $gt: start } }
-        ]
-      });
-
-      const overlappingBookings = await Booking.countDocuments({
-        roomId: block.roomId,
-        status: 'active',
-        $or: [
-          { checkIn: { $lt: end }, checkOut: { $gt: start } }
-        ]
-      });
-
-      let totalBlocked = overlappingBookings;
-      overlappingBlocks.forEach(b => {
-        if (b.blockAll) {
-          totalBlocked += room.totalUnits;
-        } else {
-          totalBlocked += b.quantityBlocked || 0;
-        }
-      });
-
-      const newRequestedBlock = (blockAll !== undefined ? blockAll : block.blockAll) 
-        ? room.totalUnits 
-        : (quantityBlocked || block.quantityBlocked);
-      
-      const available = Math.max(0, room.totalUnits - totalBlocked);
-
-      if (newRequestedBlock > available) {
-        return res.status(400).json({
-          message: `No hay suficiente disponibilidad. Solo quedan ${available} unidades disponibles.`,
-          availableUnits: available
+      for (const room of rooms) {
+        const overlappingBlocks = await RoomBlock.find({
+          _id: { $ne: id },
+          $or: [
+            { scope: 'specific', roomId: room._id, active: true },
+            { scope: 'all', active: true },
+            { scope: 'casaHotel', affectedRooms: room._id, active: true },
+            { scope: 'boutique', affectedRooms: room._id, active: true }
+          ],
+          $or: [
+            { startDate: { $lt: end }, endDate: { $gt: start } }
+          ]
         });
+
+        const overlappingBookings = await Booking.countDocuments({
+          roomId: room._id,
+          status: 'active',
+          $or: [
+            { checkIn: { $lt: end }, checkOut: { $gt: start } }
+          ]
+        });
+
+        let totalBlocked = overlappingBookings;
+        overlappingBlocks.forEach(b => {
+          if (b.blockAll) {
+            totalBlocked += room.totalUnits;
+          } else {
+            totalBlocked += b.quantityBlocked || 0;
+          }
+        });
+
+        const newRequestedBlock = (blockAll !== undefined ? blockAll : block.blockAll) 
+          ? room.totalUnits 
+          : (quantityBlocked || block.quantityBlocked || 1);
+        
+        const available = Math.max(0, room.totalUnits - totalBlocked);
+
+        if (newRequestedBlock > available) {
+          return res.status(400).json({
+            message: `No hay suficiente disponibilidad en ${room.name}. Solo quedan ${available} unidades disponibles.`,
+            roomName: room.name,
+            availableUnits: available
+          });
+        }
       }
 
       block.startDate = start;
@@ -268,10 +400,13 @@ exports.updateBlock = async (req, res) => {
       }
     }
     if (!blockAll && quantityBlocked) {
-      if (quantityBlocked > room.totalUnits) {
-        return res.status(400).json({ 
-          message: `La cantidad no puede exceder las ${room.totalUnits} unidades disponibles` 
-        });
+      if (block.scope === 'specific') {
+        const room = await Room.findById(block.roomId);
+        if (room && quantityBlocked > room.totalUnits) {
+          return res.status(400).json({ 
+            message: `La cantidad no puede exceder las ${room.totalUnits} unidades disponibles` 
+          });
+        }
       }
       block.quantityBlocked = quantityBlocked;
     }
@@ -280,6 +415,7 @@ exports.updateBlock = async (req, res) => {
     block.updatedAt = Date.now();
     await block.save();
     await block.populate('roomId', 'name type totalUnits lugar');
+    await block.populate('affectedRooms', 'name type totalUnits lugar');
 
     res.json({
       message: 'Bloqueo actualizado exitosamente',
@@ -321,7 +457,7 @@ exports.deleteBlock = async (req, res) => {
 exports.checkAvailability = async (req, res) => {
   try {
     const { roomId } = req.params;
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, scope } = req.query;
 
     if (!startDate || !endDate) {
       return res.status(400).json({ 
@@ -329,66 +465,115 @@ exports.checkAvailability = async (req, res) => {
       });
     }
 
-    const room = await Room.findById(roomId);
-    if (!room) {
-      return res.status(404).json({ message: 'Habitación no encontrada' });
-    }
-
     const start = new Date(startDate);
     const end = new Date(endDate);
 
-    // Buscar bloqueos que se superponen
-    const overlappingBlocks = await RoomBlock.find({
-      roomId,
-      active: true,
-      $or: [
-        { startDate: { $lt: end }, endDate: { $gt: start } }
-      ]
-    });
-
-    // Buscar reservas que se superponen
-    const overlappingBookings = await Booking.countDocuments({
-      roomId,
-      status: 'active',
-      $or: [
-        { checkIn: { $lt: end }, checkOut: { $gt: start } }
-      ]
-    });
-
-    let totalBlocked = overlappingBookings;
-    const blockDetails = [];
+    let rooms = [];
     
-    overlappingBlocks.forEach(block => {
-      if (block.blockAll) {
-        totalBlocked += room.totalUnits;
-      } else {
-        totalBlocked += block.quantityBlocked || 0;
+    if (roomId) {
+      // Verificar una habitación específica
+      const room = await Room.findById(roomId);
+      if (!room) {
+        return res.status(404).json({ message: 'Habitación no encontrada' });
       }
-      
-      blockDetails.push({
-        id: block._id,
-        type: block.blockType,
-        reason: block.reason,
-        startDate: block.startDate,
-        endDate: block.endDate,
-        blockAll: block.blockAll,
-        quantityBlocked: block.quantityBlocked
+      rooms = [room];
+    } else if (scope) {
+      // Verificar por scope
+      let filter = {};
+      switch(scope) {
+        case 'casaHotel':
+          filter.lugar = 'casaHotel';
+          break;
+        case 'boutique':
+          filter.lugar = 'boutique';
+          break;
+        case 'all':
+          // Sin filtro
+          break;
+        default:
+          return res.status(400).json({ 
+            message: 'Scope no válido' 
+          });
+      }
+      rooms = await Room.find(filter);
+    } else {
+      return res.status(400).json({ 
+        message: 'Se requiere roomId o scope' 
       });
-    });
+    }
 
-    const available = Math.max(0, room.totalUnits - Math.min(totalBlocked, room.totalUnits));
+    const availabilityResults = [];
+    
+    for (const room of rooms) {
+      // Buscar bloqueos que afecten a esta habitación
+      const overlappingBlocks = await RoomBlock.find({
+        $or: [
+          { scope: 'specific', roomId: room._id, active: true },
+          { scope: 'all', active: true },
+          { scope: 'casaHotel', affectedRooms: room._id, active: true },
+          { scope: 'boutique', affectedRooms: room._id, active: true }
+        ],
+        $or: [
+          { startDate: { $lt: end }, endDate: { $gt: start } }
+        ]
+      });
+
+      // Buscar reservas que se superponen
+      const overlappingBookings = await Booking.countDocuments({
+        roomId: room._id,
+        status: 'active',
+        $or: [
+          { checkIn: { $lt: end }, checkOut: { $gt: start } }
+        ]
+      });
+
+      let totalBlocked = overlappingBookings;
+      const blockDetails = [];
+      
+      overlappingBlocks.forEach(block => {
+        if (block.blockAll) {
+          totalBlocked += room.totalUnits;
+        } else {
+          totalBlocked += block.quantityBlocked || 0;
+        }
+        
+        blockDetails.push({
+          id: block._id,
+          type: block.blockType,
+          reason: block.reason,
+          scope: block.scope,
+          startDate: block.startDate,
+          endDate: block.endDate,
+          blockAll: block.blockAll,
+          quantityBlocked: block.quantityBlocked
+        });
+      });
+
+      const available = Math.max(0, room.totalUnits - Math.min(totalBlocked, room.totalUnits));
+
+      availabilityResults.push({
+        roomId: room._id,
+        roomName: room.name,
+        lugar: room.lugar,
+        totalUnits: room.totalUnits,
+        bookedUnits: overlappingBookings,
+        blockedUnits: Math.min(totalBlocked - overlappingBookings, room.totalUnits),
+        availableUnits: available,
+        isAvailable: available > 0,
+        blocks: blockDetails
+      });
+    }
 
     res.json({
-      roomId,
-      roomName: room.name,
-      totalUnits: room.totalUnits,
-      bookedUnits: overlappingBookings,
-      blockedUnits: Math.min(totalBlocked - overlappingBookings, room.totalUnits),
-      availableUnits: available,
-      isAvailable: available > 0,
-      blocks: blockDetails,
       startDate,
-      endDate
+      endDate,
+      scope: scope || 'specific',
+      totalRooms: rooms.length,
+      availability: availabilityResults,
+      summary: {
+        totalAvailable: availabilityResults.filter(r => r.isAvailable).length,
+        totalBlocked: availabilityResults.filter(r => !r.isAvailable).length
+      }
     });
   } catch (error) {
     console.error('Error al verificar disponibilidad:', error);
