@@ -351,7 +351,7 @@ exports.updateBlock = async (req, res) => {
           ],
           $or: [
             { startDate: { $lt: end }, endDate: { $gt: start } }
-          ]
+        ]
         });
 
         const overlappingBookings = await Booking.countDocuments({
@@ -572,7 +572,10 @@ exports.checkAvailability = async (req, res) => {
       availability: availabilityResults,
       summary: {
         totalAvailable: availabilityResults.filter(r => r.isAvailable).length,
-        totalBlocked: availabilityResults.filter(r => !r.isAvailable).length
+        totalUnavailable: availabilityResults.filter(r => !r.isAvailable).length,
+        totalBlockedByScope: availabilityResults.filter(r => 
+          r.blocks.some(b => b.scope !== 'specific')
+        ).length
       }
     });
   } catch (error) {
