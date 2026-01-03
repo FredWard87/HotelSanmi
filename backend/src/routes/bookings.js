@@ -1,54 +1,39 @@
+// routes/bookings.js
 const express = require('express');
 const router = express.Router();
 const bookingController = require('../controllers/bookingController');
-const Booking = require('../models/Booking');
-const { generateVoucherPDF } = require('../services/pdfService');
 
-// POST /api/bookings/payment-intent -> Crear Payment Intent
-router.post('/payment-intent', bookingController.createPaymentIntent);
+// Ruta para verificar disponibilidad de una habitación
+router.get('/availability', bookingController.checkAvailability);
 
-// POST /api/bookings -> Crear reserva (procesa pago inicial 50%)
+// Ruta para verificar disponibilidad para múltiples habitaciones por SCOPE
+router.get('/availability/multiple', bookingController.checkMultipleAvailability);
+
+// Ruta para crear una nueva reserva
 router.post('/', bookingController.createBooking);
 
-// GET /api/bookings/stats -> Obtener estadísticas (admin)
-router.get('/stats', bookingController.getBookingStats);
-
-// GET /api/bookings/availability -> Verificar disponibilidad
-router.get('/availability', bookingController.checkRoomAvailability);
-
-// GET /api/bookings/download/:bookingId -> Descargar voucher PDF
-router.get('/download/:bookingId', async (req, res, next) => {
-  try {
-    const { bookingId } = req.params;
-    const booking = await Booking.findOne({ bookingId }).lean();
-
-    if (!booking) {
-      return res.status(404).json({ error: 'Booking not found' });
-    }
-
-    const pdfBuffer = await generateVoucherPDF(booking);
-    
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="Voucher_${bookingId}.pdf"`);
-    res.send(pdfBuffer);
-  } catch (error) {
-    next(error);
-  }
-});
-
-// GET /api/bookings/:bookingId -> Obtener detalles de reserva
-router.get('/:bookingId', bookingController.getBooking);
-
-// GET /api/bookings -> Obtener todas las reservas (admin)
+// Ruta para obtener todas las reservas (con filtros)
 router.get('/', bookingController.getAllBookings);
 
-// PATCH /api/bookings/:bookingId -> Actualizar reserva
-router.patch('/:bookingId', bookingController.updateBooking);
+// Ruta para obtener estadísticas de reservas
+router.get('/stats', bookingController.getBookingStats);
 
-// PATCH /api/bookings/:bookingId/mark-paid -> Marcar segunda noche pagada
-router.patch('/:bookingId/mark-paid', bookingController.markSecondNightPaid);
+// Ruta para obtener una reserva específica por ID
+router.get('/:id', bookingController.getBookingById);
 
-// DELETE /api/bookings/:bookingId/cancel -> Cancelar reserva
-router.delete('/:bookingId/cancel', bookingController.cancelBooking);
+// Ruta para actualizar una reserva
+router.patch('/:id', bookingController.updateBooking);
+
+// Ruta para cancelar una reserva
+router.delete('/:id/cancel', bookingController.cancelBooking);
+
+// Ruta para marcar segunda noche como pagada
+router.patch('/:id/mark-paid', bookingController.markSecondNightPaid);
+
+// Ruta para descargar voucher en PDF
+router.get('/download/:id', bookingController.downloadVoucher);
+
+// Ruta para crear Payment Intent con Stripe
+router.post('/payment-intent', bookingController.createPaymentIntent);
 
 module.exports = router;
