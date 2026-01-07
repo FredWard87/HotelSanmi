@@ -723,7 +723,17 @@ exports.downloadVoucher = async (req, res) => {
   try {
     const { id } = req.params;
     
-    const booking = await Booking.findById(id);
+    // 🔥 Intentar buscar por _id o por bookingId
+    let booking;
+    
+    // Si el id tiene formato de MongoDB ObjectId (24 caracteres hexadecimales)
+    if (/^[0-9a-fA-F]{24}$/.test(id)) {
+      booking = await Booking.findById(id);
+    } else {
+      // Si no, buscar por bookingId (formato LC-2026-XXXXXX)
+      booking = await Booking.findOne({ bookingId: id });
+    }
+    
     if (!booking) {
       return res.status(404).json({
         message: 'Reserva no encontrada'
@@ -735,7 +745,20 @@ exports.downloadVoucher = async (req, res) => {
     res.json({
       message: 'Voucher generado (simulado)',
       booking,
-      downloadUrl: `/vouchers/${booking.bookingId}.pdf`
+      downloadUrl: `/vouchers/${booking.bookingId}.pdf`,
+      voucherData: {
+        bookingId: booking.bookingId,
+        guestName: `${booking.guestInfo.firstName} ${booking.guestInfo.lastName}`,
+        email: booking.guestInfo.email,
+        roomName: booking.roomName,
+        checkIn: booking.checkIn,
+        checkOut: booking.checkOut,
+        nights: booking.nights,
+        totalPrice: formatMXN(booking.totalPrice),
+        initialPayment: formatMXN(booking.initialPayment),
+        secondNightPayment: formatMXN(booking.secondNightPayment),
+        status: booking.status
+      }
     });
   } catch (error) {
     console.error('Error generando voucher:', error);
