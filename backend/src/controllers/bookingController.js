@@ -764,8 +764,8 @@ exports.downloadVoucher = async (req, res) => {
 
     console.log('🎨 Generando PDF del voucher...');
 
-    // 🔥 IMPORTAR LA FUNCIÓN DE GENERACIÓN DE PDF
-    const { generateVoucherPDF } = require('../utils/emailService');
+    // 🔥 IMPORTAR LA FUNCIÓN DE GENERACIÓN DE PDF (CORREGIDO: pdfService en lugar de emailService)
+    const { generateVoucherPDF } = require('../services/pdfService');
     
     // 🔥 GENERAR EL PDF
     const pdfBuffer = await generateVoucherPDF(bookingPayload);
