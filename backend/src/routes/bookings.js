@@ -36,4 +36,15 @@ router.get('/download/:id', bookingController.downloadVoucher);
 // Ruta para crear Payment Intent con Stripe
 router.post('/payment-intent', bookingController.createPaymentIntent);
 
+// 🔥 NUEVAS RUTAS PARA EMAILS
+
+// Ruta para prueba básica de email
+router.post('/test-email', bookingController.testEmail);
+
+// Ruta para reenviar email a una reserva específica por ID o bookingId
+router.post('/:id/resend-email', bookingController.resendBookingEmail);
+
+// Ruta alternativa para reenviar email (por bookingId o email en body)
+router.post('/resend/email', bookingController.sendTestEmailToExistingBooking);
+
 module.exports = router;
