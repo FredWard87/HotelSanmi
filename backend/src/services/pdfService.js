@@ -20,14 +20,28 @@ const transporter = nodemailer.createTransport({
   connectionTimeout: 10000,
   greetingTimeout: 10000,
   socketTimeout: 10000,
+  debug: true,
+  logger: true
 });
 
-// 🔥 Verificar conexión al inicio
+// 🔥 Verificar conexión al inicio con mejor logging
 transporter.verify((error, success) => {
   if (error) {
     console.error('❌ Error en configuración de email:', error);
+    console.error('❌ Error details:', {
+      code: error.code,
+      command: error.command,
+      response: error.response,
+      responseCode: error.responseCode
+    });
   } else {
     console.log('✅ Servidor de email listo para enviar mensajes');
+    console.log('✅ Configuración:', {
+      host: 'smtp.gmail.com',
+      port: 587,
+      user: process.env.EMAIL_USERNAME,
+      secure: false
+    });
   }
 });
 
@@ -617,7 +631,7 @@ function generatePartialPaymentVoucherPDF(booking) {
       doc.text('PAGO INICIAL REALIZADO (50%)', margin + 15, card1Y + 14);
       
       doc.fontSize(8.5).font('Helvetica').fillColor(darkGray);
-      doc.text(`Cantidad: ${initialPayment.toFixed(2)} MXN`, margin + 15, card1Y + 28);
+      doc.text(`Cantidad: $${initialPayment.toFixed(2)} MXN`, margin + 15, card1Y + 28);
       doc.text(`Fecha: ${new Date(booking.createdAt).toLocaleDateString('es-MX', { 
         day: '2-digit', 
         month: 'short', 
@@ -636,7 +650,7 @@ function generatePartialPaymentVoucherPDF(booking) {
       doc.text('PENDIENTE: PAGO EN RECEPCIÓN (50%)', margin + 15, card2Y + 18);
       
       doc.fontSize(16).font('Helvetica-Bold').fillColor(warningOrange);
-      doc.text(`${secondNightPayment.toFixed(2)} MXN`, margin + 15, card2Y + 38);
+      doc.text(`$${secondNightPayment.toFixed(2)} MXN`, margin + 15, card2Y + 38);
       
       doc.fontSize(8.5).font('Helvetica').fillColor(darkGray);
       doc.text(`Fecha límite: ${checkOutDate}`, margin + 15, card2Y + 58);
@@ -753,6 +767,8 @@ function generateVoucherPDF(booking) {
 async function sendFullPaymentEmail(booking, pdfBuffer) {
   try {
     console.log(`📧 Preparando email para ${booking.guestInfo.email}...`);
+    console.log(`📧 Desde: ${process.env.EMAIL_USERNAME}`);
+    console.log(`📧 Booking ID: ${booking.bookingId}`);
     
     const municipalTax = booking.municipalTax || (booking.subtotal * 0.04);
     const totalWithTaxes = (booking.subtotal || 0) + (booking.tax || 0) + municipalTax;
@@ -775,7 +791,7 @@ async function sendFullPaymentEmail(booking, pdfBuffer) {
     }
 
     const mailOptions = {
-      from: `"La Capilla Hotel" <${process.env.EMAIL_USERNAME || 'audit3674@gmail.com'}>`,
+      from: `"La Capilla Hotel" <${process.env.EMAIL_USERNAME}>`,
       to: booking.guestInfo.email,
       cc: 'lacapillasl@gmail.com',
       subject: `Reserva Confirmada - La Capilla Hotel | ${booking.bookingId}`,
@@ -1009,18 +1025,45 @@ async function sendFullPaymentEmail(booking, pdfBuffer) {
       attachments: attachments
     };
 
-    console.log(`📤 Enviando email a: ${booking.guestInfo.email}`);
-    console.log(`📤 CC a: lacapillasl@gmail.com`);
-    
+    console.log('📤 Enviando email...');
+    console.log('📤 Configuración:', {
+      from: mailOptions.from,
+      to: mailOptions.to,
+      subject: mailOptions.subject
+    });
+
     const result = await transporter.sendMail(mailOptions);
     
     console.log('✅ Email enviado exitosamente');
     console.log('✅ Response:', result.response);
     console.log('✅ Message ID:', result.messageId);
+    console.log('✅ Accepted:', result.accepted);
+    console.log('✅ Rejected:', result.rejected);
     
+    return result;
+  } catch (error) {
+    console.error('❌ Error enviando email:', error);
+    console.error('❌ Error code:', error.code);
+    console.error('❌ Error command:', error.command);
+    console.error('❌ Error response:', error.response);
+    console.error('❌ Error responseCode:', error.responseCode);
+    
+    if (error.code === 'EAUTH') {
+      console.error('❌ ERROR DE AUTENTICACIÓN con Gmail');
+      console.error('❌ Verifica:');
+      console.error('❌ 1. Que las credenciales sean correctas');
+      console.error('❌ 2. Que hayas habilitado "Acceso de apps menos seguras"');
+      console.error('❌ 3. O que hayas creado una "Contraseña de aplicación" en Google');
+    }
+    
+    throw error;
+  }
+}
+
 async function sendPartialPaymentEmail(booking, pdfBuffer) {
   try {
     console.log(`📧 Preparando email de pago parcial para ${booking.guestInfo.email}...`);
+    console.log(`📧 Desde: ${process.env.EMAIL_USERNAME}`);
     
     const municipalTax = booking.municipalTax || (booking.subtotal * 0.04);
     const totalWithTaxes = (booking.subtotal || 0) + (booking.tax || 0) + municipalTax;
@@ -1045,7 +1088,7 @@ async function sendPartialPaymentEmail(booking, pdfBuffer) {
     }
 
     const mailOptions = {
-      from: `"La Capilla Hotel" <${process.env.EMAIL_USERNAME || 'audit3674@gmail.com'}>`,
+      from: `"La Capilla Hotel" <${process.env.EMAIL_USERNAME}>`,
       to: booking.guestInfo.email,
       cc: 'lacapillasl@gmail.com',
       subject: `Reserva Confirmada - La Capilla Hotel | ${booking.bookingId}`,
@@ -1319,26 +1362,38 @@ async function sendPartialPaymentEmail(booking, pdfBuffer) {
       attachments: attachments
     };
 
-    console.log(`📤 Enviando email a: ${booking.guestInfo.email}`);
-    console.log(`📤 CC a: lacapillasl@gmail.com`);
-    
+    console.log('📤 Enviando email de pago parcial...');
+    console.log('📤 Configuración:', {
+      from: mailOptions.from,
+      to: mailOptions.to,
+      subject: mailOptions.subject
+    });
+
     const result = await transporter.sendMail(mailOptions);
     
     console.log('✅ Email enviado exitosamente');
     console.log('✅ Response:', result.response);
     console.log('✅ Message ID:', result.messageId);
+    console.log('✅ Accepted:', result.accepted);
+    console.log('✅ Rejected:', result.rejected);
     
     return result;
   } catch (error) {
-    console.error('❌ Error enviando email:', error);
+    console.error('❌ Error enviando email de pago parcial:', error);
     console.error('❌ Error code:', error.code);
     console.error('❌ Error command:', error.command);
-    console.error('❌ Error completo:', JSON.stringify(error, null, 2));
+    console.error('❌ Error response:', error.response);
+    console.error('❌ Error responseCode:', error.responseCode);
+    
+    if (error.code === 'EAUTH') {
+      console.error('❌ ERROR DE AUTENTICACIÓN con Gmail');
+    }
+    
     throw error;
   }
 }
 
-async function sendVoucherEmail(booking, pdfBuffer) {
+function sendVoucherEmail(booking, pdfBuffer) {
   if (booking.nights === 1 || booking.initialPayment >= booking.totalPrice) {
     return sendFullPaymentEmail(booking, pdfBuffer);
   }
@@ -1348,11 +1403,18 @@ async function sendVoucherEmail(booking, pdfBuffer) {
 async function generateAndSendVoucher(booking) {
   try {
     console.log('🎫 Generando voucher PDF...');
+    console.log('📋 Detalles de la reserva:', {
+      bookingId: booking.bookingId,
+      email: booking.guestInfo.email,
+      nights: booking.nights,
+      roomName: booking.roomName
+    });
 
     let roomDetails = null;
     try {
       if (booking.roomId) {
         roomDetails = await Room.findById(booking.roomId).lean();
+        console.log('✅ Info de Room obtenida:', roomDetails?.name);
       }
     } catch (roomErr) {
       console.warn('⚠️ No se pudo obtener info de Room para el voucher:', roomErr.message);
@@ -1362,6 +1424,8 @@ async function generateAndSendVoucher(booking) {
     if (roomDetails) bookingPayload.room = roomDetails;
 
     const pdfBuffer = await generateVoucherPDF(bookingPayload);
+    
+    console.log('✅ PDF generado, tamaño:', pdfBuffer.length, 'bytes');
 
     console.log('📧 Enviando email con voucher...');
     await sendVoucherEmail(bookingPayload, pdfBuffer);
@@ -1370,6 +1434,7 @@ async function generateAndSendVoucher(booking) {
     return { success: true, pdfBuffer };
   } catch (error) {
     console.error('❌ Error en generateAndSendVoucher:', error);
+    console.error('❌ Error stack:', error.stack);
     throw error;
   }
 }
