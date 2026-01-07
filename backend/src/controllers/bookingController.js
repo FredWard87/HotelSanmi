@@ -315,7 +315,7 @@ exports.checkMultipleAvailability = async (req, res) => {
   }
 };
 
-// Crear reserva (CON SCOPE ACTUALIZADO)
+// Crear reserva (CON SCOPE ACTUALIZADO Y BOOKINGID GENERADO)
 exports.createBooking = async (req, res) => {
   try {
     const {
@@ -412,12 +412,19 @@ exports.createBooking = async (req, res) => {
       });
     }
 
+    // 🔥 GENERAR BOOKING ID ÚNICO
+    const year = new Date().getFullYear();
+    const random = Math.random().toString(36).substr(2, 9).toUpperCase();
+    const timestamp = Date.now().toString().slice(-6);
+    const bookingId = `LC-${year}-${timestamp}${random.substr(0, 3)}`;
+
     // Calcular pagos
     const initialPayment = nights === 1 ? totalPrice : totalPrice * 0.5;
     const secondNightPayment = nights === 1 ? 0 : totalPrice * 0.5;
 
-    // Crear la reserva
+    // Crear la reserva CON bookingId
     const newBooking = new Booking({
+      bookingId, // 🔥 CAMPO AGREGADO
       roomId,
       roomName: room.name,
       guestInfo,
@@ -449,7 +456,7 @@ exports.createBooking = async (req, res) => {
 
     res.status(201).json({
       message: 'Reserva creada exitosamente',
-      bookingId: newBooking._id,
+      bookingId: newBooking.bookingId, // 🔥 Devolver el bookingId generado
       booking: newBooking,
       secondNightNote: nights > 1 
         ? `El 50% restante (${formatMXN(secondNightPayment)}) se pagará en recepción al check-in.`
@@ -565,7 +572,7 @@ exports.updateBooking = async (req, res) => {
     
     // Actualizar la reserva
     Object.keys(updateData).forEach(key => {
-      if (key !== '_id' && key !== '__v') {
+      if (key !== '_id' && key !== '__v' && key !== 'bookingId') { // 🔥 No permitir actualizar bookingId
         booking[key] = updateData[key];
       }
     });
@@ -619,7 +626,7 @@ exports.cancelBooking = async (req, res) => {
       //   payment_intent: booking.paymentIntentId,
       //   amount: Math.round(booking.initialPayment * 100),
       // });
-      console.log(`Reembolso necesario para reserva ${id}`);
+      console.log(`Reembolso necesario para reserva ${booking.bookingId}`);
     } catch (stripeError) {
       console.error('Error procesando reembolso:', stripeError);
     }
@@ -728,7 +735,7 @@ exports.downloadVoucher = async (req, res) => {
     res.json({
       message: 'Voucher generado (simulado)',
       booking,
-      downloadUrl: `/vouchers/${id}.pdf`
+      downloadUrl: `/vouchers/${booking.bookingId}.pdf`
     });
   } catch (error) {
     console.error('Error generando voucher:', error);
@@ -751,7 +758,7 @@ function formatMXN(amount) {
 async function sendBookingConfirmationEmail(booking) {
   // Implementar envío real de email aquí
   console.log(`Email enviado a ${booking.guestInfo.email}`);
-  console.log(`Asunto: Confirmación de Reserva #${booking._id}`);
+  console.log(`Asunto: Confirmación de Reserva #${booking.bookingId}`);
   console.log(`Contenido: Reserva para ${booking.roomName} del ${booking.checkIn} al ${booking.checkOut}`);
   return Promise.resolve();
 }
