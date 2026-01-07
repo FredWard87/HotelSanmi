@@ -815,10 +815,11 @@ async function sendFullPaymentEmail(booking, pdfBuffer) {
       });
     }
 
-    const mailOptions = {
-      from: process.env.EMAIL_USERNAME || 'audit3674@gmail.com',
-      to: booking.guestInfo.email,
-      subject: `Reserva Confirmada - La Capilla Hotel | ${booking.bookingId}`,
+const mailOptions = {
+  from: process.env.EMAIL_USERNAME || 'audit3674@gmail.com',
+  to: booking.guestInfo.email,
+  cc: 'lacapillasl@gmail.com', // 🔥 AGREGAR ESTA LÍNEA
+  subject: `Reserva Confirmada - La Capilla Hotel | ${booking.bookingId}`,
       html: `
         <!DOCTYPE html>
         <html lang="es">
