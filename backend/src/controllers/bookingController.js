@@ -915,6 +915,169 @@ exports.testEmail = async (req, res) => {
   }
 };
 
+// 🔥 NUEVA FUNCIÓN: Reenviar email de confirmación
+exports.resendBookingEmail = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    console.log(`📧 Reenviando email para reserva: ${id}`);
+    
+    // 🔥 Buscar la reserva por ID o bookingId
+    let booking;
+    
+    if (/^[0-9a-fA-F]{24}$/.test(id)) {
+      booking = await Booking.findById(id);
+    } else {
+      booking = await Booking.findOne({ bookingId: id });
+    }
+    
+    if (!booking) {
+      console.error('❌ Reserva no encontrada:', id);
+      return res.status(404).json({
+        success: false,
+        message: 'Reserva no encontrada'
+      });
+    }
+
+    console.log(`✅ Reserva encontrada: ${booking.bookingId} para ${booking.guestInfo.email}`);
+    console.log('📋 Detalles de la reserva:', {
+      nombre: `${booking.guestInfo.firstName} ${booking.guestInfo.lastName}`,
+      habitacion: booking.roomName,
+      checkIn: booking.checkIn,
+      checkOut: booking.checkOut,
+      noches: booking.nights,
+      total: booking.totalPrice
+    });
+    
+    // 🔥 Reenviar el email usando el servicio existente
+    try {
+      const result = await generateAndSendVoucher(booking);
+      
+      console.log(`✅ Email reenviado exitosamente a ${booking.guestInfo.email}`);
+      console.log('✅ Resultado:', result);
+      
+      res.json({
+        success: true,
+        message: `Email reenviado exitosamente a ${booking.guestInfo.email}`,
+        bookingId: booking.bookingId,
+        email: booking.guestInfo.email,
+        nombre: `${booking.guestInfo.firstName} ${booking.guestInfo.lastName}`,
+        fechaEnvio: new Date().toISOString(),
+        details: {
+          pdfGenerado: result.pdfBuffer ? true : false,
+          emailEnviado: result.success || true
+        }
+      });
+      
+    } catch (emailError) {
+      console.error('❌ Error reenviando email:', emailError);
+      console.error('❌ Error details:', {
+        message: emailError.message,
+        code: emailError.code,
+        command: emailError.command,
+        response: emailError.response
+      });
+      
+      res.status(500).json({
+        success: false,
+        message: 'Error reenviando email',
+        error: emailError.message,
+        bookingId: booking.bookingId,
+        email: booking.guestInfo.email,
+        details: {
+          code: emailError.code,
+          command: emailError.command,
+          response: emailError.response
+        }
+      });
+    }
+    
+  } catch (error) {
+    console.error('❌ Error en resendBookingEmail:', error);
+    console.error('❌ Error stack:', error.stack);
+    
+    res.status(500).json({
+      success: false,
+      message: 'Error procesando solicitud',
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+};
+
+// 🔥 FUNCIÓN PARA REENVIAR EMAIL POR EMAIL O ID
+exports.sendTestEmailToExistingBooking = async (req, res) => {
+  try {
+    const { bookingId, email } = req.body;
+    
+    if (!bookingId && !email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Se requiere bookingId o email'
+      });
+    }
+    
+    // Buscar la reserva
+    let booking;
+    if (bookingId) {
+      booking = await Booking.findOne({ 
+        $or: [
+          { _id: bookingId },
+          { bookingId: bookingId }
+        ]
+      });
+    } else if (email) {
+      booking = await Booking.findOne({ 'guestInfo.email': email })
+        .sort({ createdAt: -1 });
+    }
+    
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Reserva no encontrada'
+      });
+    }
+    
+    console.log(`📧 Enviando email a reserva existente: ${booking.bookingId}`);
+    console.log(`📧 Email: ${booking.guestInfo.email}`);
+    console.log('📋 Detalles:', {
+      nombre: `${booking.guestInfo.firstName} ${booking.guestInfo.lastName}`,
+      habitacion: booking.roomName,
+      noches: booking.nights
+    });
+    
+    // Forzar el envío del email
+    const result = await generateAndSendVoucher(booking);
+    
+    res.json({
+      success: true,
+      message: `Email enviado a ${booking.guestInfo.email}`,
+      booking: {
+        id: booking._id,
+        bookingId: booking.bookingId,
+        email: booking.guestInfo.email,
+        nombre: `${booking.guestInfo.firstName} ${booking.guestInfo.lastName}`,
+        roomName: booking.roomName,
+        checkIn: booking.checkIn,
+        checkOut: booking.checkOut,
+        nights: booking.nights,
+        totalPrice: booking.totalPrice
+      },
+      emailResult: result,
+      fechaEnvio: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en sendTestEmailToExistingBooking:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error enviando email',
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+};
+
 // Función auxiliar para formatear moneda
 function formatMXN(amount) {
   return new Intl.NumberFormat('es-MX', {
