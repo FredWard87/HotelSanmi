@@ -723,6 +723,8 @@ exports.downloadVoucher = async (req, res) => {
   try {
     const { id } = req.params;
     
+    console.log('📥 Solicitud de voucher para ID:', id);
+    
     // 🔥 Intentar buscar por _id o por bookingId
     let booking;
     
@@ -735,37 +737,74 @@ exports.downloadVoucher = async (req, res) => {
     }
     
     if (!booking) {
+      console.error('❌ Reserva no encontrada:', id);
       return res.status(404).json({
         message: 'Reserva no encontrada'
       });
     }
-    
-    // Aquí iría la generación del PDF
-    // Por ahora devolvemos los datos en JSON
-    res.json({
-      message: 'Voucher generado (simulado)',
-      booking,
-      downloadUrl: `/vouchers/${booking.bookingId}.pdf`,
-      voucherData: {
-        bookingId: booking.bookingId,
-        guestName: `${booking.guestInfo.firstName} ${booking.guestInfo.lastName}`,
-        email: booking.guestInfo.email,
-        roomName: booking.roomName,
-        checkIn: booking.checkIn,
-        checkOut: booking.checkOut,
-        nights: booking.nights,
-        totalPrice: formatMXN(booking.totalPrice),
-        initialPayment: formatMXN(booking.initialPayment),
-        secondNightPayment: formatMXN(booking.secondNightPayment),
-        status: booking.status
+
+    console.log('✅ Reserva encontrada:', booking.bookingId);
+
+    // 🔥 INTENTAR OBTENER DETALLES DE LA HABITACIÓN
+    let roomDetails = null;
+    try {
+      if (booking.roomId) {
+        roomDetails = await Room.findById(booking.roomId).lean();
+        console.log('✅ Detalles de habitación obtenidos:', roomDetails?.name);
       }
+    } catch (roomErr) {
+      console.warn('⚠️ No se pudo obtener info de Room:', roomErr.message);
+    }
+
+    // 🔥 PREPARAR DATOS PARA EL PDF
+    const bookingPayload = booking.toObject ? booking.toObject() : { ...booking };
+    if (roomDetails) {
+      bookingPayload.room = roomDetails;
+    }
+
+    console.log('🎨 Generando PDF del voucher...');
+
+    // 🔥 IMPORTAR LA FUNCIÓN DE GENERACIÓN DE PDF
+    const { generateVoucherPDF } = require('../utils/emailService');
+    
+    // 🔥 GENERAR EL PDF
+    const pdfBuffer = await generateVoucherPDF(bookingPayload);
+    
+    console.log('✅ PDF generado correctamente, tamaño:', pdfBuffer.length, 'bytes');
+
+    // 🔥 VERIFICAR QUE EL BUFFER NO ESTÉ VACÍO
+    if (!pdfBuffer || pdfBuffer.length === 0) {
+      throw new Error('El PDF generado está vacío');
+    }
+
+    // 🔥 CONFIGURAR HEADERS CORRECTOS PARA PDF
+    res.writeHead(200, {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="Voucher_${booking.bookingId}.pdf"`,
+      'Content-Length': pdfBuffer.length,
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
     });
+    
+    // 🔥 ENVIAR EL BUFFER DEL PDF DIRECTAMENTE
+    res.end(pdfBuffer, 'binary');
+    
+    console.log('✅ PDF enviado al cliente');
+
   } catch (error) {
-    console.error('Error generando voucher:', error);
-    res.status(500).json({
-      message: 'Error generando voucher',
-      error: error.message
-    });
+    console.error('❌ Error generando voucher:', error);
+    
+    // Si ya se enviaron headers, no podemos enviar JSON
+    if (res.headersSent) {
+      res.end();
+    } else {
+      res.status(500).json({
+        message: 'Error generando voucher',
+        error: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
+    }
   }
 };
 
