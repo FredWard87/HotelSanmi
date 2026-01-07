@@ -3,6 +3,7 @@ const Booking = require('../models/Booking');
 const Room = require('../models/Room');
 const RoomBlock = require('../models/RoomBlock');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const { generateAndSendVoucher } = require('../services/pdfService');
 
 // Obtener todas las reservas
 exports.getAllBookings = async (req, res) => {
@@ -446,17 +447,21 @@ exports.createBooking = async (req, res) => {
 
     await newBooking.save();
 
-    // Enviar email de confirmación
+    console.log(`✅ Reserva creada: ${newBooking.bookingId} para ${guestInfo.email}`);
+
+    // 🔥 ACTUALIZADO: Enviar email de confirmación REAL con voucher
     try {
       await sendBookingConfirmationEmail(newBooking);
+      console.log(`✅ Email enviado exitosamente a ${guestInfo.email}`);
     } catch (emailError) {
-      console.error('Error enviando email:', emailError);
+      console.error('❌ Error enviando email:', emailError);
+      console.log('⚠️ La reserva se creó pero el email no pudo enviarse');
       // No fallar la reserva si el email falla
     }
 
     res.status(201).json({
       message: 'Reserva creada exitosamente',
-      bookingId: newBooking.bookingId, // 🔥 Devolver el bookingId generado
+      bookingId: newBooking.bookingId,
       booking: newBooking,
       secondNightNote: nights > 1 
         ? `El 50% restante (${formatMXN(secondNightPayment)}) se pagará en recepción al check-in.`
@@ -572,7 +577,7 @@ exports.updateBooking = async (req, res) => {
     
     // Actualizar la reserva
     Object.keys(updateData).forEach(key => {
-      if (key !== '_id' && key !== '__v' && key !== 'bookingId') { // 🔥 No permitir actualizar bookingId
+      if (key !== '_id' && key !== '__v' && key !== 'bookingId') {
         booking[key] = updateData[key];
       }
     });
@@ -621,12 +626,8 @@ exports.cancelBooking = async (req, res) => {
     
     // Intentar reembolso en Stripe si corresponde
     try {
-      // Aquí implementar lógica de reembolso con Stripe
-      // const refund = await stripe.refunds.create({
-      //   payment_intent: booking.paymentIntentId,
-      //   amount: Math.round(booking.initialPayment * 100),
-      // });
       console.log(`Reembolso necesario para reserva ${booking.bookingId}`);
+      // Implementar lógica de reembolso aquí si es necesario
     } catch (stripeError) {
       console.error('Error procesando reembolso:', stripeError);
     }
@@ -698,7 +699,7 @@ exports.createPaymentIntent = async (req, res) => {
     
     // Crear Payment Intent en Stripe
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount * 100), // Stripe usa centavos
+      amount: Math.round(amount * 100),
       currency: 'mxn',
       metadata: {
         integration_check: 'accept_a_payment'
@@ -728,11 +729,9 @@ exports.downloadVoucher = async (req, res) => {
     // 🔥 Intentar buscar por _id o por bookingId
     let booking;
     
-    // Si el id tiene formato de MongoDB ObjectId (24 caracteres hexadecimales)
     if (/^[0-9a-fA-F]{24}$/.test(id)) {
       booking = await Booking.findById(id);
     } else {
-      // Si no, buscar por bookingId (formato LC-2026-XXXXXX)
       booking = await Booking.findOne({ bookingId: id });
     }
     
@@ -764,7 +763,7 @@ exports.downloadVoucher = async (req, res) => {
 
     console.log('🎨 Generando PDF del voucher...');
 
-    // 🔥 IMPORTAR LA FUNCIÓN DE GENERACIÓN DE PDF (CORREGIDO: pdfService en lugar de emailService)
+    // 🔥 IMPORTAR LA FUNCIÓN DE GENERACIÓN DE PDF
     const { generateVoucherPDF } = require('../services/pdfService');
     
     // 🔥 GENERAR EL PDF
@@ -795,7 +794,6 @@ exports.downloadVoucher = async (req, res) => {
   } catch (error) {
     console.error('❌ Error generando voucher:', error);
     
-    // Si ya se enviaron headers, no podemos enviar JSON
     if (res.headersSent) {
       res.end();
     } else {
@@ -808,6 +806,115 @@ exports.downloadVoucher = async (req, res) => {
   }
 };
 
+// Test email endpoint
+exports.testEmail = async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({
+        message: 'Se requiere un email para la prueba'
+      });
+    }
+    
+    console.log('📧 Probando envío de email a:', email);
+    console.log('📧 Usando cuenta:', process.env.EMAIL_USERNAME);
+    
+    // Importar nodemailer directamente para la prueba
+    const nodemailer = require('nodemailer');
+    
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false,
+      auth: {
+        user: process.env.EMAIL_USERNAME,
+        pass: process.env.EMAIL_PASSWORD,
+      },
+      debug: true,
+      logger: true
+    });
+    
+    console.log('📧 Configurando email...');
+    
+    const mailOptions = {
+      from: `"La Capilla Hotel - Test" <${process.env.EMAIL_USERNAME}>`,
+      to: email,
+      cc: 'lacapillasl@gmail.com',
+      subject: 'Test Email - La Capilla Hotel',
+      text: 'Este es un email de prueba del sistema de reservas de La Capilla Hotel.',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #1a1a1a; color: #C9A961; padding: 20px; text-align: center; }
+            .content { padding: 20px; background: #f9f9f9; }
+            .footer { background: #eee; padding: 15px; text-align: center; font-size: 12px; color: #666; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>LA CAPILLA HOTEL</h1>
+              <p>Test de Sistema de Emails</p>
+            </div>
+            <div class="content">
+              <h2>¡Email de prueba exitoso!</h2>
+              <p>Este email confirma que el sistema de envío de correos está funcionando correctamente.</p>
+              <p><strong>Fecha:</strong> ${new Date().toLocaleString('es-MX')}</p>
+              <p><strong>Destinatario:</strong> ${email}</p>
+              <p>Si recibes este email, significa que la configuración SMTP con Gmail está funcionando.</p>
+            </div>
+            <div class="footer">
+              <p>La Capilla Hotel | Sistema Automático de Pruebas</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+    };
+    
+    console.log('📤 Enviando email de prueba...');
+    
+    const result = await transporter.sendMail(mailOptions);
+    
+    console.log('✅ Email de prueba enviado exitosamente');
+    console.log('✅ Response:', result.response);
+    
+    res.json({
+      success: true,
+      message: 'Email de prueba enviado exitosamente',
+      details: {
+        to: email,
+        from: process.env.EMAIL_USERNAME,
+        response: result.response,
+        messageId: result.messageId
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en test email:', error);
+    console.error('❌ Error details:', {
+      code: error.code,
+      command: error.command,
+      response: error.response
+    });
+    
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      details: {
+        code: error.code,
+        command: error.command,
+        response: error.response
+      }
+    });
+  }
+};
+
 // Función auxiliar para formatear moneda
 function formatMXN(amount) {
   return new Intl.NumberFormat('es-MX', {
@@ -816,11 +923,28 @@ function formatMXN(amount) {
   }).format(amount);
 }
 
-// Función para enviar email (simulada)
+// 🔥 ACTUALIZADA: Función para enviar email REAL con voucher
 async function sendBookingConfirmationEmail(booking) {
-  // Implementar envío real de email aquí
-  console.log(`Email enviado a ${booking.guestInfo.email}`);
-  console.log(`Asunto: Confirmación de Reserva #${booking.bookingId}`);
-  console.log(`Contenido: Reserva para ${booking.roomName} del ${booking.checkIn} al ${booking.checkOut}`);
-  return Promise.resolve();
+  try {
+    console.log(`📧 Iniciando envío de email para ${booking.guestInfo.email}...`);
+    console.log(`📧 Booking ID: ${booking.bookingId}`);
+    console.log(`📧 Habitación: ${booking.roomName}`);
+    
+    const result = await generateAndSendVoucher(booking);
+    
+    console.log(`✅ Email enviado exitosamente a ${booking.guestInfo.email}`);
+    return result;
+  } catch (error) {
+    console.error('❌ Error enviando email de confirmación:', error);
+    console.error('❌ Error details:', {
+      message: error.message,
+      code: error.code,
+      command: error.command
+    });
+    
+    // No lanzar el error para no romper el flujo de reserva
+    console.log('⚠️ La reserva se creó pero el email no pudo enviarse');
+    
+    return { success: false, error: error.message };
+  }
 }
