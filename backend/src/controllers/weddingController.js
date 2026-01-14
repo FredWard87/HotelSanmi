@@ -1,5 +1,7 @@
 const WeddingVisit = require('../models/WeddingVisit');
 const nodemailer = require('nodemailer');
+const fs = require('fs');
+const path = require('path');
 
 // ============================================================
 // CONFIGURACIÓN DE TRANSPORTE (OPTIMIZADA PARA VERCEL)
@@ -21,6 +23,22 @@ const transporter = nodemailer.createTransport({
   connectionTimeout: 15000, 
   greetingTimeout: 15000,   
 });
+
+// Leer el logo una sola vez
+let logoBuffer = null;
+try {
+  const logoPath = path.join(__dirname, '../assets/logo.png');
+  if (fs.existsSync(logoPath)) {
+    logoBuffer = fs.readFileSync(logoPath);
+    console.log('✅ Logo cargado correctamente para emails de visitas');
+  } else {
+    console.warn('⚠️ Logo no encontrado en:', logoPath);
+  }
+} catch (logoError) {
+  console.error('❌ Error cargando logo:', logoError.message);
+}
+
+const LOGO_CID = 'la-capilla-logo-visitas@reserva';
 
 // ============================================================
 // CREAR SOLICITUD DE VISITA (CON ENVÍO DE EMAIL)
@@ -54,65 +72,218 @@ exports.createVisit = async (req, res, next) => {
         day: 'numeric' 
       });
 
+      // Preparar adjuntos (logo)
+      const attachments = [];
+      if (logoBuffer) {
+        attachments.push({
+          filename: 'logo.png',
+          content: logoBuffer,
+          contentType: 'image/png',
+          cid: LOGO_CID
+        });
+      }
+
       const htmlContent = `
         <!DOCTYPE html>
         <html>
           <head>
             <meta charset="UTF-8">
             <style>
-              body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; }
+              body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
               .container { max-width: 600px; margin: 0 auto; background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; }
-              .header { background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); color: #fff; padding: 40px 20px; text-align: center; }
-              .header h1 { margin: 0; font-size: 28px; letter-spacing: 0.5px; }
-              .header p { margin: 8px 0 0 0; font-size: 14px; opacity: 0.9; }
+              .header { 
+                background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); 
+                color: #fff; 
+                padding: 40px 20px 30px 20px; 
+                text-align: center; 
+                position: relative;
+                border-bottom: 3px solid #C9A961;
+              }
+              .logo-container {
+                margin-bottom: 20px;
+              }
+              .logo-img {
+                max-width: 324px;
+                height: auto;
+                margin: 0 auto;
+                display: block;
+              }
+              .header-text { 
+                text-align: center; 
+                margin-top: 15px; 
+              }
+              .header-text h1 { 
+                margin: 10px 0 5px 0; 
+                font-size: 28px; 
+                letter-spacing: 0.5px; 
+                color: #fff;
+                font-weight: bold;
+              }
+              .header-text h2 { 
+                margin: 0; 
+                font-size: 16px; 
+                opacity: 0.9; 
+                color: #C9A961;
+                font-weight: normal;
+              }
+              .confirmation-text {
+                font-size: 14px;
+                color: #4CAF50;
+                margin-top: 10px;
+                font-weight: bold;
+              }
               .content { padding: 40px 30px; }
               .greeting { font-size: 18px; color: #1a1a1a; margin-bottom: 20px; }
               .section { margin: 25px 0; }
-              .section-title { font-size: 14px; color: #C9A961; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 12px; text-transform: uppercase; }
+              .section-title { 
+                font-size: 14px; 
+                color: #C9A961; 
+                font-weight: 700; 
+                letter-spacing: 0.5px; 
+                margin-bottom: 12px; 
+                text-transform: uppercase; 
+                border-bottom: 2px solid #C9A961;
+                padding-bottom: 8px;
+              }
               .section-text { font-size: 14px; color: #555; line-height: 1.7; }
-              .details { background: #f9f9f9; border-left: 4px solid #C9A961; padding: 16px; margin: 20px 0; border-radius: 4px; }
-              .detail-row { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 10px; }
-              .detail-label { color: #999; font-weight: 600; }
+              .details { 
+                background: #f9f9f9; 
+                border-left: 4px solid #C9A961; 
+                padding: 20px; 
+                margin: 20px 0; 
+                border-radius: 4px; 
+              }
+              .detail-row { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 12px; }
+              .detail-label { color: #666; font-weight: 600; }
               .detail-value { color: #1a1a1a; font-weight: 500; }
               .footer-divider { height: 1px; background: #e0e0e0; margin: 30px 0; }
               .footer-text { font-size: 13px; color: #999; text-align: center; line-height: 1.6; }
               .contact-link { color: #C9A961; text-decoration: none; font-weight: 600; }
+              .whatsapp-button {
+                display: inline-block;
+                background: #25D366;
+                color: white;
+                padding: 10px 20px;
+                border-radius: 5px;
+                text-decoration: none;
+                margin-top: 10px;
+                font-weight: bold;
+              }
+              .alert-box {
+                background: #FFF3E0;
+                border-left: 4px solid #FF6F00;
+                padding: 15px;
+                margin: 20px 0;
+                border-radius: 5px;
+              }
+              .alert-title {
+                font-weight: bold;
+                color: #FF6F00;
+                margin-bottom: 8px;
+              }
             </style>
           </head>
           <body>
             <div class="container">
               <div class="header">
-                <h1>LA CAPILLA HOTEL</h1>
-                <p>Confirmación de Solicitud de Visita</p>
+                <div class="logo-container">
+                  ${logoBuffer ? 
+                    `<img src="cid:${LOGO_CID}" alt="La Capilla Hotel" class="logo-img">` : 
+                    `<div class="header-text">
+                      <h1>LA CAPILLA</h1>
+                      <h2>HOTEL</h2>
+                    </div>`
+                  }
+                </div>
+                <div class="header-text">
+                  <h1>LA CAPILLA HOTEL</h1>
+                  <h2>Solicitud de Visita para Evento</h2>
+                  <div class="confirmation-text">Confirmación de Solicitud Recibida</div>
+                </div>
               </div>
               <div class="content">
-                <div class="greeting">Estimado ${fullName},</div>
+                <div class="greeting">Estimado(a) ${fullName},</div>
                 <div class="section">
                   <div class="section-title">Solicitud Recibida</div>
                   <div class="section-text">
-                    Agradecemos sinceramente tu interés en La Capilla Hotel. Hemos recibido tu solicitud de visita y nos complace confirmar que tu información ha sido registrada correctamente.
+                    Agradecemos sinceramente tu interés en <strong>La Capilla Hotel</strong>. Hemos recibido tu solicitud de visita para tu evento especial y nos complace confirmar que tu información ha sido registrada correctamente.
                   </div>
                 </div>
-                <div class="details">
-                  <div class="detail-row"><span class="detail-label">Nombre</span><span class="detail-value">${fullName}</span></div>
-                  <div class="detail-row">
-                    <span class="detail-label">Fecha de Evento</span>
-                    <span class="detail-value">${eventDateFormatted.charAt(0).toUpperCase() + eventDateFormatted.slice(1)}</span>
+                
+                <div class="alert-box">
+                  <div class="alert-title">Importante</div>
+                  <div class="section-text">
+                    Nuestro equipo se pondrá en contacto contigo en las próximas <strong>24 horas</strong> para coordinar todos los detalles de tu visita y responder cualquier pregunta que puedas tener.
                   </div>
-                  <div class="detail-row"><span class="detail-label">Invitados</span><span class="detail-value">${guests || 'No especificado'}</span></div>
-                  ${phone ? `<div class="detail-row"><span class="detail-label">Teléfono</span><span class="detail-value">${phone}</span></div>` : ''}
                 </div>
+                
+                <div class="section">
+                  <div class="section-title">Detalles de tu Solicitud</div>
+                  <div class="details">
+                    <div class="detail-row">
+                      <span class="detail-label">Nombre Completo</span>
+                      <span class="detail-value">${fullName}</span>
+                    </div>
+                    <div class="detail-row">
+                      <span class="detail-label">Fecha de Evento</span>
+                      <span class="detail-value">${eventDateFormatted.charAt(0).toUpperCase() + eventDateFormatted.slice(1)}</span>
+                    </div>
+                    <div class="detail-row">
+                      <span class="detail-label">Número de Invitados</span>
+                      <span class="detail-value">${guests || 'Por confirmar'}</span>
+                    </div>
+                    ${phone ? `
+                    <div class="detail-row">
+                      <span class="detail-label">Teléfono de Contacto</span>
+                      <span class="detail-value">${phone}</span>
+                    </div>` : ''}
+                    ${message ? `
+                    <div class="detail-row" style="flex-direction: column; align-items: flex-start;">
+                      <span class="detail-label">Mensaje Adicional</span>
+                      <span class="detail-value" style="margin-top: 5px; font-style: italic;">"${message}"</span>
+                    </div>` : ''}
+                  </div>
+                </div>
+
                 <div class="section">
                   <div class="section-title">Próximos Pasos</div>
                   <div class="section-text">
-                    Nuestro equipo se pondrá en contacto contigo en las próximas 24 horas para coordinar tu visita.
+                    <ol style="margin-left: 20px;">
+                      <li>Nuestro coordinador de eventos te contactará para confirmar el horario de tu visita.</li>
+                      <li>Durante la visita, conocerás nuestras instalaciones y opciones disponibles.</li>
+                      <li>Recibirás una propuesta personalizada para tu evento.</li>
+                      <li>Resolveremos todas tus dudas sobre paquetes, menús y servicios adicionales.</li>
+                    </ol>
                   </div>
                 </div>
+                
+                <div class="section">
+                  <div class="section-title">Recomendaciones para tu Visita</div>
+                  <div class="section-text">
+                    • Trae ideas o inspiración para tu evento<br>
+                    • Considera las fechas alternativas que podrían funcionar<br>
+                    • Prepara cualquier pregunta específica que tengas<br>
+                    • Si vienes en grupo, avísanos para prepararnos adecuadamente
+                  </div>
+                </div>
+
                 <div class="footer-divider"></div>
-                <div class="footer-text">
-                  <strong>LA CAPILLA HOTEL</strong><br>
-                  <a href="tel:+524777347474" class="contact-link">+52 4777 34 7474</a><br>
-                  <a href="mailto:lacapillasl@gmail.com" class="contact-link">lacapillasl@gmail.com</a>
+                
+                <div class="section">
+                  <div class="section-title">¿Necesitas contactarnos?</div>
+                  <div class="footer-text">
+                    <strong>LA CAPILLA HOTEL - COORDINACIÓN DE EVENTOS</strong><br><br>
+                    📞 <strong>Teléfono:</strong> <a href="tel:+524777347474" class="contact-link">+52 4777 34 7474</a><br>
+                    💬 <strong>WhatsApp:</strong> <a href="https://wa.me/524777347474" class="contact-link">+52 4777 34 7474</a><br>
+                    📧 <strong>Email:</strong> <a href="mailto:lacapillasl@gmail.com" class="contact-link">lacapillasl@gmail.com</a><br>
+                    📍 <strong>Dirección:</strong> Calle Principal #123, San Luis de la Paz, Gto.
+                  </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                  <a href="https://wa.me/524777347474?text=Hola,%20tengo%20una%20consulta%20sobre%20mi%20visita%20programada%20para%20${encodeURIComponent(eventDateFormatted)}" class="whatsapp-button" target="_blank">
+                    💬 Contactar por WhatsApp
+                  </a>
                 </div>
               </div>
             </div>
@@ -121,23 +292,34 @@ exports.createVisit = async (req, res, next) => {
       `;
 
       const mailOptions = {
-        from: `La Capilla Hotel <${process.env.EMAIL_USERNAME}>`,
+        from: `"La Capilla Hotel - Eventos" <${process.env.EMAIL_USERNAME}>`,
         to: email,
-        subject: 'Confirmación de Solicitud de Visita - La Capilla Hotel',
+        cc: ['lacapillasl@gmail.com', 'fredyesparza08@gmail.com'], // Agregados los CC solicitados
+        subject: 'Confirmación de Solicitud de Visita para Evento - La Capilla Hotel',
         html: htmlContent,
+        attachments: attachments
       };
 
       // VITAL: 'await' asegura que la función de Vercel no termine hasta enviar el correo
       const info = await transporter.sendMail(mailOptions);
-      console.log('✅ Email de boda enviado:', info.messageId);
+      console.log('✅ Email de visita para evento enviado:', {
+        messageId: info.messageId,
+        to: email,
+        cc: mailOptions.cc
+      });
 
     } catch (emailErr) {
       // Registramos el error en Vercel Logs para que puedas verlo
-      console.error('❌ Error enviando email de boda:', emailErr);
+      console.error('❌ Error enviando email de visita para evento:', emailErr);
+      // No re-lanzamos el error para no afectar la respuesta al frontend
     }
 
     // 3. Respuesta de éxito al Frontend
-    res.status(201).json({ success: true, visit });
+    res.status(201).json({ 
+      success: true, 
+      visit,
+      message: 'Solicitud de visita registrada exitosamente. Recibirás un correo de confirmación.'
+    });
 
   } catch (err) {
     console.error('❌ Error crítico en createVisit:', err);
