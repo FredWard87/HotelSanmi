@@ -89,97 +89,226 @@ exports.createVisit = async (req, res, next) => {
           <head>
             <meta charset="UTF-8">
             <style>
-              body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
-              .container { max-width: 600px; margin: 0 auto; background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; }
+              body { 
+                font-family: 'Arial', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                line-height: 1.6; 
+                color: #333; 
+                margin: 0; 
+                padding: 0; 
+                background-color: #f9f9f9;
+              }
+              .container { 
+                max-width: 600px; 
+                margin: 20px auto; 
+                background: #fff; 
+                border-radius: 10px; 
+                overflow: hidden; 
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+              }
               .header { 
-                background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); 
-                color: #fff; 
+                background: #ffffff; 
+                color: #1a1a1a; 
                 padding: 40px 20px 30px 20px; 
                 text-align: center; 
-                position: relative;
-                border-bottom: 3px solid #C9A961;
+                border-bottom: 4px solid #C9A961;
               }
               .logo-container {
-                margin-bottom: 20px;
+                margin-bottom: 25px;
               }
               .logo-img {
-                max-width: 324px;
+                max-width: 280px;
                 height: auto;
                 margin: 0 auto;
                 display: block;
               }
-              .header-text { 
-                text-align: center; 
-                margin-top: 15px; 
+              .hotel-title {
+                text-align: center;
+                margin-bottom: 20px;
               }
-              .header-text h1 { 
-                margin: 10px 0 5px 0; 
-                font-size: 28px; 
-                letter-spacing: 0.5px; 
-                color: #fff;
-                font-weight: bold;
+              .hotel-title .main-title {
+                font-size: 32px;
+                font-weight: 700;
+                color: #1a1a1a;
+                margin: 0;
+                letter-spacing: 1px;
+                line-height: 1.1;
               }
-              .header-text h2 { 
-                margin: 0; 
-                font-size: 16px; 
-                opacity: 0.9; 
-                color: #C9A961;
-                font-weight: normal;
+              .hotel-title .subtitle {
+                font-size: 24px;
+                font-weight: 300;
+                color: #1a1a1a;
+                margin: 5px 0 0 0;
+                letter-spacing: 0.5px;
+              }
+              .confirmation-section {
+                background: #f8f8f8;
+                padding: 15px;
+                border-radius: 8px;
+                margin: 20px auto;
+                max-width: 500px;
+                border-left: 4px solid #C9A961;
+              }
+              .confirmation-title {
+                font-size: 20px;
+                color: #1a1a1a;
+                font-weight: 600;
+                margin: 0 0 5px 0;
+                text-align: center;
               }
               .confirmation-text {
-                font-size: 14px;
-                color: #4CAF50;
-                margin-top: 10px;
-                font-weight: bold;
+                font-size: 16px;
+                color: #C9A961;
+                font-weight: 500;
+                margin: 0;
+                text-align: center;
               }
               .content { padding: 40px 30px; }
-              .greeting { font-size: 18px; color: #1a1a1a; margin-bottom: 20px; }
-              .section { margin: 25px 0; }
+              .greeting { 
+                font-size: 18px; 
+                color: #1a1a1a; 
+                margin-bottom: 25px; 
+                font-weight: 500;
+              }
+              .section { margin: 30px 0; }
               .section-title { 
-                font-size: 14px; 
-                color: #C9A961; 
+                font-size: 16px; 
+                color: #1a1a1a; 
                 font-weight: 700; 
                 letter-spacing: 0.5px; 
-                margin-bottom: 12px; 
+                margin-bottom: 15px; 
                 text-transform: uppercase; 
                 border-bottom: 2px solid #C9A961;
-                padding-bottom: 8px;
+                padding-bottom: 10px;
               }
-              .section-text { font-size: 14px; color: #555; line-height: 1.7; }
+              .section-text { 
+                font-size: 15px; 
+                color: #555; 
+                line-height: 1.7; 
+                margin-bottom: 15px;
+              }
               .details { 
                 background: #f9f9f9; 
-                border-left: 4px solid #C9A961; 
-                padding: 20px; 
-                margin: 20px 0; 
-                border-radius: 4px; 
+                border: 1px solid #e0e0e0; 
+                padding: 25px; 
+                margin: 25px 0; 
+                border-radius: 8px; 
+                border-left: 4px solid #C9A961;
               }
-              .detail-row { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 12px; }
-              .detail-label { color: #666; font-weight: 600; }
-              .detail-value { color: #1a1a1a; font-weight: 500; }
-              .footer-divider { height: 1px; background: #e0e0e0; margin: 30px 0; }
-              .footer-text { font-size: 13px; color: #999; text-align: center; line-height: 1.6; }
-              .contact-link { color: #C9A961; text-decoration: none; font-weight: 600; }
+              .detail-row { 
+                display: flex; 
+                justify-content: space-between; 
+                font-size: 15px; 
+                margin-bottom: 15px; 
+                padding-bottom: 15px;
+                border-bottom: 1px solid #eee;
+              }
+              .detail-row:last-child {
+                border-bottom: none;
+                margin-bottom: 0;
+                padding-bottom: 0;
+              }
+              .detail-label { 
+                color: #666; 
+                font-weight: 600; 
+                width: 45%;
+              }
+              .detail-value { 
+                color: #1a1a1a; 
+                font-weight: 500; 
+                width: 50%;
+                text-align: right;
+              }
+              .footer-divider { 
+                height: 1px; 
+                background: #e0e0e0; 
+                margin: 40px 0; 
+              }
+              .footer-text { 
+                font-size: 14px; 
+                color: #666; 
+                text-align: center; 
+                line-height: 1.7; 
+                margin-bottom: 20px;
+              }
+              .contact-link { 
+                color: #C9A961; 
+                text-decoration: none; 
+                font-weight: 600; 
+              }
+              .contact-link:hover {
+                text-decoration: underline;
+              }
               .whatsapp-button {
                 display: inline-block;
                 background: #25D366;
                 color: white;
-                padding: 10px 20px;
-                border-radius: 5px;
+                padding: 12px 25px;
+                border-radius: 6px;
                 text-decoration: none;
-                margin-top: 10px;
+                margin-top: 15px;
                 font-weight: bold;
+                font-size: 15px;
+                transition: background 0.3s ease;
+              }
+              .whatsapp-button:hover {
+                background: #1da851;
               }
               .alert-box {
-                background: #FFF3E0;
-                border-left: 4px solid #FF6F00;
-                padding: 15px;
-                margin: 20px 0;
-                border-radius: 5px;
+                background: #FFF9F0;
+                border: 1px solid #FFD699;
+                padding: 20px;
+                margin: 25px 0;
+                border-radius: 8px;
+                border-left: 4px solid #FFA726;
               }
               .alert-title {
-                font-weight: bold;
-                color: #FF6F00;
-                margin-bottom: 8px;
+                font-weight: 700;
+                color: #E65100;
+                margin-bottom: 10px;
+                font-size: 16px;
+              }
+              .contact-info {
+                background: #f8f8f8;
+                padding: 25px;
+                border-radius: 8px;
+                margin-top: 30px;
+                text-align: center;
+                border: 1px solid #e0e0e0;
+              }
+              .contact-info-title {
+                font-size: 18px;
+                color: #1a1a1a;
+                font-weight: 600;
+                margin-bottom: 20px;
+              }
+              .contact-item {
+                margin-bottom: 15px;
+                line-height: 1.8;
+              }
+              .contact-item:last-child {
+                margin-bottom: 0;
+              }
+              .contact-label {
+                font-weight: 600;
+                color: #1a1a1a;
+                margin-bottom: 5px;
+              }
+              .contact-value {
+                color: #666;
+              }
+              .footer {
+                background: #f5f5f5;
+                padding: 25px;
+                text-align: center;
+                border-top: 1px solid #e0e0e0;
+              }
+              .footer p {
+                margin: 10px 0;
+                color: #777;
+                font-size: 13px;
+              }
+              .footer strong {
+                color: #1a1a1a;
               }
             </style>
           </head>
@@ -189,31 +318,43 @@ exports.createVisit = async (req, res, next) => {
                 <div class="logo-container">
                   ${logoBuffer ? 
                     `<img src="cid:${LOGO_CID}" alt="La Capilla Hotel" class="logo-img">` : 
-                    `<div class="header-text">
-                      <h1>LA CAPILLA</h1>
-                      <h2>HOTEL</h2>
+                    `<div class="hotel-title">
+                      <h1 class="main-title">LA CAPILLA</h1>
+                      <h2 class="subtitle">HOTEL</h2>
                     </div>`
                   }
                 </div>
-                <div class="header-text">
-                  <h1>LA CAPILLA HOTEL</h1>
-                  <h2>Solicitud de Visita para Evento</h2>
-                  <div class="confirmation-text">Confirmación de Solicitud Recibida</div>
+                
+                <div class="confirmation-section">
+                  <h3 class="confirmation-title">LA CAPILLA HOTEL</h3>
+                  <p class="confirmation-text">Solicitud de Visita para Evento</p>
+                  <p class="confirmation-text" style="color: #4CAF50; margin-top: 10px;">Confirmación de Solicitud Recibida</p>
                 </div>
               </div>
+              
               <div class="content">
-                <div class="greeting">Estimado(a) ${fullName},</div>
+                <div class="greeting">Estimado(a) <strong>${fullName}</strong>,</div>
+                
                 <div class="section">
-                  <div class="section-title">Solicitud Recibida</div>
                   <div class="section-text">
-                    Agradecemos sinceramente tu interés en <strong>La Capilla Hotel</strong>. Hemos recibido tu solicitud de visita para tu evento especial y nos complace confirmar que tu información ha sido registrada correctamente.
+                    Agradecemos sinceramente tu interés en <strong>La Capilla Hotel</strong> para tu evento especial. Hemos recibido tu solicitud de información y nos pondremos en contacto contigo a la brevedad para brindarte todos los detalles, resolver tus dudas y coordinar una visita personalizada a nuestras instalaciones.
+                  </div>
+                  
+                  <div class="section-text">
+                    Nos complace saber que estás considerando nuestro hotel para celebrar esta ocasión tan importante. Nuestro equipo está comprometido en hacer de tu evento una experiencia memorable y única.
                   </div>
                 </div>
                 
                 <div class="alert-box">
-                  <div class="alert-title">Importante</div>
+                  <div class="alert-title">¿Qué sigue?</div>
                   <div class="section-text">
-                    Nuestro equipo se pondrá en contacto contigo en las próximas <strong>24 horas</strong> para coordinar todos los detalles de tu visita y responder cualquier pregunta que puedas tener.
+                    Un miembro de nuestro equipo de eventos se comunicará contigo en las próximas <strong>24-48 horas</strong> para:
+                    <ul style="margin: 10px 0 0 20px;">
+                      <li>Confirmar la disponibilidad para tu fecha</li>
+                      <li>Agendar una visita guiada a nuestras instalaciones</li>
+                      <li>Presentarte nuestras opciones de paquetes y servicios</li>
+                      <li>Resolver cualquier pregunta específica que tengas</li>
+                    </ul>
                   </div>
                 </div>
                 
@@ -225,66 +366,87 @@ exports.createVisit = async (req, res, next) => {
                       <span class="detail-value">${fullName}</span>
                     </div>
                     <div class="detail-row">
-                      <span class="detail-label">Fecha de Evento</span>
+                      <span class="detail-label">Fecha del Evento</span>
                       <span class="detail-value">${eventDateFormatted.charAt(0).toUpperCase() + eventDateFormatted.slice(1)}</span>
                     </div>
                     <div class="detail-row">
                       <span class="detail-label">Número de Invitados</span>
                       <span class="detail-value">${guests || 'Por confirmar'}</span>
                     </div>
+                    ${email ? `
+                    <div class="detail-row">
+                      <span class="detail-label">Correo Electrónico</span>
+                      <span class="detail-value">${email}</span>
+                    </div>` : ''}
                     ${phone ? `
                     <div class="detail-row">
-                      <span class="detail-label">Teléfono de Contacto</span>
+                      <span class="detail-label">Teléfono</span>
                       <span class="detail-value">${phone}</span>
                     </div>` : ''}
                     ${message ? `
                     <div class="detail-row" style="flex-direction: column; align-items: flex-start;">
                       <span class="detail-label">Mensaje Adicional</span>
-                      <span class="detail-value" style="margin-top: 5px; font-style: italic;">"${message}"</span>
+                      <span class="detail-value" style="margin-top: 10px; font-style: italic; text-align: left; width: 100%; color: #555;">"${message}"</span>
                     </div>` : ''}
                   </div>
                 </div>
 
                 <div class="section">
-                  <div class="section-title">Próximos Pasos</div>
+                  <div class="section-title">Para tu Visita</div>
                   <div class="section-text">
-                    <ol style="margin-left: 20px;">
-                      <li>Nuestro coordinador de eventos te contactará para confirmar el horario de tu visita.</li>
-                      <li>Durante la visita, conocerás nuestras instalaciones y opciones disponibles.</li>
-                      <li>Recibirás una propuesta personalizada para tu evento.</li>
-                      <li>Resolveremos todas tus dudas sobre paquetes, menús y servicios adicionales.</li>
-                    </ol>
+                    Te recomendamos considerar lo siguiente para cuando nos visiten:
+                    <ul style="margin: 15px 0 0 20px;">
+                      <li>Traer ideas o inspiración para la decoración</li>
+                      <li>Tener en mente un presupuesto aproximado</li>
+                      <li>Considerar horarios preferidos para la celebración</li>
+                      <li>Pensar en necesidades especiales o requerimientos específicos</li>
+                    </ul>
                   </div>
                 </div>
                 
-                <div class="section">
-                  <div class="section-title">Recomendaciones para tu Visita</div>
-                  <div class="section-text">
-                    • Trae ideas o inspiración para tu evento<br>
-                    • Considera las fechas alternativas que podrían funcionar<br>
-                    • Prepara cualquier pregunta específica que tengas<br>
-                    • Si vienes en grupo, avísanos para prepararnos adecuadamente
-                  </div>
-                </div>
-
                 <div class="footer-divider"></div>
                 
-                <div class="section">
-                  <div class="section-title">¿Necesitas contactarnos?</div>
-                  <div class="footer-text">
-                    <strong>LA CAPILLA HOTEL - COORDINACIÓN DE EVENTOS</strong><br><br>
-                    📞 <strong>Teléfono:</strong> <a href="tel:+524777347474" class="contact-link">+52 4777 34 7474</a><br>
-                    💬 <strong>WhatsApp:</strong> <a href="https://wa.me/524777347474" class="contact-link">+52 4777 34 7474</a><br>
-                    📧 <strong>Email:</strong> <a href="mailto:lacapillasl@gmail.com" class="contact-link">lacapillasl@gmail.com</a><br>
-                    📍 <strong>Dirección:</strong> Calle Principal #123, San Luis de la Paz, Gto.
+                <div class="contact-info">
+                  <div class="contact-info-title">¿Necesitas contactarnos?</div>
+                  
+                  <div class="contact-item">
+                    <div class="contact-label">WhatsApp</div>
+                    <div class="contact-value">
+                      <a href="https://wa.me/524181324886" class="contact-link" target="_blank">418 132 4886</a>
+                    </div>
+                  </div>
+                  
+                  <div class="contact-item">
+                    <div class="contact-label">Correo Electrónico</div>
+                    <div class="contact-value">
+                      <a href="mailto:lacapillasl@gmail.com" class="contact-link">lacapillasl@gmail.com</a>
+                    </div>
+                  </div>
+                  
+                  <div class="contact-item">
+                    <div class="contact-label">Ubicación</div>
+                    <div class="contact-value">
+                      Dolores Hidalgo - San Miguel De Allende,<br>
+                      37814 Dolores Hidalgo Cuna de la Independencia Nacional, Gto.
+                    </div>
+                  </div>
+                  
+                  <div style="margin-top: 25px;">
+                    <a href="https://wa.me/524181324886?text=Hola%20La%20Capilla%20Hotel,%20tengo%20una%20consulta%20sobre%20mi%20solicitud%20de%20visita%20para%20evento%20con%20fecha%20${encodeURIComponent(eventDateFormatted)}" 
+                       class="whatsapp-button" 
+                       target="_blank">
+                      💬 Contáctanos por WhatsApp
+                    </a>
                   </div>
                 </div>
-                
-                <div style="text-align: center; margin-top: 20px;">
-                  <a href="https://wa.me/524777347474?text=Hola,%20tengo%20una%20consulta%20sobre%20mi%20visita%20programada%20para%20${encodeURIComponent(eventDateFormatted)}" class="whatsapp-button" target="_blank">
-                    💬 Contactar por WhatsApp
-                  </a>
-                </div>
+              </div>
+              
+              <div class="footer">
+                <p><strong>La Capilla Hotel</strong></p>
+                <p>Dolores Hidalgo - San Miguel De Allende, 37814 Dolores Hidalgo Cuna de la Independencia Nacional, Gto.</p>
+                <p style="margin-top: 20px; color: #999; font-size: 12px;">
+                  Este es un mensaje automático de confirmación. Para consultas específicas, responde directamente a este correo.
+                </p>
               </div>
             </div>
           </body>
@@ -294,7 +456,7 @@ exports.createVisit = async (req, res, next) => {
       const mailOptions = {
         from: `"La Capilla Hotel - Eventos" <${process.env.EMAIL_USERNAME}>`,
         to: email,
-        cc: ['lacapillasl@gmail.com', 'fredyesparza08@gmail.com'], // Agregados los CC solicitados
+        cc: ['lacapillasl@gmail.com', 'fredyesparza08@gmail.com'],
         subject: 'Confirmación de Solicitud de Visita para Evento - La Capilla Hotel',
         html: htmlContent,
         attachments: attachments
@@ -311,7 +473,6 @@ exports.createVisit = async (req, res, next) => {
     } catch (emailErr) {
       // Registramos el error en Vercel Logs para que puedas verlo
       console.error('❌ Error enviando email de visita para evento:', emailErr);
-      // No re-lanzamos el error para no afectar la respuesta al frontend
     }
 
     // 3. Respuesta de éxito al Frontend
