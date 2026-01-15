@@ -96,10 +96,11 @@ function generateFullPaymentVoucherPDF(booking) {
       try {
         const logoPath = path.join(__dirname, '../assets/logo.png');
         if (fs.existsSync(logoPath)) {
-          const logoWidth = 324;
-          const logoHeight = 108;
+          // LOGO MÁS VERTICAL Y MENOS ANCHO
+          const logoWidth = 220; // Reducido de 324 a 220 (menos ancho)
+          const logoHeight = 130; // Aumentado de 108 a 130 (más vertical)
           const logoX = (pageWidth - logoWidth) / 2;
-          const logoY = 25;
+          const logoY = 20; // Ajustado para mejor posición
           
           doc.image(logoPath, logoX, logoY, {
             width: logoWidth,
@@ -504,10 +505,11 @@ function generatePartialPaymentVoucherPDF(booking) {
       try {
         const logoPath = path.join(__dirname, '../assets/logo.png');
         if (fs.existsSync(logoPath)) {
-          const logoWidth = 324;
-          const logoHeight = 108;
+          // LOGO MÁS VERTICAL Y MENOS ANCHO
+          const logoWidth = 220; // Reducido de 324 a 220 (menos ancho)
+          const logoHeight = 130; // Aumentado de 108 a 130 (más vertical)
           const logoX = (pageWidth - logoWidth) / 2;
-          const logoY = 25;
+          const logoY = 20; // Ajustado para mejor posición
           
           doc.image(logoPath, logoX, logoY, {
             width: logoWidth,
@@ -990,8 +992,9 @@ async function sendFullPaymentEmail(booking, pdfBuffer) {
               margin: 0 auto 15px auto;
             }
             .logo-img {
-              max-width: 324px;
+              max-width: 220px; /* Reducido para ser menos ancho */
               height: auto;
+              max-height: 130px; /* Aumentado para ser más vertical */
               display: block;
               margin: 0 auto 10px auto;
             }
@@ -1274,8 +1277,9 @@ async function sendPartialPaymentEmail(booking, pdfBuffer) {
               margin: 0 auto 15px auto;
             }
             .logo-img {
-              max-width: 324px;
+              max-width: 220px; /* Reducido para ser menos ancho */
               height: auto;
+              max-height: 130px; /* Aumentado para ser más vertical */
               display: block;
               margin: 0 auto 10px auto;
             }
