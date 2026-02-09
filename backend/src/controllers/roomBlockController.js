@@ -175,14 +175,15 @@ exports.createBlock = async (req, res) => {
     for (const room of rooms) {
       // Verificar superposición con otros bloqueos activos
       const overlappingBlocks = await RoomBlock.find({
-        $or: [
-          { scope: 'specific', roomId: room._id, active: true },
-          { scope: 'all', active: true },
-          { scope: 'casaHotel', affectedRooms: room._id, active: true },
-          { scope: 'boutique', affectedRooms: room._id, active: true }
-        ],
+        active: true,
         startDate: { $lt: end }, 
-        endDate: { $gt: start }
+        endDate: { $gt: start },
+        $or: [
+          { scope: 'specific', roomId: room._id },
+          { scope: 'all' },
+          { scope: 'casaHotel', affectedRooms: room._id },
+          { scope: 'boutique', affectedRooms: room._id }
+        ]
       });
 
       // Verificar también reservas activas
@@ -341,14 +342,15 @@ exports.updateBlock = async (req, res) => {
       for (const room of rooms) {
         const overlappingBlocks = await RoomBlock.find({
           _id: { $ne: id },
-          $or: [
-            { scope: 'specific', roomId: room._id, active: true },
-            { scope: 'all', active: true },
-            { scope: 'casaHotel', affectedRooms: room._id, active: true },
-            { scope: 'boutique', affectedRooms: room._id, active: true }
-          ],
+          active: true,
           startDate: { $lt: end }, 
-          endDate: { $gt: start }
+          endDate: { $gt: start },
+          $or: [
+            { scope: 'specific', roomId: room._id },
+            { scope: 'all' },
+            { scope: 'casaHotel', affectedRooms: room._id },
+            { scope: 'boutique', affectedRooms: room._id }
+          ]
         });
 
         const overlappingBookings = await Booking.countDocuments({
@@ -502,14 +504,15 @@ exports.checkAvailability = async (req, res) => {
     for (const room of rooms) {
       // Buscar bloqueos que afecten a esta habitación
       const overlappingBlocks = await RoomBlock.find({
-        $or: [
-          { scope: 'specific', roomId: room._id, active: true },
-          { scope: 'all', active: true },
-          { scope: 'casaHotel', affectedRooms: room._id, active: true },
-          { scope: 'boutique', affectedRooms: room._id, active: true }
-        ],
+        active: true,
         startDate: { $lt: end }, 
-        endDate: { $gt: start }
+        endDate: { $gt: start },
+        $or: [
+          { scope: 'specific', roomId: room._id },
+          { scope: 'all' },
+          { scope: 'casaHotel', affectedRooms: room._id },
+          { scope: 'boutique', affectedRooms: room._id }
+        ]
       });
 
       // Buscar reservas que se superponen
