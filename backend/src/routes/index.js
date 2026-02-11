@@ -1,4 +1,4 @@
-// index.js
+// routes/index.js
 const express = require('express');
 const router = express.Router();
 
@@ -33,5 +33,13 @@ router.use('/auth', require('./auth'));
 
 // ⭐ Ruta para bloqueos de habitaciones
 router.use('/room-blocks', require('./roomBlocks'));
+
+// 🆕 NUEVA RUTA: Códigos de descuento
+router.use('/discount-codes', require('./discountCodes'));
+
+// 🆕 NUEVA RUTA: Asignación de huéspedes
+router.use('/guest-assignments', require('./guestAssignments'));
+
+
 
 module.exports = router;
