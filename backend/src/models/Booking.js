@@ -16,9 +16,15 @@ const BookingSchema = new mongoose.Schema({
   checkOut: { type: Date, required: true },
   nights: { type: Number, required: true },
   pricePerNight: { type: Number, required: true },
-  subtotal: { type: Number, required: true }, // Precio base
+  // 🆕 Campos para código de descuento
+  subtotalBeforeDiscount: { type: Number, default: 0 }, // Subtotal original antes del descuento
+  discountCode: { type: String, default: null }, // Código usado (ej: "BODA2025")
+  discountCodeId: { type: mongoose.Schema.Types.ObjectId, ref: 'DiscountCode', default: null },
+  discountAmount: { type: Number, default: 0 }, // Monto del descuento aplicado
+  // Campos de precio después del descuento
+  subtotal: { type: Number, required: true }, // Precio base después de descuento
   tax: { type: Number, required: true }, // 16% IVA
-  municipalTax: { type: Number, required: true }, // 4% Impuesto municipal - NUEVO
+  municipalTax: { type: Number, required: true }, // 4% Impuesto municipal
   totalPrice: { type: Number, required: true },
   initialPayment: { type: Number, required: true }, // 50% del total
   secondNightPayment: { type: Number, required: true }, // 50% del total (a pagar en recepción)
