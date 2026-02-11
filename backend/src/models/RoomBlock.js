@@ -2,15 +2,7 @@
 const mongoose = require('mongoose');
 
 const RoomBlockSchema = new mongoose.Schema({
-  // NUEVO CAMPO: scope (alcance del bloqueo)
-  scope: {
-    type: String,
-    enum: ['specific', 'all', 'casaHotel', 'boutique'],
-    default: 'specific',
-    required: true
-  },
-  
-  // Campo roomId ahora es condicional
+  // Campos existentes...
   roomId: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'Room', 
@@ -20,12 +12,21 @@ const RoomBlockSchema = new mongoose.Schema({
     }
   },
   
+  // NUEVO CAMPO: scope (alcance del bloqueo)
+  scope: {
+    type: String,
+    enum: ['specific', 'all', 'casaHotel', 'boutique'],
+    default: 'specific',
+    required: true
+  },
+  
   // NUEVO CAMPO: para almacenar IDs de habitaciones afectadas (cuando scope no es 'specific')
   affectedRooms: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Room'
   }],
   
+  // Campos existentes...
   startDate: { 
     type: Date, 
     required: true,
@@ -70,12 +71,10 @@ const RoomBlockSchema = new mongoose.Schema({
   }
 });
 
-// Índice compuesto para búsquedas de disponibilidad
-RoomBlockSchema.index({ roomId: 1, active: 1, startDate: 1, endDate: 1 });
+// Índice compuesto actualizado
 RoomBlockSchema.index({ scope: 1, active: 1, startDate: 1, endDate: 1 });
-RoomBlockSchema.index({ affectedRooms: 1 });
 
-// Validación: endDate debe ser después de startDate
+// Pre-save hook actualizado
 RoomBlockSchema.pre('save', async function(next) {
   if (this.endDate <= this.startDate) {
     return next(new Error('La fecha de fin debe ser posterior a la fecha de inicio'));
@@ -116,26 +115,7 @@ RoomBlockSchema.pre('save', async function(next) {
   next();
 });
 
-// Método virtual para verificar si el bloqueo está vigente
-RoomBlockSchema.virtual('isCurrent').get(function() {
-  const now = new Date();
-  return this.active && this.startDate <= now && this.endDate >= now;
-});
-
-// Método virtual para verificar si el bloqueo es futuro
-RoomBlockSchema.virtual('isFuture').get(function() {
-  const now = new Date();
-  return this.active && this.startDate > now;
-});
-
-// Método para desactivar el bloqueo (soft delete)
-RoomBlockSchema.methods.deactivate = function() {
-  this.active = false;
-  this.updatedAt = Date.now();
-  return this.save();
-};
-
-// Método estático para buscar bloqueos que se solapan
+// Método estático para buscar bloqueos que se solapan (actualizado)
 RoomBlockSchema.statics.findOverlapping = function(roomId, startDate, endDate, scope = null) {
   const query = {
     active: true,
