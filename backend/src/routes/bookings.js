@@ -17,7 +17,9 @@ router.get('/stats', bookingController.getBookingStats);
 router.get('/stats/discount-codes', bookingController.getDiscountCodeUsageStats);
 
 // GET /api/bookings/availability -> Verificar disponibilidad
-router.get('/availability', bookingController.checkRoomAvailability);
+router.get('/availability', bookingController.checkAvailability);
+
+router.get('/availability/multiple', bookingController.checkMultipleAvailability);
 
 // GET /api/bookings/download/:bookingId -> Descargar voucher PDF
 router.get('/download/:bookingId', async (req, res, next) => {
