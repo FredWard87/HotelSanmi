@@ -162,7 +162,7 @@ function generateFullPaymentVoucherPDF(booking) {
       
       doc.moveDown(2);
 
-      // INFORMACIÓN DEL HUÉSPED (1 NOCHE - NO TIENE DETALLES DE HABITACIÓN)
+      // INFORMACIÓN DEL HUÉSPED
       const guestInfoY = doc.y;
       doc.fontSize(11).font('Helvetica-Bold').fillColor(charcoal);
       doc.text('INFORMACIÓN DEL HUÉSPED', margin, guestInfoY);
@@ -282,20 +282,23 @@ function generateFullPaymentVoucherPDF(booking) {
       doc.moveDown(1);
 
       const cardPaymentY = doc.y;
-      doc.roundedRect(margin, cardPaymentY, contentWidth, 75, 8)
+      doc.roundedRect(margin, cardPaymentY, contentWidth, 85, 8)
          .lineWidth(2).strokeColor(successGreen).fillAndStroke(successBg, successGreen);
       
       doc.fontSize(10).font('Helvetica-Bold').fillColor(successGreen);
       doc.text('PAGO COMPLETO REALIZADO', margin + 15, cardPaymentY + 16);
       
       doc.fontSize(8.5).font('Helvetica').fillColor(mediumGray);
-      doc.text(`Monto total: $${totalWithTaxes.toFixed(2)} MXN`, margin + 15, cardPaymentY + 32);
+      doc.text(`Monto total: $${totalWithTaxes.toFixed(2)} MXN`, margin + 15, cardPaymentY + 34);
+      
+      // 🆕 FECHA DE PAGO AQUÍ (no en página separada)
       doc.text(`Fecha de pago: ${new Date(booking.createdAt).toLocaleDateString('es-MX', { 
         day: '2-digit', 
         month: 'short', 
         year: 'numeric' 
-      })}`, margin + 15, cardPaymentY + 45);
-      doc.text(`Método de pago: Stripe (Tarjeta)`, margin + 15, cardPaymentY + 58);
+      })}`, margin + 15, cardPaymentY + 48);
+      
+      doc.text(`Método de pago: Stripe (Tarjeta)`, margin + 15, cardPaymentY + 62);
       
       doc.moveDown(4);
 
@@ -332,8 +335,10 @@ function generateFullPaymentVoucherPDF(booking) {
         );
       });
       
-      // Verificar si hay espacio para políticas
-      if (doc.y + 250 > 842) {
+      doc.moveDown(3);
+
+      // Verificar si hay espacio para políticas EN LA MISMA PÁGINA
+      if (doc.y + 280 > 842) {
         doc.addPage();
         doc.y = margin;
       }
