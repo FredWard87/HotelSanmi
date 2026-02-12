@@ -18,7 +18,6 @@ router.get('/stats/discount-codes', bookingController.getDiscountCodeUsageStats)
 
 // GET /api/bookings/availability -> Verificar disponibilidad
 router.get('/availability', bookingController.checkAvailability);
-
 router.get('/availability/multiple', bookingController.checkMultipleAvailability);
 
 // GET /api/bookings/download/:bookingId -> Descargar voucher PDF
@@ -26,11 +25,9 @@ router.get('/download/:bookingId', async (req, res, next) => {
   try {
     const { bookingId } = req.params;
     const booking = await Booking.findOne({ bookingId }).lean();
-
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
     }
-
     const pdfBuffer = await generateVoucherPDF(booking);
     
     res.setHeader('Content-Type', 'application/pdf');
@@ -43,6 +40,15 @@ router.get('/download/:bookingId', async (req, res, next) => {
 
 // 🆕 POST /api/bookings/generate-checkin/:bookingId -> Generar PDF de check-in con firma
 router.post('/generate-checkin/:bookingId', bookingController.generateCheckin);
+
+// 🆕 POST /api/bookings/:bookingId/resend-email -> Reenviar email de confirmación
+router.post('/:bookingId/resend-email', bookingController.resendBookingEmail);
+
+// 🆕 POST /api/bookings/test/send-email -> Enviar email a reserva existente (por ID o email)
+router.post('/test/send-email', bookingController.sendTestEmailToExistingBooking);
+
+// 🆕 POST /api/bookings/test/email -> Test básico de email
+router.post('/test/email', bookingController.testEmail);
 
 // GET /api/bookings/:bookingId -> Obtener detalles de reserva
 router.get('/:bookingId', bookingController.getBooking);
