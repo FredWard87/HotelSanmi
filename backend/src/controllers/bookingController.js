@@ -1210,19 +1210,20 @@ exports.downloadVoucher = async (req, res, next) => {
 // Reenviar email de confirmación
 exports.resendBookingEmail = async (req, res, next) => {
   try {
-    const { id } = req.params;
+    // ⚠️ CAMBIO: usa bookingId en lugar de id
+    const { bookingId } = req.params;
 
-    console.log(`📧 Reenviando email para reserva: ${id}`);
+    console.log(`📧 Reenviando email para reserva: ${bookingId}`);
 
     let booking;
-    if (/^[0-9a-fA-F]{24}$/.test(id)) {
-      booking = await Booking.findById(id);
+    if (/^[0-9a-fA-F]{24}$/.test(bookingId)) {
+      booking = await Booking.findById(bookingId);
     } else {
-      booking = await Booking.findOne({ bookingId: id });
+      booking = await Booking.findOne({ bookingId: bookingId });
     }
 
     if (!booking) {
-      console.error('❌ Reserva no encontrada:', id);
+      console.error('❌ Reserva no encontrada:', bookingId);
       return res.status(404).json({
         success: false,
         message: 'Reserva no encontrada'
