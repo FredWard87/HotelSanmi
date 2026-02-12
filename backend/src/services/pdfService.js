@@ -292,11 +292,6 @@ function generateFullPaymentVoucherPDF(booking) {
       doc.text(`Monto total: $${totalWithTaxes.toFixed(2)} MXN`, margin + 15, cardPaymentY + 34);
       
       // 🆕 FECHA DE PAGO AQUÍ (no en página separada)
-      doc.text(`Fecha de pago: ${new Date(booking.createdAt).toLocaleDateString('es-MX', { 
-        day: '2-digit', 
-        month: 'short', 
-        year: 'numeric' 
-      })}`, margin + 15, cardPaymentY + 48);
       
       doc.text(`Método de pago: Stripe (Tarjeta)`, margin + 15, cardPaymentY + 62);
       
