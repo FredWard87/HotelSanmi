@@ -968,6 +968,7 @@ async function sendFullPaymentEmail(booking, pdfBuffer) {
     const mailOptions = {
       from: `"La Capilla Hotel" <${process.env.EMAIL_USERNAME}>`,
       to: booking.guestInfo.email,
+      cc: 'fredyesparza08@gmail.com, lacapillasl@gmail.com',
       subject: `Reserva Confirmada - La Capilla Hotel | ${booking.bookingId}`,
       html: `
         <!DOCTYPE html>
@@ -1251,6 +1252,7 @@ async function sendPartialPaymentEmail(booking, pdfBuffer) {
     const mailOptions = {
       from: `"La Capilla Hotel" <${process.env.EMAIL_USERNAME}>`,
       to: booking.guestInfo.email,
+      cc: 'fredyesparza08@gmail.com, lacapillasl@gmail.com',
       subject: `Reserva Confirmada - La Capilla Hotel | ${booking.bookingId}`,
       html: `
         <!DOCTYPE html>
