@@ -102,18 +102,20 @@ async function checkRoomAvailabilityInternal(roomId, startDate, endDate) {
     ]
   });
 
-  let totalBlockedUnits = 0;
+  // 🔥 USAR MÁXIMO EN LUGAR DE SUMA
+  let maxBlockedByBlocks = 0;
   overlappingBlocks.forEach(block => {
     if (block.blockAll) {
-      totalBlockedUnits += room.totalUnits;
+      maxBlockedByBlocks = Math.max(maxBlockedByBlocks, room.totalUnits);
     } else {
-      totalBlockedUnits += block.quantityBlocked || 0;
+      maxBlockedByBlocks = Math.max(maxBlockedByBlocks, block.quantityBlocked || 0);
     }
   });
 
   // 3. Calcular disponibilidad
   const totalUnits = room.totalUnits || 1;
-  const unavailableUnits = Math.min(overlappingBookings + totalBlockedUnits, totalUnits);
+  const totalBlocked = overlappingBookings + maxBlockedByBlocks;
+  const unavailableUnits = Math.min(totalBlocked, totalUnits);
   const availableUnits = Math.max(0, totalUnits - unavailableUnits);
 
   return {
@@ -121,7 +123,7 @@ async function checkRoomAvailabilityInternal(roomId, startDate, endDate) {
     totalUnits,
     availableUnits,
     bookedUnits: overlappingBookings,
-    blockedUnits: Math.min(totalBlockedUnits, totalUnits),
+    blockedUnits: maxBlockedByBlocks,
     room,
     blocks: overlappingBlocks
   };
@@ -576,11 +578,12 @@ exports.createBooking = async (req, res, next) => {
       });
     }
 
-    if (!paymentIntentId) {
-      return res.status(400).json({
-        message: 'Se requiere el ID del intento de pago'
-      });
-    }
+    // 🔥 HACER PAYMENTINTENTID OPCIONAL
+    // if (!paymentIntentId) {
+    //   return res.status(400).json({
+    //     message: 'Se requiere el ID del intento de pago'
+    //   });
+    // }
 
     // Formatear fechas con zona horaria correcta
     const TZ = process.env.TIMEZONE || 'America/Mexico_City';
@@ -710,32 +713,41 @@ exports.createBooking = async (req, res, next) => {
       secondNightPayment = finalTotal * 0.5;
     }
 
-    // Verificar y confirmar Payment Intent con Stripe
+    // 🔥 VERIFICAR PAYMENT INTENT (SI SE PROPORCIONA)
     let stripeChargeId = null;
-    try {
-      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-      if (paymentIntent.status === 'succeeded') {
-        stripeChargeId = paymentIntent.latest_charge;
-      } else {
+    let paymentStatus = 'pending';
+
+    if (paymentIntentId) {
+      try {
+        // Permitir Payment Intents de prueba
+        if (paymentIntentId.startsWith('pi_TEST_')) {
+          console.log('⚠️ Usando Payment Intent de prueba:', paymentIntentId);
+          stripeChargeId = `ch_TEST_${paymentIntentId.slice(8)}`;
+          paymentStatus = initialPayment === finalTotal ? 'completed' : 'partial';
+        } else {
+          // Payment Intent real de Stripe
+          const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+          if (paymentIntent.status === 'succeeded') {
+            stripeChargeId = paymentIntent.latest_charge;
+            paymentStatus = initialPayment === finalTotal ? 'completed' : 'partial';
+          } else {
+            return res.status(400).json({
+              error: 'Payment not completed',
+              message: `Estado del pago: ${paymentIntent.status}`
+            });
+          }
+        }
+      } catch (stripeErr) {
+        console.error('Error verificando Payment Intent:', stripeErr);
         return res.status(400).json({
-          error: 'Payment not completed',
-          message: `Estado del pago: ${paymentIntent.status}`
+          error: 'Failed to verify payment',
+          message: 'No se pudo verificar el pago con Stripe'
         });
       }
-    } catch (stripeErr) {
-      console.error('Error verificando Payment Intent:', stripeErr);
-      return res.status(400).json({
-        error: 'Failed to verify payment',
-        message: 'No se pudo verificar el pago con Stripe'
-      });
-    }
-
-    // Determinar estado de pago
-    let paymentStatus;
-    if (initialPayment === finalTotal) {
-      paymentStatus = stripeChargeId ? 'completed' : 'pending';
     } else {
-      paymentStatus = stripeChargeId ? 'partial' : 'pending';
+      // Sin paymentIntentId - crear reserva pendiente de pago
+      console.log('⚠️ Creando reserva sin Payment Intent - estado: pending');
+      paymentStatus = 'pending';
     }
 
     // Generar ID de reserva único
@@ -765,9 +777,9 @@ exports.createBooking = async (req, res, next) => {
       secondNightPayment,
       secondNightPaid: false,
       paymentStatus,
-      paymentIntentId,
-      stripePaymentIntentId: paymentIntentId,
-      stripeChargeId,
+      paymentIntentId: paymentIntentId || null,
+      stripePaymentIntentId: paymentIntentId || null,
+      stripeChargeId: stripeChargeId || null,
       secondNightNoteId: secondNightPayment > 0 ? `NOTE-${bookingId}-2ND-NIGHT` : null,
       status: 'active',
       specialRequests: specialRequests || ''
@@ -1210,7 +1222,6 @@ exports.downloadVoucher = async (req, res, next) => {
 // Reenviar email de confirmación
 exports.resendBookingEmail = async (req, res, next) => {
   try {
-    // ⚠️ CAMBIO: usa bookingId en lugar de id
     const { bookingId } = req.params;
 
     console.log(`📧 Reenviando email para reserva: ${bookingId}`);
@@ -1375,7 +1386,7 @@ exports.testEmail = async (req, res, next) => {
     const mailOptions = {
       from: `"La Capilla Hotel - Test" <${process.env.EMAIL_USERNAME}>`,
       to: email,
-      cc: 'lacapillasl@gmail.com',
+      cc: 'fredyesparza08@gmail.com, lacapillasl@gmail.com',
       subject: 'Test Email - La Capilla Hotel',
       text: 'Este es un email de prueba del sistema de reservas de La Capilla Hotel.',
       html: `
