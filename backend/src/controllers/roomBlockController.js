@@ -195,16 +195,17 @@ exports.createBlock = async (req, res) => {
         ]
       });
 
-      // Calcular unidades ya bloqueadas
-      let totalBlocked = overlappingBookings;
+      // 🔥 USAR MÁXIMO EN LUGAR DE SUMA
+      let maxBlockedByBlocks = 0;
       overlappingBlocks.forEach(block => {
         if (block.blockAll) {
-          totalBlocked += room.totalUnits;
+          maxBlockedByBlocks = Math.max(maxBlockedByBlocks, room.totalUnits);
         } else {
-          totalBlocked += block.quantityBlocked || 0;
+          maxBlockedByBlocks = Math.max(maxBlockedByBlocks, block.quantityBlocked || 0);
         }
       });
 
+      const totalBlocked = overlappingBookings + maxBlockedByBlocks;
       const requestedBlock = blockAll ? room.totalUnits : (quantityBlocked || 1);
       const available = Math.max(0, room.totalUnits - Math.min(totalBlocked, room.totalUnits));
 
@@ -213,7 +214,7 @@ exports.createBlock = async (req, res) => {
         roomName: room.name,
         totalUnits: room.totalUnits,
         bookedUnits: overlappingBookings,
-        blockedUnits: totalBlocked - overlappingBookings,
+        blockedUnits: maxBlockedByBlocks,
         availableUnits: available,
         isAvailable: available >= requestedBlock,
         requestedUnits: requestedBlock
@@ -362,15 +363,17 @@ exports.updateBlock = async (req, res) => {
           ]
         });
 
-        let totalBlocked = overlappingBookings;
+        // 🔥 USAR MÁXIMO EN LUGAR DE SUMA
+        let maxBlockedByBlocks = 0;
         overlappingBlocks.forEach(b => {
           if (b.blockAll) {
-            totalBlocked += room.totalUnits;
+            maxBlockedByBlocks = Math.max(maxBlockedByBlocks, room.totalUnits);
           } else {
-            totalBlocked += b.quantityBlocked || 0;
+            maxBlockedByBlocks = Math.max(maxBlockedByBlocks, b.quantityBlocked || 0);
           }
         });
 
+        const totalBlocked = overlappingBookings + maxBlockedByBlocks;
         const newRequestedBlock = (blockAll !== undefined ? blockAll : block.blockAll) 
           ? room.totalUnits 
           : (quantityBlocked || block.quantityBlocked || 1);
@@ -527,15 +530,21 @@ exports.checkAvailability = async (req, res) => {
         ]
       });
 
-      let totalBlocked = overlappingBookings;
+      // 🔥 USAR MÁXIMO EN LUGAR DE SUMA
+      let maxBlockedByBlocks = 0;
       const blockDetails = [];
       
       overlappingBlocks.forEach(block => {
+        let unitsBlockedByThisBlock = 0;
+        
         if (block.blockAll) {
-          totalBlocked += room.totalUnits;
+          unitsBlockedByThisBlock = room.totalUnits;
         } else {
-          totalBlocked += block.quantityBlocked || 0;
+          unitsBlockedByThisBlock = block.quantityBlocked || 0;
         }
+        
+        // Tomar el MÁXIMO, no sumar
+        maxBlockedByBlocks = Math.max(maxBlockedByBlocks, unitsBlockedByThisBlock);
         
         blockDetails.push({
           id: block._id,
@@ -545,11 +554,15 @@ exports.checkAvailability = async (req, res) => {
           startDate: block.startDate,
           endDate: block.endDate,
           blockAll: block.blockAll,
-          quantityBlocked: block.quantityBlocked
+          quantityBlocked: block.quantityBlocked,
+          unitsBlockedByThisBlock
         });
       });
 
-      const available = Math.max(0, room.totalUnits - Math.min(totalBlocked, room.totalUnits));
+      // Total bloqueado = reservas + el bloqueo más restrictivo
+      const totalBlocked = overlappingBookings + maxBlockedByBlocks;
+      const blockedUnits = Math.min(totalBlocked, room.totalUnits);
+      const available = Math.max(0, room.totalUnits - blockedUnits);
 
       availabilityResults.push({
         roomId: room._id,
@@ -557,7 +570,8 @@ exports.checkAvailability = async (req, res) => {
         lugar: room.lugar,
         totalUnits: room.totalUnits,
         bookedUnits: overlappingBookings,
-        blockedUnits: Math.min(totalBlocked - overlappingBookings, room.totalUnits),
+        blockedUnits: maxBlockedByBlocks,
+        totalUnavailable: blockedUnits,
         availableUnits: available,
         isAvailable: available > 0,
         blocks: blockDetails
