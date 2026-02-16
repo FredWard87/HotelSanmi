@@ -97,7 +97,7 @@ function generateFullPaymentVoucherPDF(booking) {
         const logoPath = path.join(__dirname, '../assets/logo.png');
         if (fs.existsSync(logoPath)) {
           const logoWidth = 400;
-          const logoHeight = 85;
+          const logoHeight = 400;
           const logoX = (pageWidth - logoWidth) / 2;
           const logoY = 20;
           
@@ -506,7 +506,7 @@ function generatePartialPaymentVoucherPDF(booking) {
         const logoPath = path.join(__dirname, '../assets/logo.png');
         if (fs.existsSync(logoPath)) {
           const logoWidth = 400;
-          const logoHeight = 85;
+          const logoHeight = 400;
           const logoX = (pageWidth - logoWidth) / 2;
           const logoY = 20;
           
