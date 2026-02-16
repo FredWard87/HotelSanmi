@@ -943,9 +943,33 @@ exports.sendDiscountCodeWhatsApp = async (req, res) => {
         
         const bookingLink = `${baseUrl}?${bookingParams.toString()}`;
         
-        const message = `Felicidades, ${guest.guestName || 'invitado'}:\n\nEs un honor para nosotros contar con su presencia en nuestra celebracion.\n\nDetalles especiales para ti:\n\n- Tu habitacion: ${roomName}
-- Codigo de descuento: ${discountCode.code}\n- Precio especial: ${discountCode.finalPrice.toFixed(2)} MXN\n- Tipo de alojamiento: ${hotelType}\n- Valido: ${new Date(discountCode.validFrom).toLocaleDateString('es-MX')} al ${new Date(discountCode.validUntil).toLocaleDateString('es-MX')}\n\nPara reservar tu habitacion:\n${bookingLink}\n\nGracias por ser parte de este momento tan especial.\nCon afectos,\n${brideName} y su futura pareja`;
-        
+        const message = `Hola, muy buen día 😊
+
+Nos da mucho gusto saber que formarás parte de la celebración de ${brideName}.
+
+Hemos preparado un acceso exclusivo para tu hospedaje dentro del recinto:
+
+*Detalles de tu reservación asignada:*
+
+- Habitación: ${roomName}
+- Tipo de alojamiento: ${hotelType}
+- Tarifa preferencial 2 noches: $${discountCode.finalPrice.toFixed(2)} MXN
+- Código de acceso: ${discountCode.code}
+- Vigencia: ${new Date(discountCode.validFrom).toLocaleDateString('es-MX')} al ${new Date(discountCode.validUntil).toLocaleDateString('es-MX')}
+
+Para confirmar tu estancia, solo debes ingresar al siguiente enlace (la habitación ya está preseleccionada para ti):
+
+👉 ${bookingLink}
+
+Al aplicar el código indicado, se reflejará automáticamente la tarifa especial correspondiente al evento.
+
+Te recomendamos realizar tu reservación a la brevedad, ya que el acceso es exclusivo y por tiempo limitado.
+
+Será un placer recibirte en La Capilla.
+
+Atentamente,
+*Hotel La Capilla*`;
+
         // Generar enlace de WhatsApp con mensaje prellenado
         const encodedMessage = encodeURIComponent(message);
         const whatsappLink = `https://wa.me/${formattedPhone}?text=${encodedMessage}`;
