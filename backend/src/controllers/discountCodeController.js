@@ -2,6 +2,7 @@
 const DiscountCode = require('../models/DiscountCode');
 const Room = require('../models/Room');
 const Booking = require('../models/Booking');
+const GuestAssignment = require('../models/GuestAssignment');
 
 // 🆕 SIMPLIFICADO: Crear código de descuento (solo 5 campos)
 exports.createDiscountCode = async (req, res, next) => {
@@ -14,9 +15,11 @@ exports.createDiscountCode = async (req, res, next) => {
       validUntil,
       applicableTo = 'all',
       active = true,
+      guestAssignmentId = null,
+      eventName = ''
     } = req.body;
 
-    console.log('=== CREANDO CÓDIGO DE DESCUENTO SIMPLIFICADO ===');
+    console.log('=== CREANDO CÓDIGO DE DESCUENTO ===');
     console.log('Datos recibidos:', req.body);
 
     // Validaciones simples
@@ -54,6 +57,22 @@ exports.createDiscountCode = async (req, res, next) => {
       });
     }
 
+    // 🆕 NUEVO: Validar que el guestAssignmentId existe si se proporciona
+    let guestAssignment = null;
+    if (guestAssignmentId) {
+      guestAssignment = await GuestAssignment.findById(guestAssignmentId);
+      if (!guestAssignment) {
+        return res.status(400).json({
+          error: 'Invalid guest assignment',
+          message: 'El evento de asignación no existe'
+        });
+      }
+      // Usar el nombre del evento del GuestAssignment si no se proporciona
+      if (!eventName && guestAssignment.eventName) {
+        eventName = guestAssignment.eventName;
+      }
+    }
+
     // Crear el código
     const discountCode = new DiscountCode({
       code: code.toUpperCase().trim(),
@@ -63,13 +82,16 @@ exports.createDiscountCode = async (req, res, next) => {
       validUntil: validUntilDate,
       applicableTo,
       active,
-      nights: 2 // Siempre 2 noches para bodas
+      nights: 2, // Siempre 2 noches para bodas
+      guestAssignmentId: guestAssignmentId || null,
+      eventName: eventName || ''
     });
 
     await discountCode.save();
 
     console.log('✅ Código creado exitosamente:', discountCode.code);
     console.log('💰 Precio final:', discountCode.finalPrice);
+    console.log('🎫 Evento asociado:', discountCode.eventName || 'General');
 
     res.status(201).json({
       success: true,
