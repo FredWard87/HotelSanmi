@@ -10,7 +10,13 @@ router.get('/', (req, res) => {
     timestamp: new Date().toISOString(),
     endpoints: {
       health: '/health',
-      api: '/api'
+      api: '/api',
+      auth: '/api/auth',
+      rooms: '/api/rooms',
+      bookings: '/api/bookings',
+      roomBlocks: '/api/room-blocks',
+      discountCodes: '/api/discount-codes',
+      guestAssignments: '/api/guest-assignments'
     }
   });
 });
@@ -23,23 +29,33 @@ router.get('/users', (req, res) => {
   ]);
 });
 
-// Montar rutas de habitaciones (Mongoose)
-router.use('/rooms', require('./rooms'));
-router.use('/bookings', require('./bookings'));
-router.use('/weddings', require('./weddings'));
-//router.use('/visits', require('./visits'));
-// Auth routes
+// ==========================================
+// RUTAS PÚBLICAS (sin autenticación)
+// ==========================================
+
+// Auth routes (login, etc.)
 router.use('/auth', require('./auth'));
 
-// ⭐ Ruta para bloqueos de habitaciones
+// Rutas de habitaciones (algunas públicas, algunas protegidas dentro del archivo)
+router.use('/rooms', require('./rooms'));
+
+// Rutas de bookings (algunas públicas, algunas protegidas dentro del archivo)
+router.use('/bookings', require('./bookings'));
+
+// Rutas de weddings
+router.use('/weddings', require('./weddings'));
+
+// ==========================================
+// RUTAS PROTEGIDAS (requieren autenticación)
+// ==========================================
+
+// Ruta para bloqueos de habitaciones (protegida)
 router.use('/room-blocks', require('./roomBlocks'));
 
-// 🆕 NUEVA RUTA: Códigos de descuento
+// Ruta para códigos de descuento (protegida)
 router.use('/discount-codes', require('./discountCodes'));
 
-// 🆕 NUEVA RUTA: Asignación de huéspedes
+// Ruta para asignación de huéspedes (protegida)
 router.use('/guest-assignments', require('./guestAssignments'));
-
-
 
 module.exports = router;
