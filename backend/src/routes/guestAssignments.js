@@ -53,6 +53,12 @@ router.post('/bulk', upload.single('file'), guestAssignmentController.bulkUpload
 // ADMIN: Mantenimiento - eliminar indices problemáticos
 router.post('/maintenance/fix-indexes', guestAssignmentController.fixIndexes);
 
+// ADMIN: Obtener códigos de descuento para una asignación
+router.get('/:id/discount-codes', guestAssignmentController.getDiscountCodesForAssignment);
+
+// ADMIN: Enviar código de descuento por WhatsApp
+router.post('/:id/send-discount-whatsapp', guestAssignmentController.sendDiscountCodeWhatsApp);
+
 // PUBLICO: Obtener asignacion por token
 router.get('/token/:token', guestAssignmentController.getAssignmentByToken);
 
