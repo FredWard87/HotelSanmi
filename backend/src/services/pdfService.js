@@ -86,7 +86,7 @@ function generateFullPaymentVoucherPDF(booking) {
       const margin = 50;
       const contentWidth = pageWidth - (margin * 2);
 
-      const municipalTax = booking.municipalTax || (booking.subtotal * 0.04);
+      const municipalTax = booking.municipalTax !== undefined ? booking.municipalTax : (booking.subtotal * 0.04);
       const totalWithTaxes = (booking.subtotal || 0) + (booking.tax || 0) + municipalTax;
 
       // ENCABEZADO
@@ -491,7 +491,7 @@ function generatePartialPaymentVoucherPDF(booking) {
       const margin = 50;
       const contentWidth = pageWidth - (margin * 2);
 
-      const municipalTax = booking.municipalTax || (booking.subtotal * 0.04);
+      const municipalTax = booking.municipalTax !== undefined ? booking.municipalTax : (booking.subtotal * 0.04);
       const totalWithTaxes = (booking.subtotal || 0) + (booking.tax || 0) + municipalTax;
       const initialPayment = booking.initialPayment || (totalWithTaxes * 0.5);
       const pendingPayment = totalWithTaxes - initialPayment;
@@ -945,7 +945,7 @@ async function sendFullPaymentEmail(booking, pdfBuffer) {
   try {
     console.log(`📧 Preparando email para ${booking.guestInfo.email}...`);
     
-    const municipalTax = booking.municipalTax || (booking.subtotal * 0.04);
+    const municipalTax = booking.municipalTax !== undefined ? booking.municipalTax : (booking.subtotal * 0.04);
     const totalWithTaxes = (booking.subtotal || 0) + (booking.tax || 0) + municipalTax;
 
     const attachments = [
@@ -1227,7 +1227,7 @@ async function sendPartialPaymentEmail(booking, pdfBuffer) {
   try {
     console.log(`📧 Preparando email de pago parcial para ${booking.guestInfo.email}...`);
     
-    const municipalTax = booking.municipalTax || (booking.subtotal * 0.04);
+    const municipalTax = booking.municipalTax !== undefined ? booking.municipalTax : (booking.subtotal * 0.04);
     const totalWithTaxes = (booking.subtotal || 0) + (booking.tax || 0) + municipalTax;
     const initialPayment = booking.initialPayment || (totalWithTaxes * 0.5);
     const pendingPayment = totalWithTaxes - initialPayment;
