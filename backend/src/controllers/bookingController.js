@@ -60,10 +60,12 @@ function formatMXN(amount) {
 }
 
 // ─────────────────────────────────────────────
-// FUNCIÓN CENTRAL DE DISPONIBILIDAD (CON SCOPE)
+// FUNCIÓN CENTRAL DE DISPONIBILIDAD (CON SCOPE Y OPCIÓN PARA IGNORAR BLOQUEOS)
 // ─────────────────────────────────────────────
 
-async function checkRoomAvailabilityInternal(roomId, startDate, endDate) {
+async function checkRoomAvailabilityInternal(roomId, startDate, endDate, options = {}) {
+  const { ignoreBlocks = false } = options;
+  
   const room = await Room.findById(roomId);
   if (!room) {
     return {
@@ -89,28 +91,32 @@ async function checkRoomAvailabilityInternal(roomId, startDate, endDate) {
     ]
   });
 
-  // 2. Contar unidades bloqueadas considerando SCOPE
-  const overlappingBlocks = await RoomBlock.find({
-    $or: [
-      { scope: 'specific', roomId: room._id, active: true },
-      { scope: 'all', active: true },
-      { scope: 'casaHotel', affectedRooms: room._id, active: true },
-      { scope: 'boutique', affectedRooms: room._id, active: true }
-    ],
-    $or: [
-      { startDate: { $lt: end }, endDate: { $gt: start } }
-    ]
-  });
-
-  // 🔥 USAR MÁXIMO EN LUGAR DE SUMA
+  // 2. Contar unidades bloqueadas considerando SCOPE (solo si NO se ignoran los bloqueos)
+  let overlappingBlocks = [];
   let maxBlockedByBlocks = 0;
-  overlappingBlocks.forEach(block => {
-    if (block.blockAll) {
-      maxBlockedByBlocks = Math.max(maxBlockedByBlocks, room.totalUnits);
-    } else {
-      maxBlockedByBlocks = Math.max(maxBlockedByBlocks, block.quantityBlocked || 0);
-    }
-  });
+
+  if (!ignoreBlocks) {
+    overlappingBlocks = await RoomBlock.find({
+      $or: [
+        { scope: 'specific', roomId: room._id, active: true },
+        { scope: 'all', active: true },
+        { scope: 'casaHotel', affectedRooms: room._id, active: true },
+        { scope: 'boutique', affectedRooms: room._id, active: true }
+      ],
+      $or: [
+        { startDate: { $lt: end }, endDate: { $gt: start } }
+      ]
+    });
+
+    // 🔥 USAR MÁXIMO EN LUGAR DE SUMA
+    overlappingBlocks.forEach(block => {
+      if (block.blockAll) {
+        maxBlockedByBlocks = Math.max(maxBlockedByBlocks, room.totalUnits);
+      } else {
+        maxBlockedByBlocks = Math.max(maxBlockedByBlocks, block.quantityBlocked || 0);
+      }
+    });
+  }
 
   // 3. Calcular disponibilidad
   const totalUnits = room.totalUnits || 1;
@@ -561,7 +567,7 @@ exports.createPaymentIntent = async (req, res, next) => {
   }
 };
 
-// Crear reserva (con Stripe, SCOPE, descuentos y bookingId generado) - VERSIÓN CORREGIDA
+// Crear reserva (con Stripe, SCOPE, descuentos y bookingId generado) - VERSIÓN CON ADMIN BYPASS
 exports.createBooking = async (req, res, next) => {
   try {
     const {
@@ -587,6 +593,7 @@ exports.createBooking = async (req, res, next) => {
     console.log('Check-out recibido:', checkOut);
     console.log('Código de descuento recibido:', discountCode);
     console.log('Email del huésped:', guestInfo?.email);
+    console.log('Usuario que crea la reserva:', req.user?.email, '| Rol:', req.user?.role);
 
     // Validar datos requeridos
     if (!roomId || !guestInfo || !checkIn || !checkOut || !nights || !pricePerNight) {
@@ -619,8 +626,22 @@ exports.createBooking = async (req, res, next) => {
       });
     }
 
-    // Verificar disponibilidad
-    const availability = await checkRoomAvailabilityInternal(roomId, startDate, endDate);
+    // 🔥 DETERMINAR SI SE DEBEN IGNORAR BLOQUEOS
+    // Solo los administradores pueden ignorar bloqueos
+    const isAdmin = req.user && req.user.role === 'admin';
+    const shouldIgnoreBlocks = isAdmin;
+
+    if (shouldIgnoreBlocks) {
+      console.log('🔓 ADMIN DETECTADO - IGNORANDO BLOQUEOS DE HABITACIÓN');
+    }
+
+    // Verificar disponibilidad (con o sin bloqueos según el rol)
+    const availability = await checkRoomAvailabilityInternal(
+      roomId, 
+      startDate, 
+      endDate, 
+      { ignoreBlocks: shouldIgnoreBlocks }
+    );
 
     if (!availability.available) {
       let message = `❌ Lo sentimos, esta habitación no está disponible para las fechas seleccionadas.\n\n`;
@@ -661,6 +682,11 @@ exports.createBooking = async (req, res, next) => {
           }))
         }
       });
+    }
+
+    // Si es admin y había bloqueos pero se ignoraron, notificarlo
+    if (shouldIgnoreBlocks && availability.blockedUnits > 0) {
+      console.log(`⚠️ ADMIN OVERRIDE: Se ignoraron ${availability.blockedUnits} unidades bloqueadas`);
     }
 
     // Validar y aplicar código de descuento
@@ -801,12 +827,19 @@ exports.createBooking = async (req, res, next) => {
       stripeChargeId: stripeChargeId || null,
       secondNightNoteId: secondNightPayment > 0 ? `NOTE-${bookingId}-2ND-NIGHT` : null,
       status: 'active',
-      specialRequests: specialRequests || ''
+      specialRequests: specialRequests || '',
+      // 🆕 Campos para auditoría de admin bypass
+      createdBy: req.user ? req.user._id : null,
+      createdByRole: req.user ? req.user.role : 'guest',
+      adminOverride: shouldIgnoreBlocks && availability.blockedUnits > 0
     });
 
     await newBooking.save();
 
     console.log(`✅ Reserva creada: ${newBooking.bookingId} para ${guestInfo.email}`);
+    if (newBooking.adminOverride) {
+      console.log(`🔓 Reserva creada con ADMIN OVERRIDE (ignoró bloqueos)`);
+    }
 
     // Incrementar uso del código de descuento si se aplicó
     if (discountCodeDoc) {
@@ -815,17 +848,15 @@ exports.createBooking = async (req, res, next) => {
       await discountCodeDoc.save();
     }
 
-    // 🔥 CORREGIDO: ENVIAR EMAIL DE CONFIRMACIÓN Y ESPERAR RESULTADO
+    // 🔥 ENVIAR EMAIL DE CONFIRMACIÓN
     console.log(`\n📧 Preparando envío de email a ${guestInfo.email}...`);
     
-    // No usar .catch() - usar try/catch con await para asegurar que se complete
     let emailResult = null;
     try {
       emailResult = await generateAndSendVoucher(newBooking);
       console.log(`✅ Email procesado, resultado:`, emailResult ? 'Éxito' : 'Completado');
     } catch (emailError) {
       console.error(`❌ Error crítico enviando email:`, emailError);
-      // No detenemos la respuesta, pero registramos el error
     }
 
     const successMessage = discountAmount > 0
@@ -840,7 +871,8 @@ exports.createBooking = async (req, res, next) => {
       discountApplied: discountAmount > 0,
       discountAmount,
       discountCode: discountCodeDoc ? discountCodeDoc.code : null,
-      emailSent: emailResult ? true : false, // Indicar si el email se envió
+      emailSent: emailResult ? true : false,
+      adminOverride: newBooking.adminOverride || false,
       secondNightNote: secondNightPayment > 0 ? {
         id: newBooking.secondNightNoteId,
         amount: secondNightPayment,
@@ -912,13 +944,22 @@ exports.updateBooking = async (req, res, next) => {
 
     const TZ = process.env.TIMEZONE || 'America/Mexico_City';
 
+    // 🔥 DETERMINAR SI SE DEBEN IGNORAR BLOQUEOS PARA ACTUALIZACIÓN
+    const isAdmin = req.user && req.user.role === 'admin';
+    const shouldIgnoreBlocks = isAdmin;
+
     // Si se actualizan fechas o habitación, verificar disponibilidad
     if ((checkIn && checkOut) || roomId) {
       const newRoomId = roomId || booking.roomId;
       const newCheckIn = formatDateWithTimezone(checkIn || booking.checkIn, TZ);
       const newCheckOut = formatDateWithTimezone(checkOut || booking.checkOut, TZ);
 
-      const availability = await checkRoomAvailabilityInternal(newRoomId, newCheckIn, newCheckOut);
+      const availability = await checkRoomAvailabilityInternal(
+        newRoomId, 
+        newCheckIn, 
+        newCheckOut,
+        { ignoreBlocks: shouldIgnoreBlocks }
+      );
 
       if (!availability.available) {
         return res.status(409).json({
