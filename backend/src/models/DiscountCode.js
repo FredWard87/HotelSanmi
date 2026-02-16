@@ -42,6 +42,17 @@ const DiscountCodeSchema = new mongoose.Schema({
     enum: ['all', 'casaHotel', 'boutique'],
     default: 'all'
   },
+  // 🆕 NUEVO: Vincular código de descuento a un Guest Assignment (evento de boda)
+  guestAssignmentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'GuestAssignment',
+    default: null
+  },
+  // 🆕 NUEVO: Nombre del evento al que pertenece el código
+  eventName: {
+    type: String,
+    default: ''
+  },
   // Estado
   active: {
     type: Boolean,
