@@ -96,10 +96,10 @@ function generateFullPaymentVoucherPDF(booking) {
       try {
         const logoPath = path.join(__dirname, '../assets/logo.png');
         if (fs.existsSync(logoPath)) {
-          const logoWidth = 324;
-          const logoHeight = 108;
+          const logoWidth = 400;
+          const logoHeight = 85;
           const logoX = (pageWidth - logoWidth) / 2;
-          const logoY = 25;
+          const logoY = 20;
           
           doc.image(logoPath, logoX, logoY, {
             width: logoWidth,
@@ -107,13 +107,13 @@ function generateFullPaymentVoucherPDF(booking) {
           });
           
           doc.fontSize(13).fillColor(gold).font('Helvetica-Bold');
-          doc.text('CONFIRMACIÓN DE RESERVA', margin, logoY + logoHeight + 15, { 
+          doc.text('CONFIRMACIÓN DE RESERVA', margin, logoY + logoHeight + 12, { 
             align: 'center', 
             width: contentWidth 
           });
           
           doc.fontSize(11).fillColor(mediumGray).font('Helvetica');
-          doc.text('PAGO COMPLETADO', margin, logoY + logoHeight + 35, { 
+          doc.text('PAGO COMPLETADO', margin, logoY + logoHeight + 32, { 
             align: 'center', 
             width: contentWidth 
           });
@@ -505,10 +505,10 @@ function generatePartialPaymentVoucherPDF(booking) {
       try {
         const logoPath = path.join(__dirname, '../assets/logo.png');
         if (fs.existsSync(logoPath)) {
-          const logoWidth = 324;
-          const logoHeight = 108;
+          const logoWidth = 400;
+          const logoHeight = 85;
           const logoX = (pageWidth - logoWidth) / 2;
-          const logoY = 25;
+          const logoY = 20;
           
           doc.image(logoPath, logoX, logoY, {
             width: logoWidth,
@@ -516,13 +516,13 @@ function generatePartialPaymentVoucherPDF(booking) {
           });
           
           doc.fontSize(13).fillColor(gold).font('Helvetica-Bold');
-          doc.text('CONFIRMACIÓN DE RESERVA', margin, logoY + logoHeight + 15, { 
+          doc.text('CONFIRMACIÓN DE RESERVA', margin, logoY + logoHeight + 12, { 
             align: 'center', 
             width: contentWidth 
           });
           
           doc.fontSize(11).fillColor(mediumGray).font('Helvetica');
-          doc.text('PAGO PARCIAL - 50% BALANCE PENDIENTE', margin, logoY + logoHeight + 35, { 
+          doc.text('PAGO PARCIAL - 50% BALANCE PENDIENTE', margin, logoY + logoHeight + 32, { 
             align: 'center', 
             width: contentWidth 
           });
