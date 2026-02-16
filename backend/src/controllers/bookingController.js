@@ -8,7 +8,7 @@ const { generateAndSendVoucher } = require('../services/pdfService');
 const { generateCheckinPDF } = require('../services/checkinPdfService');
 
 // ─────────────────────────────────────────────
-// FUNCIONES AUXILIARES
+// FUNCIONES AUXILIARES - CORREGIDAS
 // ─────────────────────────────────────────────
 
 // Generar ID único para reserva
@@ -19,27 +19,27 @@ const generateBookingId = () => {
   return `LC-${year}-${timestamp}${random.substr(0, 3)}`;
 };
 
-// 🔥 CORREGIDO: Formatear fecha SIN conversión de zona horaria
-// Mantener la fecha exacta como viene (YYYY-MM-DD a las 00:00:00)
+// 🔥 CORREGIDO: Formatear fecha usando UTC mediodía para evitar problemas de zona horaria
 const formatDateWithTimezone = (value) => {
   if (!value) return null;
   
-  // Si es string en formato YYYY-MM-DD, crear fecha en UTC a medianoche
+  // Si es string en formato YYYY-MM-DD
   if (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}$/)) {
     const [year, month, day] = value.split('-').map(Number);
-    return new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+    // Usar las 12:00 UTC como hora neutral
+    return new Date(Date.UTC(year, month - 1, day, 12, 0, 0, 0));
   }
   
-  // Si es Date o string con hora, extraer solo la parte de fecha
+  // Si es objeto Date o string con hora
   const d = new Date(value);
   if (isNaN(d)) return null;
   
-  // Crear nueva fecha en UTC usando los componentes de fecha local
+  // Extraer componentes UTC para mantener consistencia
   return new Date(Date.UTC(
-    d.getFullYear(),
-    d.getMonth(),
-    d.getDate(),
-    0, 0, 0, 0
+    d.getUTCFullYear(),
+    d.getUTCMonth(),
+    d.getUTCDate(),
+    12, 0, 0, 0
   ));
 };
 
@@ -627,7 +627,14 @@ exports.createBooking = async (req, res, next) => {
     console.log('Fechas formateadas (UTC):');
     console.log('  - Check-in:', startDate);
     console.log('  - Check-out:', endDate);
-
+// Dentro de createBooking, después de formatear fechas:
+console.log('=== VERIFICACIÓN DE FECHAS ===');
+console.log('Check-in original:', checkIn);
+console.log('Check-in formateado (UTC):', startDate.toISOString());
+console.log('Check-in día local:', startDate.toLocaleDateString('es-MX', { timeZone: 'America/Mexico_City' }));
+console.log('Check-out original:', checkOut);
+console.log('Check-out formateado (UTC):', endDate.toISOString());
+console.log('Check-out día local:', endDate.toLocaleDateString('es-MX', { timeZone: 'America/Mexico_City' }));
     if (endDate <= startDate) {
       return res.status(400).json({
         message: 'La fecha de salida debe ser posterior a la fecha de entrada'
