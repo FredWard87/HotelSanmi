@@ -19,12 +19,28 @@ const generateBookingId = () => {
   return `LC-${year}-${timestamp}${random.substr(0, 3)}`;
 };
 
-// Formatear fecha con zona horaria correcta (sin restar días)
-const formatDateWithTimezone = (value, timezone = 'America/Mexico_City') => {
+// 🔥 CORREGIDO: Formatear fecha SIN conversión de zona horaria
+// Mantener la fecha exacta como viene (YYYY-MM-DD a las 00:00:00)
+const formatDateWithTimezone = (value) => {
   if (!value) return null;
+  
+  // Si es string en formato YYYY-MM-DD, crear fecha en UTC a medianoche
+  if (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    const [year, month, day] = value.split('-').map(Number);
+    return new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+  }
+  
+  // Si es Date o string con hora, extraer solo la parte de fecha
   const d = new Date(value);
   if (isNaN(d)) return null;
-  return new Date(d.toLocaleString('en-US', { timeZone: timezone }));
+  
+  // Crear nueva fecha en UTC usando los componentes de fecha local
+  return new Date(Date.UTC(
+    d.getFullYear(),
+    d.getMonth(),
+    d.getDate(),
+    0, 0, 0, 0
+  ));
 };
 
 // Sanitizar valores undefined/null/string "undefined"
@@ -60,7 +76,7 @@ function formatMXN(amount) {
 }
 
 // ─────────────────────────────────────────────
-// FUNCIÓN CENTRAL DE DISPONIBILIDAD (CON SCOPE Y OPCIÓN PARA IGNORAR BLOQUEOS)
+// FUNCIÓN CENTRAL DE DISPONIBILIDAD
 // ─────────────────────────────────────────────
 
 async function checkRoomAvailabilityInternal(roomId, startDate, endDate, options = {}) {
@@ -78,9 +94,8 @@ async function checkRoomAvailabilityInternal(roomId, startDate, endDate, options
     };
   }
 
-  const TZ = process.env.TIMEZONE || 'America/Mexico_City';
-  const start = formatDateWithTimezone(startDate, TZ);
-  const end = formatDateWithTimezone(endDate, TZ);
+  const start = formatDateWithTimezone(startDate);
+  const end = formatDateWithTimezone(endDate);
 
   // 1. Contar reservas activas que se solapan
   const overlappingBookings = await Booking.countDocuments({
@@ -91,7 +106,7 @@ async function checkRoomAvailabilityInternal(roomId, startDate, endDate, options
     ]
   });
 
-  // 2. Contar unidades bloqueadas considerando SCOPE (solo si NO se ignoran los bloqueos)
+  // 2. Contar unidades bloqueadas considerando SCOPE
   let overlappingBlocks = [];
   let maxBlockedByBlocks = 0;
 
@@ -108,7 +123,6 @@ async function checkRoomAvailabilityInternal(roomId, startDate, endDate, options
       ]
     });
 
-    // USAR MÁXIMO EN LUGAR DE SUMA
     overlappingBlocks.forEach(block => {
       if (block.blockAll) {
         maxBlockedByBlocks = Math.max(maxBlockedByBlocks, room.totalUnits);
@@ -187,7 +201,6 @@ exports.getAllBookings = async (req, res, next) => {
   try {
     const { status, startDate, endDate, limit = 100 } = req.query;
 
-    const TZ = process.env.TIMEZONE || 'America/Mexico_City';
     const filter = {};
 
     if (status) {
@@ -195,8 +208,8 @@ exports.getAllBookings = async (req, res, next) => {
     }
 
     if (startDate && endDate) {
-      const start = formatDateWithTimezone(startDate, TZ);
-      const end = formatDateWithTimezone(endDate, TZ);
+      const start = formatDateWithTimezone(startDate);
+      const end = formatDateWithTimezone(endDate);
       filter.checkIn = { $gte: start };
       filter.checkOut = { $lte: end };
     }
@@ -219,12 +232,11 @@ exports.getBookingStats = async (req, res, next) => {
   try {
     const { startDate, endDate } = req.query;
 
-    const TZ = process.env.TIMEZONE || 'America/Mexico_City';
     const filter = {};
 
     if (startDate && endDate) {
-      const start = formatDateWithTimezone(startDate, TZ);
-      const end = formatDateWithTimezone(endDate, TZ);
+      const start = formatDateWithTimezone(startDate);
+      const end = formatDateWithTimezone(endDate);
       filter.createdAt = {
         $gte: start,
         $lte: end
@@ -299,12 +311,11 @@ exports.getDiscountCodeUsageStats = async (req, res, next) => {
   try {
     const { startDate, endDate } = req.query;
 
-    const TZ = process.env.TIMEZONE || 'America/Mexico_City';
     const match = { discountCodeId: { $ne: null } };
 
     if (startDate && endDate) {
-      const start = formatDateWithTimezone(startDate, TZ);
-      const end = formatDateWithTimezone(endDate, TZ);
+      const start = formatDateWithTimezone(startDate);
+      const end = formatDateWithTimezone(endDate);
       match.createdAt = {
         $gte: start,
         $lte: end
@@ -420,9 +431,8 @@ exports.checkAvailability = async (req, res, next) => {
       });
     }
 
-    const TZ = process.env.TIMEZONE || 'America/Mexico_City';
-    const start = formatDateWithTimezone(checkIn, TZ);
-    const end = formatDateWithTimezone(checkOut, TZ);
+    const start = formatDateWithTimezone(checkIn);
+    const end = formatDateWithTimezone(checkOut);
 
     if (end <= start) {
       return res.status(400).json({
@@ -475,9 +485,8 @@ exports.checkMultipleAvailability = async (req, res, next) => {
       });
     }
 
-    const TZ = process.env.TIMEZONE || 'America/Mexico_City';
-    const start = formatDateWithTimezone(checkIn, TZ);
-    const end = formatDateWithTimezone(checkOut, TZ);
+    const start = formatDateWithTimezone(checkIn);
+    const end = formatDateWithTimezone(checkOut);
 
     if (end <= start) {
       return res.status(400).json({
@@ -567,7 +576,7 @@ exports.createPaymentIntent = async (req, res, next) => {
   }
 };
 
-// Crear reserva (con Stripe, SCOPE, descuentos y bookingId generado) - VERSIÓN CON ADMIN BYPASS Y PRECIO MANUAL CORREGIDO
+// Crear reserva - CORREGIDO CON FECHAS Y PRECIO MANUAL
 exports.createBooking = async (req, res, next) => {
   try {
     const {
@@ -611,12 +620,11 @@ exports.createBooking = async (req, res, next) => {
       });
     }
 
-    // Formatear fechas con zona horaria correcta
-    const TZ = process.env.TIMEZONE || 'America/Mexico_City';
-    const startDate = formatDateWithTimezone(checkIn, TZ);
-    const endDate = formatDateWithTimezone(checkOut, TZ);
+    // 🔥 CORREGIDO: Formatear fechas SIN conversión de zona horaria
+    const startDate = formatDateWithTimezone(checkIn);
+    const endDate = formatDateWithTimezone(checkOut);
 
-    console.log('Fechas formateadas:');
+    console.log('Fechas formateadas (UTC):');
     console.log('  - Check-in:', startDate);
     console.log('  - Check-out:', endDate);
 
@@ -627,7 +635,6 @@ exports.createBooking = async (req, res, next) => {
     }
 
     // DETERMINAR SI SE DEBEN IGNORAR BLOQUEOS
-    // Solo los administradores pueden ignorar bloqueos
     const isAdmin = req.user && req.user.role === 'admin';
     const shouldIgnoreBlocks = isAdmin;
 
@@ -635,7 +642,7 @@ exports.createBooking = async (req, res, next) => {
       console.log('🔓 ADMIN DETECTADO - IGNORANDO BLOQUEOS DE HABITACIÓN');
     }
 
-    // Verificar disponibilidad (con o sin bloqueos según el rol)
+    // Verificar disponibilidad
     const availability = await checkRoomAvailabilityInternal(
       roomId, 
       startDate, 
@@ -684,18 +691,16 @@ exports.createBooking = async (req, res, next) => {
       });
     }
 
-    // Si es admin y había bloqueos pero se ignoraron, notificarlo
     if (shouldIgnoreBlocks && availability.blockedUnits > 0) {
       console.log(`⚠️ ADMIN OVERRIDE: Se ignoraron ${availability.blockedUnits} unidades bloqueadas`);
     }
 
-    // 🔥 CORREGIDO: Manejo de precio manual vs precio automático con descuentos
+    // 🔥 CORREGIDO: Manejo de precio manual vs automático
     let discountAmount = 0;
     let discountCodeDoc = null;
     const originalSubtotal = pricePerNight * nights;
-    const originalTotal = originalSubtotal * 1.20; // +20% impuestos (16% IVA + 4% municipal)
+    const originalTotal = originalSubtotal * 1.20;
 
-    // Verificar si hay precio manual en el body
     let finalTotal;
     let isPrecioManual = false;
     let finalSubtotal;
@@ -703,20 +708,20 @@ exports.createBooking = async (req, res, next) => {
     let finalMunicipalTax;
 
     if (totalPrice && typeof totalPrice === 'number' && totalPrice > 0) {
-      // 🆕 PRECIO MANUAL proporcionado - YA INCLUYE IMPUESTOS
+      // 🆕 PRECIO MANUAL - YA INCLUYE IMPUESTOS
       finalTotal = totalPrice;
       isPrecioManual = true;
       
-      // Extraer impuestos del precio manual (que ya los incluye)
-      finalTax = finalTotal * (16 / 120); // Extraer IVA (16% del total con impuestos)
-      finalMunicipalTax = finalTotal * (4 / 120); // Extraer municipal (4% del total con impuestos)
+      // Extraer impuestos del precio manual
+      finalTax = finalTotal * (16 / 120);
+      finalMunicipalTax = finalTotal * (4 / 120);
       finalSubtotal = finalTotal - finalTax - finalMunicipalTax;
       
       console.log('💰 Usando PRECIO MANUAL (ya incluye impuestos):');
       console.log('  - Total recibido:', finalTotal);
-      console.log('  - Subtotal (extraído):', finalSubtotal);
-      console.log('  - IVA 16% (extraído):', finalTax);
-      console.log('  - Municipal 4% (extraído):', finalMunicipalTax);
+      console.log('  - Subtotal (extraído):', finalSubtotal.toFixed(2));
+      console.log('  - IVA 16% (extraído):', finalTax.toFixed(2));
+      console.log('  - Municipal 4% (extraído):', finalMunicipalTax.toFixed(2));
       
     } else {
       // PRECIO AUTOMÁTICO - aplicar descuentos si hay
@@ -753,7 +758,6 @@ exports.createBooking = async (req, res, next) => {
           });
         }
 
-        // Usar precio final fijo del código
         finalTotal = discountCodeDoc.finalPrice;
         discountAmount = originalTotal - finalTotal;
 
@@ -763,19 +767,18 @@ exports.createBooking = async (req, res, next) => {
         console.log('  - Descuento total:', discountAmount);
       }
 
-      // Calcular impuestos basados en el precio final
       finalTax = finalTotal * (16 / 120);
       finalMunicipalTax = finalTotal * (4 / 120);
       finalSubtotal = finalTotal - finalTax - finalMunicipalTax;
     }
 
     console.log('📊 Cálculo final:');
-    console.log('  - Subtotal:', finalSubtotal);
-    console.log('  - IVA 16%:', finalTax);
-    console.log('  - Impuesto Municipal 4%:', finalMunicipalTax);
-    console.log('  - Total:', finalTotal);
+    console.log('  - Subtotal:', finalSubtotal.toFixed(2));
+    console.log('  - IVA 16%:', finalTax.toFixed(2));
+    console.log('  - Impuesto Municipal 4%:', finalMunicipalTax.toFixed(2));
+    console.log('  - Total:', finalTotal.toFixed(2));
 
-    // Lógica de pagos: 1 noche = 100%, 2+ noches = 50% inicial
+    // Lógica de pagos
     let initialPayment, secondNightPayment;
     if (Number(nights) === 1) {
       initialPayment = finalTotal;
@@ -785,19 +788,17 @@ exports.createBooking = async (req, res, next) => {
       secondNightPayment = finalTotal * 0.5;
     }
 
-    // VERIFICAR PAYMENT INTENT (SI SE PROPORCIONA)
+    // VERIFICAR PAYMENT INTENT
     let stripeChargeId = null;
     let paymentStatus = 'pending';
 
     if (paymentIntentId) {
       try {
-        // Permitir Payment Intents de prueba
         if (paymentIntentId.startsWith('pi_TEST_')) {
           console.log('⚠️ Usando Payment Intent de prueba:', paymentIntentId);
           stripeChargeId = `ch_TEST_${paymentIntentId.slice(8)}`;
           paymentStatus = initialPayment === finalTotal ? 'completed' : 'partial';
         } else {
-          // Payment Intent real de Stripe
           const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
           if (paymentIntent.status === 'succeeded') {
             stripeChargeId = paymentIntent.latest_charge;
@@ -817,7 +818,6 @@ exports.createBooking = async (req, res, next) => {
         });
       }
     } else {
-      // Sin paymentIntentId - crear reserva pendiente de pago
       console.log('⚠️ Creando reserva sin Payment Intent - estado: pending');
       paymentStatus = 'pending';
     }
@@ -835,12 +835,10 @@ exports.createBooking = async (req, res, next) => {
       checkOut: endDate,
       nights,
       pricePerNight,
-      // Campos de descuento
       subtotalBeforeDiscount: originalSubtotal,
       discountCode: discountCodeDoc ? discountCodeDoc.code : null,
       discountCodeId: discountCodeDoc ? discountCodeDoc._id : null,
       discountAmount,
-      // Campos finales
       subtotal: finalSubtotal,
       tax: finalTax,
       municipalTax: finalMunicipalTax,
@@ -855,11 +853,9 @@ exports.createBooking = async (req, res, next) => {
       secondNightNoteId: secondNightPayment > 0 ? `NOTE-${bookingId}-2ND-NIGHT` : null,
       status: 'active',
       specialRequests: specialRequests || '',
-      // Campos para auditoría de admin bypass
       createdBy: req.user ? req.user._id : null,
       createdByRole: req.user ? req.user.role : 'guest',
       adminOverride: shouldIgnoreBlocks && availability.blockedUnits > 0,
-      // 🆕 Marcar si se usó precio manual
       isPrecioManual: isPrecioManual
     });
 
@@ -873,7 +869,7 @@ exports.createBooking = async (req, res, next) => {
       console.log(`💰 Reserva creada con PRECIO MANUAL: ${formatMXN(finalTotal)}`);
     }
 
-    // Incrementar uso del código de descuento si se aplicó
+    // Incrementar uso del código de descuento
     if (discountCodeDoc) {
       console.log('📈 Incrementando uso del código:', discountCodeDoc.code);
       discountCodeDoc.currentUses = (discountCodeDoc.currentUses || 0) + 1;
@@ -942,7 +938,7 @@ exports.getBooking = async (req, res, next) => {
   }
 };
 
-// Obtener reserva por ID de MongoDB o bookingId (legacy)
+// Obtener reserva por ID de MongoDB o bookingId
 exports.getBookingById = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -979,17 +975,13 @@ exports.updateBooking = async (req, res, next) => {
       });
     }
 
-    const TZ = process.env.TIMEZONE || 'America/Mexico_City';
-
-    // DETERMINAR SI SE DEBEN IGNORAR BLOQUEOS PARA ACTUALIZACIÓN
     const isAdmin = req.user && req.user.role === 'admin';
     const shouldIgnoreBlocks = isAdmin;
 
-    // Si se actualizan fechas o habitación, verificar disponibilidad
     if ((checkIn && checkOut) || roomId) {
       const newRoomId = roomId || booking.roomId;
-      const newCheckIn = formatDateWithTimezone(checkIn || booking.checkIn, TZ);
-      const newCheckOut = formatDateWithTimezone(checkOut || booking.checkOut, TZ);
+      const newCheckIn = formatDateWithTimezone(checkIn || booking.checkIn);
+      const newCheckOut = formatDateWithTimezone(checkOut || booking.checkOut);
 
       const availability = await checkRoomAvailabilityInternal(
         newRoomId, 
@@ -1017,10 +1009,9 @@ exports.updateBooking = async (req, res, next) => {
       }
     }
 
-    // Validar y actualizar fechas
     if (checkIn && checkOut) {
-      const startDate = formatDateWithTimezone(checkIn, TZ);
-      const endDate = formatDateWithTimezone(checkOut, TZ);
+      const startDate = formatDateWithTimezone(checkIn);
+      const endDate = formatDateWithTimezone(checkOut);
 
       if (endDate <= startDate) {
         return res.status(400).json({
@@ -1034,7 +1025,6 @@ exports.updateBooking = async (req, res, next) => {
       booking.checkIn = startDate;
       booking.checkOut = endDate;
 
-      // Recalcular precios manteniendo el descuento si lo tenía
       let newSubtotal = booking.pricePerNight * newNights;
       let discountAmount = 0;
 
@@ -1081,7 +1071,6 @@ exports.updateBooking = async (req, res, next) => {
       }
     }
 
-    // Actualizar información del huésped
     if (guestInfo) {
       booking.guestInfo = {
         ...booking.guestInfo.toObject(),
@@ -1089,7 +1078,6 @@ exports.updateBooking = async (req, res, next) => {
       };
     }
 
-    // Actualizar estado
     if (status) {
       booking.status = status;
     }
@@ -1132,11 +1120,9 @@ exports.cancelBooking = async (req, res, next) => {
 
     await booking.save();
 
-    // Intentar reembolso en Stripe si corresponde
     try {
       if (booking.stripeChargeId || booking.paymentIntentId) {
         console.log(`Reembolso necesario para reserva ${booking.bookingId}`);
-        // Implementar lógica de reembolso aquí si es necesario
       }
     } catch (stripeError) {
       console.error('Error procesando reembolso:', stripeError);
@@ -1257,7 +1243,7 @@ exports.generateCheckin = async (req, res, next) => {
   }
 };
 
-// Descargar voucher (ya manejado por ruta directa, pero incluido aquí por compatibilidad)
+// Descargar voucher
 exports.downloadVoucher = async (req, res, next) => {
   try {
     const { bookingId } = req.params;
@@ -1315,7 +1301,7 @@ exports.resendBookingEmail = async (req, res, next) => {
   }
 };
 
-// Enviar email de prueba a reserva existente (DESARROLLO/DEBUG)
+// Enviar email de prueba a reserva existente
 exports.sendTestEmailToExistingBooking = async (req, res, next) => {
   try {
     const { bookingId } = req.params;
