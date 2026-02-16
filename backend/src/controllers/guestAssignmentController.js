@@ -1,20 +1,35 @@
 // controllers/guestAssignmentController.js
 const GuestAssignment = require('../models/GuestAssignment');
 const AssignmentRoom = require('../models/AssignmentRoom');
+const Room = require('../models/Room');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const fs = require('fs');
 const path = require('path');
 const ASSIGNMENT_ROOMS_SEED = require('../data/assignmentRoomsSeed');
 
-// Configurar transporter de email
+// Configurar transporter para emails
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: process.env.EMAIL_USERNAME || 'audit3674@gmail.com',
-    pass: process.env.EMAIL_PASSWORD || 'xarv ywnv gdkv jofm',
-  },
+    user: process.env.EMAIL_USERNAME,
+    pass: process.env.EMAIL_PASSWORD
+  }
 });
+
+// Configurar Twilio para WhatsApp
+let twilioClient = null;
+try {
+  if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && 
+      process.env.TWILIO_PHONE_NUMBER) {
+    twilioClient = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+    console.log('✅ Twilio configurado para enviar mensajes de WhatsApp');
+  } else {
+    console.warn('⚠️ Twilio no configurado. Los mensajes de WhatsApp no se enviarán.');
+  }
+} catch (err) {
+  console.warn('⚠️ Error configurando Twilio:', err.message);
+}
 
 // Leer el logo una sola vez
 let logoBuffer = null;
@@ -60,7 +75,7 @@ async function sendInvitationEmail(toEmail, toName, accessUrl, eventName) {
           <title>Asignación de Habitaciones - Hotel La Capilla</title>
         </head>
         <body style="margin: 0; padding: 0; font-family: Georgia, 'Times New Roman', serif; background-color: #ffffff;">
-          
+           
           <!-- Header con logo -->
           <div style="background-color: #ffffff; padding: 30px 20px; text-align: center; border-bottom: 1px solid #d4af37;">
             ${logoBuffer ? 
@@ -69,15 +84,15 @@ async function sendInvitationEmail(toEmail, toName, accessUrl, eventName) {
                <p style="color: #000000; margin: 5px 0 0 0; font-size: 12px;">ASIGNACIÓN DE HABITACIONES</p>`
             }
           </div>
-          
+           
           <!-- Contenido principal -->
           <div style="max-width: 600px; margin: 0 auto; background: #ffffff; padding: 40px 50px;">
-            
+             
             <!-- Saludo -->
             <p style="font-size: 16px; color: #000000; margin-bottom: 20px; font-family: Georgia, serif;">
               Estimada ${toName},
             </p>
-            
+             
             <!-- Evento -->
             <div style="border-left: 3px solid #000000; padding-left: 20px; margin: 30px 0;">
               <p style="margin: 0 0 8px 0; font-size: 13px; color: #666666; text-transform: uppercase; letter-spacing: 1px;">
@@ -87,7 +102,7 @@ async function sendInvitationEmail(toEmail, toName, accessUrl, eventName) {
                 ${eventName}
               </p>
             </div>
-            
+             
             <!-- Instrucciones -->
             <div style="margin: 35px 0;">
               <h3 style="color: #000000; font-size: 14px; margin-bottom: 15px; border-bottom: 1px solid #cccccc; padding-bottom: 10px; font-family: Georgia, serif;">
@@ -100,14 +115,14 @@ async function sendInvitationEmail(toEmail, toName, accessUrl, eventName) {
                 <li>Guarde los cambios cuando haya terminado</li>
               </ol>
             </div>
-            
+             
             <!-- Botón -->
             <div style="text-align: center; margin: 40px 0;">
               <a href="${accessUrl}" style="display: inline-block; background-color: #000000; color: #ffffff; padding: 14px 35px; text-decoration: none; font-size: 14px; font-weight: bold;">
                 ACCEDER AL FORMULARIO
               </a>
             </div>
-            
+             
             <!-- Link alternativo -->
             <div style="background-color: #f5f5f5; padding: 15px; margin: 25px 0;">
               <p style="margin: 0 0 8px 0; font-size: 12px; color: #666666;">
@@ -117,16 +132,16 @@ async function sendInvitationEmail(toEmail, toName, accessUrl, eventName) {
                 ${accessUrl}
               </p>
             </div>
-            
+             
             <!-- Nota -->
             <div style="border: 1px solid #cccccc; padding: 15px; margin: 25px 0;">
               <p style="margin: 0; font-size: 12px; color: #333333;">
                 <strong>Nota:</strong> Este enlace es personal y único. No lo comparta con terceros.
               </p>
             </div>
-            
+             
           </div>
-          
+           
           <!-- Footer -->
           <div style="background-color: #f5f5f5; padding: 30px 20px; text-align: center; border-top: 1px solid #cccccc;">
             <p style="margin: 0 0 8px 0; font-size: 14px; color: #000000; font-weight: bold; font-family: Georgia, serif;">
@@ -196,11 +211,9 @@ exports.seedAssignmentRooms = async (req, res) => {
         const existing = await AssignmentRoom.findOne({ roomId: roomData.roomId });
         
         if (existing) {
-          // Actualizar campos existentes
           await AssignmentRoom.findByIdAndUpdate(existing._id, roomData);
           results.updated++;
         } else {
-          // Crear nuevo
           await AssignmentRoom.create(roomData);
           results.created++;
         }
@@ -304,7 +317,7 @@ exports.createAssignment = async (req, res) => {
 
     await assignment.save();
 
-    // 🔥 SIEMPRE intentar enviar email
+    // SIEMPRE intentar enviar email
     let emailSent = false;
     let emailError = null;
     
@@ -552,32 +565,37 @@ exports.bulkUpload = async (req, res) => {
     const { assignments } = req.body;
     
     if (!assignments || !Array.isArray(assignments) || assignments.length === 0) {
-      return res.status(400).json({ error: 'No se proporcionaron asignaciones' });
+      return res.status(400).json({
+        error: 'No data',
+        message: 'No se proporcionaron asignaciones para crear'
+      });
     }
 
-    const casaHotelRooms = await getCasaHotelRooms();
-    const boutiqueRooms = await getBoutiqueRooms();
+    const results = {
+      created: 0,
+      failed: 0,
+      errors: []
+    };
 
-    const results = { created: 0, emailsSent: 0, errors: [] };
-
-    for (const item of assignments) {
+    for (const data of assignments) {
       try {
-        const { evento, email, nombre, telefono } = item;
-
+        const { evento, email, nombre, telefono } = data;
+        
         if (!evento || !email || !nombre) {
-          results.errors.push({ item, error: 'Faltan datos requeridos' });
+          results.failed++;
+          results.errors.push({ data, error: 'Faltan campos requeridos' });
           continue;
         }
 
-        // Validar email
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-          results.errors.push({ item, error: 'Email inválido' });
-          continue;
-        }
-
+        // Generar token único
         const token = crypto.randomBytes(32).toString('hex');
 
-        const casaAssignments = casaHotelRooms.map(room => ({
+        // Obtener habitaciones
+        const casaHotelRooms = await getCasaHotelRooms();
+        const boutiqueRooms = await getBoutiqueRooms();
+
+        // Crear estructuras
+        const casaHotelAssignments = casaHotelRooms.map(room => ({
           roomId: room.roomId,
           name: room.name,
           number: room.number,
@@ -606,91 +624,96 @@ exports.bulkUpload = async (req, res) => {
           brideName: nombre,
           bridePhone: telefono || '',
           token,
-          casaHotelRooms: casaAssignments,
+          casaHotelRooms: casaHotelAssignments,
           boutiqueRooms: boutiqueAssignments,
-          status: 'pending',
-          invitationSentAt: null
+          status: 'pending'
         });
 
         await assignment.save();
-        results.created++;
-
-        // Enviar email
+        
+        // Intentar enviar email
         try {
           const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
           const accessUrl = `${frontendUrl}/guest-assignment/${token}`;
-          
           await sendInvitationEmail(email, nombre, accessUrl, evento);
-          
           assignment.invitationSentAt = new Date();
           await assignment.save();
-          
-          results.emailsSent++;
-        } catch (emailError) {
-          console.error(`❌ Error enviando email a ${email}:`, emailError.message);
+        } catch (emailErr) {
+          console.error('Error enviando email en bulk:', emailErr.message);
         }
-
+        
+        results.created++;
       } catch (err) {
-        results.errors.push({ item, error: err.message });
+        results.failed++;
+        results.errors.push({ data, error: err.message });
       }
     }
 
     res.json({
       success: true,
-      message: `✅ Procesadas: ${results.created} | 📧 Emails enviados: ${results.emailsSent}`,
+      message: `Carga masiva completada: ${results.created} creadas, ${results.failed} fallidas`,
       results
     });
   } catch (error) {
-    console.error('Error bulk upload:', error);
+    console.error('Error en bulk upload:', error);
     res.status(500).json({ error: 'Error en carga masiva', message: error.message });
   }
 };
 
-// Mantenimiento: Reparar índices
+// ADMIN: Reparar índices
 exports.fixIndexes = async (req, res) => {
   try {
     await GuestAssignment.collection.dropIndexes();
-    res.json({ success: true, message: 'Índices reparados' });
+    await GuestAssignment.collection.createIndex({ eventName: 1 });
+    await GuestAssignment.collection.createIndex({ brideEmail: 1 });
+    await GuestAssignment.collection.createIndex({ token: 1 });
+    
+    res.json({
+      success: true,
+      message: 'Índices reparados correctamente'
+    });
   } catch (error) {
     console.error('Error fixing indexes:', error);
-    res.status(500).json({ error: 'Error al reparar índices', message: error.message });
+    res.status(500).json({ error: 'Error al reparar índices' });
   }
 };
 
-// PÚBLICO: Obtener asignación por token
+// PUBLICO: Obtener asignación por token
 exports.getAssignmentByToken = async (req, res) => {
   try {
     const { token } = req.params;
     
     const assignment = await GuestAssignment.findOne({ token }).lean();
-
+    
     if (!assignment) {
-      return res.status(404).json({ error: 'No encontrada', message: 'Asignación no encontrada' });
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'Asignación no encontrada o enlace expirado'
+      });
     }
 
-    const casaHotelRooms = assignment.casaHotelRooms || [];
-    const boutiqueRooms = assignment.boutiqueRooms || [];
-    const totalRooms = casaHotelRooms.length + boutiqueRooms.length;
-    const filledRooms = [...casaHotelRooms, ...boutiqueRooms].filter(r => r.guestName && r.guestName.trim()).length;
-
+    // Calcular progreso
+    const allRooms = [...(assignment.casaHotelRooms || []), ...(assignment.boutiqueRooms || [])];
+    const filledRooms = allRooms.filter(room => room.guestName && room.guestName.trim()).length;
+    
     res.json({
       success: true,
       data: {
         ...assignment,
         stats: {
-          totalRooms,
+          totalRooms: allRooms.length,
           filledRooms,
-          percentage: totalRooms > 0 ? Math.round((filledRooms / totalRooms) * 100) : 0
+          percentage: allRooms.length > 0 ? Math.round((filledRooms / allRooms.length) * 100) : 0
         }
       }
     });
   } catch (error) {
-    console.error('Error getting assignment by token:', error);
-    res.status(500).json({ error: 'Error al obtener la asignación' });
+    console.error('Error getting assignment:', error);
+    res.status(500).json({ error: 'Error al obtener asignación' });
   }
 };
 
-// PÚBLICO: Guardar asignación
+// PUBLICO: Guardar asignación
 exports.saveAssignment = async (req, res) => {
   try {
     const { token } = req.params;
@@ -701,46 +724,18 @@ exports.saveAssignment = async (req, res) => {
     if (!assignment) {
       return res.status(404).json({
         error: 'Not found',
-        message: 'Asignación no encontrada'
+        message: 'Asignación no encontrada o enlace expirado'
       });
     }
-    
-    // Actualizar solo si vienen datos
-    if (assignment.casaHotelRooms.length === 0) {
-      const dbCasaRooms = await getCasaHotelRooms();
-      assignment.casaHotelRooms = dbCasaRooms.map(room => ({
-        roomId: room.roomId,
-        name: room.name,
-        number: room.number,
-        m2: room.m2,
-        bed: room.bed,
-        capacity: room.capacity,
-        description: room.description,
-        guestName: '',
-        guestWhatsapp: ''
-      }));
-    }
-    
-    if (assignment.boutiqueRooms.length === 0) {
-      const dbBoutiqueRooms = await getBoutiqueRooms();
-      assignment.boutiqueRooms = dbBoutiqueRooms.map(room => ({
-        roomId: room.roomId,
-        name: room.name,
-        number: room.number,
-        bed: room.bed,
-        capacity: room.capacity,
-        description: room.description,
-        guestName: '',
-        guestWhatsapp: ''
-      }));
-    }
-    
+
+    // Actualizar datos de la novia
     if (brideInfo) {
-      if (brideInfo.name && brideInfo.name.trim()) assignment.brideName = brideInfo.name.trim();
-      if (brideInfo.email && brideInfo.email.trim()) assignment.brideEmail = brideInfo.email.trim();
-      if (brideInfo.phone && brideInfo.phone.trim()) assignment.bridePhone = brideInfo.phone.trim();
+      assignment.brideName = brideInfo.name || assignment.brideName;
+      assignment.brideEmail = brideInfo.email || assignment.brideEmail;
+      assignment.bridePhone = brideInfo.phone || assignment.bridePhone;
     }
-    
+
+    // Actualizar habitaciones
     if (casaHotelRooms && Array.isArray(casaHotelRooms)) {
       assignment.casaHotelRooms = assignment.casaHotelRooms.map(existingRoom => {
         const updatedRoom = casaHotelRooms.find(r => r.roomId === existingRoom.roomId);
@@ -795,5 +790,193 @@ exports.saveAssignment = async (req, res) => {
   } catch (error) {
     console.error('Error saving assignment:', error);
     res.status(500).json({ error: 'Error al guardar', message: error.message });
+  }
+};
+
+// ADMIN: Obtener códigos de descuento disponibles para un evento
+exports.getDiscountCodesForAssignment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Verificar que la asignación existe
+    const assignment = await GuestAssignment.findById(id);
+    if (!assignment) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'Asignación no encontrada'
+      });
+    }
+    
+    // Buscar códigos de descuento asociados a este evento o códigos generales
+    const DiscountCode = require('../models/DiscountCode');
+    const discountCodes = await DiscountCode.find({
+      $or: [
+        { guestAssignmentId: id },
+        { guestAssignmentId: null, active: true }
+      ],
+      active: true
+    }).sort({ createdAt: -1 });
+    
+    res.json({
+      success: true,
+      data: discountCodes
+    });
+  } catch (error) {
+    console.error('Error getting discount codes:', error);
+    res.status(500).json({ error: 'Error al obtener códigos de descuento' });
+  }
+};
+
+// ADMIN: Enviar código de descuento por WhatsApp a todos los huéspedes
+exports.sendDiscountCodeWhatsApp = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { discountCodeId } = req.body;
+    
+    // Verificar que la asignación existe
+    const assignment = await GuestAssignment.findById(id);
+    if (!assignment) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'Asignación no encontrada'
+      });
+    }
+    
+    // Buscar el código de descuento
+    const DiscountCode = require('../models/DiscountCode');
+    const discountCode = await DiscountCode.findById(discountCodeId);
+    if (!discountCode) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'Código de descuento no encontrado'
+      });
+    }
+    
+    // Recopilar todos los números de WhatsApp de los huéspedes
+    const allRooms = [...(assignment.casaHotelRooms || []), ...(assignment.boutiqueRooms || [])];
+    const guestsWithWhatsapp = allRooms.filter(room => 
+      room.guestWhatsapp && room.guestWhatsapp.trim() !== ''
+    );
+    
+    if (guestsWithWhatsapp.length === 0) {
+      return res.status(400).json({
+        error: 'No guests',
+        message: 'No hay huéspedes con número de WhatsApp registrado'
+      });
+    }
+    
+    console.log(`📱 Enviando código de descuento ${discountCode.code} a ${guestsWithWhatsapp.length} huéspedes...`);
+    
+    // Enviar mensaje a cada huésped via WhatsApp
+    const results = {
+      total: guestsWithWhatsapp.length,
+      sent: 0,
+      failed: 0,
+      errors: []
+    };
+    
+    // Función para formatear número de teléfono
+    const formatPhoneNumber = (phone) => {
+      // Limpiar el número de caracteres no numéricos
+      let cleaned = phone.replace(/[^0-9]/g, '');
+      
+      // Si es un número de México (10 dígitos) sin prefijo, agregar +52
+      if (cleaned.length === 10) {
+        return '+52' + cleaned;
+      }
+      // Si ya tiene prefijo internacional, asegurar que tenga +
+      if (cleaned.length > 10 && !phone.startsWith('+')) {
+        return '+' + cleaned;
+      }
+      return phone.startsWith('+') ? phone : '+' + cleaned;
+    };
+    
+    for (const guest of guestsWithWhatsapp) {
+      try {
+        // Formatear el número de teléfono
+        const formattedPhone = formatPhoneNumber(guest.guestWhatsapp);
+        
+        // Determinar el tipo de habitación y enlace correspondiente
+        const isBoutique = guest.roomId && guest.roomId.startsWith('BT');
+        // 🆕 Usar URL base configurable según entorno
+        const baseUrl = process.env.FRONTEND_URL 
+          ? `${process.env.FRONTEND_URL}${isBoutique ? 'boutique' : 'reservas'}`
+          : (isBoutique 
+            ? 'https://lacapillahotel.com/boutique' 
+            : 'https://lacapillahotel.com/reservas');
+        const hotelType = isBoutique ? 'Boutique' : 'Casa Hotel';
+        
+        // Obtener nombre de la novia
+        const brideName = assignment.brideName || 'la pareja';
+        const roomName = guest.name || guest.roomId || 'Habitacion asignada';
+        
+        // Generar enlace directo con parámetros de reserva
+        const checkInDate = new Date(discountCode.validFrom).toISOString().split('T')[0];
+        const checkOutDate = new Date(discountCode.validUntil).toISOString().split('T')[0];
+        
+        // 🆕 Obtener el Room _id basado en el tipo de habitación
+        let roomMongoId = guest.roomId; // Default fallback
+        try {
+          // Buscar la habitación asignada para obtener su tipo
+          const assignedRoom = await AssignmentRoom.findOne({ roomId: guest.roomId });
+          if (assignedRoom && assignedRoom.roomType) {
+            // Buscar el Room correspondiente por tipo y lugar
+            const roomType = assignedRoom.roomType.type;
+            const lugar = assignedRoom.roomType.lugar;
+            const roomDoc = await Room.findOne({ type: roomType, lugar: lugar });
+            if (roomDoc) {
+              roomMongoId = roomDoc._id.toString();
+              console.log(`🔗 Mapeando ${guest.roomId} -> Room ${roomDoc.name} (_id: ${roomMongoId})`);
+            }
+          }
+        } catch (err) {
+          console.error(`⚠️ Error mapeando roomId a Room _id:`, err.message);
+        }
+        
+        // Construir URL con parámetros
+        const bookingParams = new URLSearchParams({
+          room: roomMongoId,
+          checkIn: checkInDate,
+          checkOut: checkOutDate,
+          code: discountCode.code
+        });
+        
+        const bookingLink = `${baseUrl}?${bookingParams.toString()}`;
+        
+        const message = `Felicidades, ${guest.guestName || 'invitado'}:\n\nEs un honor para nosotros contar con su presencia en nuestra celebracion.\n\nDetalles especiales para ti:\n\n- Tu habitacion: ${roomName}
+- Codigo de descuento: ${discountCode.code}\n- Precio especial: ${discountCode.finalPrice.toFixed(2)} MXN\n- Tipo de alojamiento: ${hotelType}\n- Valido: ${new Date(discountCode.validFrom).toLocaleDateString('es-MX')} al ${new Date(discountCode.validUntil).toLocaleDateString('es-MX')}\n\nPara reservar tu habitacion:\n${bookingLink}\n\nGracias por ser parte de este momento tan especial.\nCon afectos,\n${brideName} y su futura pareja`;
+        
+        // Generar enlace de WhatsApp con mensaje prellenado
+        const encodedMessage = encodeURIComponent(message);
+        const whatsappLink = `https://wa.me/${formattedPhone}?text=${encodedMessage}`;
+        
+        // Agregar el enlace a los resultados
+        results.links = results.links || [];
+        results.links.push({
+          guestName: guest.guestName || 'Invitado',
+          phone: formattedPhone,
+          link: whatsappLink,
+          message: message
+        });
+        
+        console.log(`📱 Enlace generado para ${formattedPhone} (${guest.guestName})`);
+        results.sent++;
+      } catch (err) {
+        console.error(`❌ Error enviando a ${guest.guestWhatsapp}:`, err.message);
+        results.failed++;
+        results.errors.push({ whatsapp: guest.guestWhatsapp, error: err.message });
+      }
+    }
+    
+    console.log(`✅ Envío completado: ${results.sent} enviados, ${results.failed} fallidos`);
+    
+    res.json({
+      success: true,
+      message: `Código de descuento enviado a ${results.sent} huéspedes`,
+      results
+    });
+  } catch (error) {
+    console.error('Error sending discount code:', error);
+    res.status(500).json({ error: 'Error al enviar código de descuento' });
   }
 };
