@@ -130,28 +130,45 @@ async function checkRoomAvailabilityInternal(roomId, startDate, endDate) {
 }
 
 // ─────────────────────────────────────────────
-// FUNCIÓN INTERNA: Enviar email de confirmación
+// FUNCIÓN INTERNA: Enviar email de confirmación (MEJORADA)
 // ─────────────────────────────────────────────
 
 async function sendBookingConfirmationEmail(booking) {
   try {
-    console.log(`📧 Iniciando envío de email para ${booking.guestInfo.email}...`);
+    console.log(`\n📧 ===== INICIANDO ENVÍO DE EMAIL =====`);
+    console.log(`📧 Para: ${booking.guestInfo.email}`);
     console.log(`📧 Booking ID: ${booking.bookingId}`);
     console.log(`📧 Habitación: ${booking.roomName}`);
+    console.log(`📧 Huésped: ${booking.guestInfo.firstName} ${booking.guestInfo.lastName}`);
 
     const result = await generateAndSendVoucher(booking);
 
-    console.log(`✅ Email enviado exitosamente a ${booking.guestInfo.email}`);
-    return result;
+    if (result && result.success) {
+      console.log(`✅ EMAIL ENVIADO EXITOSAMENTE a ${booking.guestInfo.email}`);
+      console.log(`✅ MessageId: ${result.messageId || 'N/A'}`);
+    } else {
+      console.log(`⚠️ Email enviado pero sin confirmación de éxito`);
+    }
+
+    console.log(`📧 ===== FIN ENVÍO DE EMAIL =====\n`);
+    return { success: true, ...result };
   } catch (error) {
-    console.error('❌ Error enviando email de confirmación:', error);
-    console.error('❌ Error details:', {
-      message: error.message,
+    console.error(`\n❌ ===== ERROR ENVIANDO EMAIL =====`);
+    console.error(`❌ Para: ${booking.guestInfo.email}`);
+    console.error(`❌ Booking: ${booking.bookingId}`);
+    console.error(`❌ Error:`, error.message);
+    console.error(`❌ Stack:`, error.stack);
+    if (error.code) console.error(`❌ Code:`, error.code);
+    if (error.command) console.error(`❌ Command:`, error.command);
+    if (error.response) console.error(`❌ Response:`, error.response);
+    console.error(`❌ ===== FIN ERROR EMAIL =====\n`);
+    
+    return { 
+      success: false, 
+      error: error.message,
       code: error.code,
       command: error.command
-    });
-    console.log('⚠️ La reserva se creó pero el email no pudo enviarse');
-    return { success: false, error: error.message };
+    };
   }
 }
 
@@ -544,7 +561,7 @@ exports.createPaymentIntent = async (req, res, next) => {
   }
 };
 
-// Crear reserva (con Stripe, SCOPE, descuentos y bookingId generado)
+// Crear reserva (con Stripe, SCOPE, descuentos y bookingId generado) - VERSIÓN CORREGIDA
 exports.createBooking = async (req, res, next) => {
   try {
     const {
@@ -569,6 +586,7 @@ exports.createBooking = async (req, res, next) => {
     console.log('Check-in recibido:', checkIn);
     console.log('Check-out recibido:', checkOut);
     console.log('Código de descuento recibido:', discountCode);
+    console.log('Email del huésped:', guestInfo?.email);
 
     // Validar datos requeridos
     if (!roomId || !guestInfo || !checkIn || !checkOut || !nights || !pricePerNight) {
@@ -578,12 +596,13 @@ exports.createBooking = async (req, res, next) => {
       });
     }
 
-    // 🔥 HACER PAYMENTINTENTID OPCIONAL
-    // if (!paymentIntentId) {
-    //   return res.status(400).json({
-    //     message: 'Se requiere el ID del intento de pago'
-    //   });
-    // }
+    // Validar que el email no esté vacío
+    if (!guestInfo.email || guestInfo.email.trim() === '') {
+      return res.status(400).json({
+        message: 'El email del huésped es requerido',
+        error: 'Email required'
+      });
+    }
 
     // Formatear fechas con zona horaria correcta
     const TZ = process.env.TIMEZONE || 'America/Mexico_City';
@@ -796,10 +815,18 @@ exports.createBooking = async (req, res, next) => {
       await discountCodeDoc.save();
     }
 
-    // Enviar email de confirmación con voucher (no bloquea la respuesta)
-    generateAndSendVoucher(newBooking).catch(err => {
-      console.error('⚠️ Error generando voucher:', err.message);
-    });
+    // 🔥 CORREGIDO: ENVIAR EMAIL DE CONFIRMACIÓN Y ESPERAR RESULTADO
+    console.log(`\n📧 Preparando envío de email a ${guestInfo.email}...`);
+    
+    // No usar .catch() - usar try/catch con await para asegurar que se complete
+    let emailResult = null;
+    try {
+      emailResult = await generateAndSendVoucher(newBooking);
+      console.log(`✅ Email procesado, resultado:`, emailResult ? 'Éxito' : 'Completado');
+    } catch (emailError) {
+      console.error(`❌ Error crítico enviando email:`, emailError);
+      // No detenemos la respuesta, pero registramos el error
+    }
 
     const successMessage = discountAmount > 0
       ? `✅ Reserva confirmada con descuento de ${formatMXN(discountAmount)} aplicado. Revisa tu email para el voucher.`
@@ -813,12 +840,15 @@ exports.createBooking = async (req, res, next) => {
       discountApplied: discountAmount > 0,
       discountAmount,
       discountCode: discountCodeDoc ? discountCodeDoc.code : null,
+      emailSent: emailResult ? true : false, // Indicar si el email se envió
       secondNightNote: secondNightPayment > 0 ? {
         id: newBooking.secondNightNoteId,
         amount: secondNightPayment,
         message: `El 50% restante (${formatMXN(secondNightPayment)}) se pagará en recepción al check-in.`
       } : null
     });
+
+    console.log(`✅ Respuesta enviada al cliente`);
   } catch (error) {
     console.error('Error al crear reserva:', error);
     next(error);
