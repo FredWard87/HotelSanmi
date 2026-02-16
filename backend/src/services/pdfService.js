@@ -233,40 +233,53 @@ function generateFullPaymentVoucherPDF(booking) {
       doc.moveDown(1);
 
       const tableY = doc.y;
-      const lineHeight = 25;
+      const lineHeight = 22;
       const labelX = margin + 15;
       const valueX = margin + contentWidth - 100;
 
-      doc.roundedRect(margin, tableY, contentWidth, lineHeight * 4 + 8, 5).fill(lightGray);
+      // Calcular cuántas filas mostrar (solo las que tienen valor)
+      const showTax = (booking.tax || 0) > 0;
+      const showMunicipal = municipalTax > 0;
+      const rowCount = 2 + (showTax ? 1 : 0) + (showMunicipal ? 1 : 0) + 1; // subtotal + tax + municipal + total
+      
+      doc.roundedRect(margin, tableY, contentWidth, lineHeight * rowCount + 8, 5).fill(lightGray);
       
       doc.fontSize(9).font('Helvetica').fillColor(charcoal);
       
+      let currentRow = 0;
       doc.text('Subtotal', labelX, tableY + 8);
-      doc.text(`$${(booking.subtotal || 0).toFixed(2)} MXN`, valueX, tableY + 8, { 
+      doc.text(`${(booking.subtotal || 0).toFixed(2)} MXN`, valueX, tableY + 8, { 
         width: 90, 
         align: 'right' 
       });
+      currentRow++;
 
-      doc.text('IVA (16%)', labelX, tableY + lineHeight + 8);
-      doc.text(`$${(booking.tax || 0).toFixed(2)} MXN`, valueX, tableY + lineHeight + 8, { 
-        width: 90, 
-        align: 'right' 
-      });
+      if (showTax) {
+        doc.text('IVA (16%)', labelX, tableY + lineHeight * currentRow + 8);
+        doc.text(`${(booking.tax || 0).toFixed(2)} MXN`, valueX, tableY + lineHeight * currentRow + 8, { 
+          width: 90, 
+          align: 'right' 
+        });
+        currentRow++;
+      }
 
-      doc.text('Impuesto Municipal (4%)', labelX, tableY + lineHeight * 2 + 8);
-      doc.text(`$${municipalTax.toFixed(2)} MXN`, valueX, tableY + lineHeight * 2 + 8, { 
-        width: 90, 
-        align: 'right' 
-      });
+      if (showMunicipal) {
+        doc.text('Impuesto Municipal (4%)', labelX, tableY + lineHeight * currentRow + 8);
+        doc.text(`${municipalTax.toFixed(2)} MXN`, valueX, tableY + lineHeight * currentRow + 8, { 
+          width: 90, 
+          align: 'right' 
+        });
+        currentRow++;
+      }
 
-      const dividerY = tableY + lineHeight * 3 + 4;
+      const dividerY = tableY + lineHeight * currentRow + 4;
       doc.moveTo(margin + 15, dividerY).lineTo(margin + contentWidth - 15, dividerY)
          .lineWidth(1.5).stroke(gold);
       
       doc.fontSize(11).font('Helvetica-Bold').fillColor(charcoal);
-      doc.text('TOTAL PAGADO', labelX, tableY + lineHeight * 3 + 12);
+      doc.text('TOTAL PAGADO', labelX, tableY + lineHeight * currentRow + 12);
       doc.fontSize(13).fillColor(gold);
-      doc.text(`$${totalWithTaxes.toFixed(2)} MXN`, valueX, tableY + lineHeight * 3 + 10, { 
+      doc.text(`${totalWithTaxes.toFixed(2)} MXN`, valueX, tableY + lineHeight * currentRow + 10, { 
         width: 90, 
         align: 'right' 
       });
@@ -658,7 +671,7 @@ function generatePartialPaymentVoucherPDF(booking) {
       doc.text(booking.roomName, margin + 110, detailsStartY, { width: contentWidth - 130 });
       doc.text(checkInDate, margin + 110, detailsStartY + 18, { width: contentWidth - 130 });
       doc.text(checkOutDate, margin + 110, detailsStartY + 36, { width: contentWidth - 130 });
-      doc.text(`${booking.nights} noches`, margin + 110, detailsStartY + 54);
+      doc.text(`${booking.nights} ${booking.nights === 1 ? 'noche' : 'noches'}`, margin + 110, detailsStartY + 54);
       
       doc.moveDown(4);
 
@@ -676,40 +689,71 @@ function generatePartialPaymentVoucherPDF(booking) {
       doc.moveDown(1);
 
       const tableY = doc.y;
-      const lineHeight = 25;
+      const lineHeight = 22;
       const labelX = margin + 15;
       const valueX = margin + contentWidth - 100;
 
-      doc.roundedRect(margin, tableY, contentWidth, lineHeight * 5 + 8, 5).fill(lightGray);
+      // Calcular filas a mostrar
+      const showTax = (booking.tax || 0) > 0;
+      const showMunicipal = municipalTax > 0;
+      const baseRows = 2 + (showTax ? 1 : 0) + (showMunicipal ? 1 : 0) + 1; // subtotal + tax + municipal + total
+      const rowCount = baseRows + 2; // +2 para pago inicial y balance
+      
+      doc.roundedRect(margin, tableY, contentWidth, lineHeight * rowCount + 8, 5).fill(lightGray);
       
       doc.fontSize(9).font('Helvetica').fillColor(charcoal);
       
+      let currentRow = 0;
       doc.text('Subtotal', labelX, tableY + 8);
-      doc.text(`$${(booking.subtotal || 0).toFixed(2)} MXN`, valueX, tableY + 8, { 
+      doc.text(`${(booking.subtotal || 0).toFixed(2)} MXN`, valueX, tableY + 8, { 
         width: 90, 
         align: 'right' 
       });
+      currentRow++;
 
-      doc.text('IVA (16%)', labelX, tableY + lineHeight + 8);
-      doc.text(`$${(booking.tax || 0).toFixed(2)} MXN`, valueX, tableY + lineHeight + 8, { 
-        width: 90, 
-        align: 'right' 
-      });
+      if (showTax) {
+        doc.text('IVA (16%)', labelX, tableY + lineHeight * currentRow + 8);
+        doc.text(`${(booking.tax || 0).toFixed(2)} MXN`, valueX, tableY + lineHeight * currentRow + 8, { 
+          width: 90, 
+          align: 'right' 
+        });
+        currentRow++;
+      }
 
-      doc.text('Impuesto Municipal (4%)', labelX, tableY + lineHeight * 2 + 8);
-      doc.text(`$${municipalTax.toFixed(2)} MXN`, valueX, tableY + lineHeight * 2 + 8, { 
-        width: 90, 
-        align: 'right' 
-      });
+      if (showMunicipal) {
+        doc.text('Impuesto Municipal (4%)', labelX, tableY + lineHeight * currentRow + 8);
+        doc.text(`${municipalTax.toFixed(2)} MXN`, valueX, tableY + lineHeight * currentRow + 8, { 
+          width: 90, 
+          align: 'right' 
+        });
+        currentRow++;
+      }
 
-      const dividerY = tableY + lineHeight * 3 + 4;
+      const dividerY = tableY + lineHeight * currentRow + 4;
       doc.moveTo(margin + 15, dividerY).lineTo(margin + contentWidth - 15, dividerY)
          .lineWidth(1.5).stroke(gold);
       
       doc.fontSize(11).font('Helvetica-Bold').fillColor(charcoal);
-      doc.text('TOTAL DE RESERVA', labelX, tableY + lineHeight * 3 + 12);
+      doc.text('TOTAL DE RESERVA', labelX, tableY + lineHeight * currentRow + 12);
       doc.fontSize(13).fillColor(gold);
-      doc.text(`$${totalWithTaxes.toFixed(2)} MXN`, valueX, tableY + lineHeight * 3 + 10, { 
+      doc.text(`${totalWithTaxes.toFixed(2)} MXN`, valueX, tableY + lineHeight * currentRow + 10, { 
+        width: 90, 
+        align: 'right' 
+      });
+      currentRow++;
+      
+      // Pago inicial y balance
+      doc.fontSize(9).font('Helvetica').fillColor(charcoal);
+      doc.text('Pago Inicial (50%)', labelX, tableY + lineHeight * currentRow + 8);
+      doc.text(`${initialPayment.toFixed(2)} MXN`, valueX, tableY + lineHeight * currentRow + 8, { 
+        width: 90, 
+        align: 'right' 
+      });
+      currentRow++;
+      
+      doc.fontSize(10).font('Helvetica-Bold').fillColor(warningOrange);
+      doc.text('Balance Pendiente', labelX, tableY + lineHeight * currentRow + 8);
+      doc.text(`${pendingPayment.toFixed(2)} MXN`, valueX, tableY + lineHeight * currentRow + 8, { 
         width: 90, 
         align: 'right' 
       });
