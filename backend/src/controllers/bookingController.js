@@ -8,7 +8,7 @@ const { generateAndSendVoucher } = require('../services/pdfService');
 const { generateCheckinPDF } = require('../services/checkinPdfService');
 
 // ─────────────────────────────────────────────
-// FUNCIONES AUXILIARES - CORREGIDAS
+// FUNCIONES AUXILIARES
 // ─────────────────────────────────────────────
 
 // Generar ID único para reserva
@@ -19,27 +19,27 @@ const generateBookingId = () => {
   return `LC-${year}-${timestamp}${random.substr(0, 3)}`;
 };
 
-// 🔥 CORREGIDO: Formatear fecha usando UTC mediodía para evitar problemas de zona horaria
+// 🔥 CORREGIDO: Formatear fecha SIN conversión de zona horaria
+// Mantener la fecha exacta como viene (YYYY-MM-DD a las 00:00:00)
 const formatDateWithTimezone = (value) => {
   if (!value) return null;
   
-  // Si es string en formato YYYY-MM-DD
+  // Si es string en formato YYYY-MM-DD, crear fecha en UTC a medianoche
   if (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}$/)) {
     const [year, month, day] = value.split('-').map(Number);
-    // Usar las 12:00 UTC como hora neutral
-    return new Date(Date.UTC(year, month - 1, day, 12, 0, 0, 0));
+    return new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
   }
   
-  // Si es objeto Date o string con hora
+  // Si es Date o string con hora, extraer solo la parte de fecha
   const d = new Date(value);
   if (isNaN(d)) return null;
   
-  // Extraer componentes UTC para mantener consistencia
+  // Crear nueva fecha en UTC usando los componentes de fecha local
   return new Date(Date.UTC(
-    d.getUTCFullYear(),
-    d.getUTCMonth(),
-    d.getUTCDate(),
-    12, 0, 0, 0
+    d.getFullYear(),
+    d.getMonth(),
+    d.getDate(),
+    0, 0, 0, 0
   ));
 };
 
@@ -627,14 +627,7 @@ exports.createBooking = async (req, res, next) => {
     console.log('Fechas formateadas (UTC):');
     console.log('  - Check-in:', startDate);
     console.log('  - Check-out:', endDate);
-// Dentro de createBooking, después de formatear fechas:
-console.log('=== VERIFICACIÓN DE FECHAS ===');
-console.log('Check-in original:', checkIn);
-console.log('Check-in formateado (UTC):', startDate.toISOString());
-console.log('Check-in día local:', startDate.toLocaleDateString('es-MX', { timeZone: 'America/Mexico_City' }));
-console.log('Check-out original:', checkOut);
-console.log('Check-out formateado (UTC):', endDate.toISOString());
-console.log('Check-out día local:', endDate.toLocaleDateString('es-MX', { timeZone: 'America/Mexico_City' }));
+
     if (endDate <= startDate) {
       return res.status(400).json({
         message: 'La fecha de salida debe ser posterior a la fecha de entrada'
@@ -715,20 +708,20 @@ console.log('Check-out día local:', endDate.toLocaleDateString('es-MX', { timeZ
     let finalMunicipalTax;
 
     if (totalPrice && typeof totalPrice === 'number' && totalPrice > 0) {
-      // 🆕 PRECIO MANUAL - YA INCLUYE IMPUESTOS
+      // 🆕 PRECIO MANUAL - SIN IMPUESTOS (el precio entered es el total)
       finalTotal = totalPrice;
       isPrecioManual = true;
       
-      // Extraer impuestos del precio manual
-      finalTax = finalTotal * (16 / 120);
-      finalMunicipalTax = finalTotal * (4 / 120);
-      finalSubtotal = finalTotal - finalTax - finalMunicipalTax;
+      // El precio manual es el TOTAL, sin impuestos
+      finalSubtotal = totalPrice;
+      finalTax = 0;
+      finalMunicipalTax = 0;
       
-      console.log('💰 Usando PRECIO MANUAL (ya incluye impuestos):');
+      console.log('💰 Usando PRECIO MANUAL (sin impuestos):');
       console.log('  - Total recibido:', finalTotal);
-      console.log('  - Subtotal (extraído):', finalSubtotal.toFixed(2));
-      console.log('  - IVA 16% (extraído):', finalTax.toFixed(2));
-      console.log('  - Municipal 4% (extraído):', finalMunicipalTax.toFixed(2));
+      console.log('  - Subtotal:', finalSubtotal.toFixed(2));
+      console.log('  - IVA 16%:', finalTax.toFixed(2));
+      console.log('  - Municipal 4%:', finalMunicipalTax.toFixed(2));
       
     } else {
       // PRECIO AUTOMÁTICO - aplicar descuentos si hay
