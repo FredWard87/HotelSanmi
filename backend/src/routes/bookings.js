@@ -12,7 +12,7 @@ const { protect, adminOnly, optionalAuth } = require('../middleware/auth');
 // Crear Payment Intent (público)
 router.post('/payment-intent', bookingController.createPaymentIntent);
 
-// 🔥 CORREGIDO: Verificar disponibilidad (público)
+// Verificar disponibilidad (público)
 router.get('/availability', bookingController.checkAvailability);
 
 // Descargar voucher (público)
@@ -43,21 +43,17 @@ router.get('/download/:bookingId', async (req, res, next) => {
 // 🔥 CREAR RESERVA - Con optionalAuth para detectar admin
 router.post('/', optionalAuth, bookingController.createBooking);
 
-// Obtener detalles de reserva (puede ser pública o protegida)
-router.get('/:bookingId', optionalAuth, bookingController.getBooking);
-
-// ====================================
-// RUTAS PROTEGIDAS (requieren autenticación)
-// ====================================
-
-// Obtener todas las reservas (admin/employee)
-router.get('/', protect, bookingController.getAllBookings);
+// 🔥 CORREGIDO: Obtener todas las reservas (con optionalAuth en lugar de protect)
+router.get('/', optionalAuth, bookingController.getAllBookings);
 
 // Obtener estadísticas generales (admin/employee)
 router.get('/stats', protect, bookingController.getBookingStats);
 
 // Obtener estadísticas de códigos de descuento (admin/employee)
 router.get('/stats/discount-codes', protect, bookingController.getDiscountCodeUsageStats);
+
+// Obtener detalles de reserva específica
+router.get('/:bookingId', optionalAuth, bookingController.getBooking);
 
 // Actualizar reserva (admin/employee)
 router.patch('/:bookingId', protect, bookingController.updateBooking);
