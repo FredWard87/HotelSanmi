@@ -108,7 +108,7 @@ async function checkRoomAvailabilityInternal(roomId, startDate, endDate, options
       ]
     });
 
-    // 🔥 USAR MÁXIMO EN LUGAR DE SUMA
+    // USAR MÁXIMO EN LUGAR DE SUMA
     overlappingBlocks.forEach(block => {
       if (block.blockAll) {
         maxBlockedByBlocks = Math.max(maxBlockedByBlocks, room.totalUnits);
@@ -136,7 +136,7 @@ async function checkRoomAvailabilityInternal(roomId, startDate, endDate, options
 }
 
 // ─────────────────────────────────────────────
-// FUNCIÓN INTERNA: Enviar email de confirmación (MEJORADA)
+// FUNCIÓN INTERNA: Enviar email de confirmación
 // ─────────────────────────────────────────────
 
 async function sendBookingConfirmationEmail(booking) {
@@ -567,7 +567,7 @@ exports.createPaymentIntent = async (req, res, next) => {
   }
 };
 
-// Crear reserva (con Stripe, SCOPE, descuentos y bookingId generado) - VERSIÓN CON ADMIN BYPASS
+// Crear reserva (con Stripe, SCOPE, descuentos y bookingId generado) - VERSIÓN CON ADMIN BYPASS Y PRECIO MANUAL CORREGIDO
 exports.createBooking = async (req, res, next) => {
   try {
     const {
@@ -626,7 +626,7 @@ exports.createBooking = async (req, res, next) => {
       });
     }
 
-    // 🔥 DETERMINAR SI SE DEBEN IGNORAR BLOQUEOS
+    // DETERMINAR SI SE DEBEN IGNORAR BLOQUEOS
     // Solo los administradores pueden ignorar bloqueos
     const isAdmin = req.user && req.user.role === 'admin';
     const shouldIgnoreBlocks = isAdmin;
@@ -689,58 +689,85 @@ exports.createBooking = async (req, res, next) => {
       console.log(`⚠️ ADMIN OVERRIDE: Se ignoraron ${availability.blockedUnits} unidades bloqueadas`);
     }
 
-    // Validar y aplicar código de descuento
+    // 🔥 CORREGIDO: Manejo de precio manual vs precio automático con descuentos
     let discountAmount = 0;
     let discountCodeDoc = null;
     const originalSubtotal = pricePerNight * nights;
     const originalTotal = originalSubtotal * 1.20; // +20% impuestos (16% IVA + 4% municipal)
-    let finalTotal = originalTotal;
 
-    if (discountCode && discountCode.trim()) {
-      console.log('🎟️ Validando código de descuento:', discountCode);
+    // Verificar si hay precio manual en el body
+    let finalTotal;
+    let isPrecioManual = false;
+    let finalSubtotal;
+    let finalTax;
+    let finalMunicipalTax;
 
-      discountCodeDoc = await DiscountCode.findOne({
-        code: discountCode.toUpperCase().trim(),
-        active: true
-      });
+    if (totalPrice && typeof totalPrice === 'number' && totalPrice > 0) {
+      // 🆕 PRECIO MANUAL proporcionado - YA INCLUYE IMPUESTOS
+      finalTotal = totalPrice;
+      isPrecioManual = true;
+      
+      // Extraer impuestos del precio manual (que ya los incluye)
+      finalTax = finalTotal * (16 / 120); // Extraer IVA (16% del total con impuestos)
+      finalMunicipalTax = finalTotal * (4 / 120); // Extraer municipal (4% del total con impuestos)
+      finalSubtotal = finalTotal - finalTax - finalMunicipalTax;
+      
+      console.log('💰 Usando PRECIO MANUAL (ya incluye impuestos):');
+      console.log('  - Total recibido:', finalTotal);
+      console.log('  - Subtotal (extraído):', finalSubtotal);
+      console.log('  - IVA 16% (extraído):', finalTax);
+      console.log('  - Municipal 4% (extraído):', finalMunicipalTax);
+      
+    } else {
+      // PRECIO AUTOMÁTICO - aplicar descuentos si hay
+      finalTotal = originalTotal;
+      
+      if (discountCode && discountCode.trim()) {
+        console.log('🎟️ Validando código de descuento:', discountCode);
 
-      if (!discountCodeDoc) {
-        console.log('❌ Código no encontrado o inactivo');
-        return res.status(404).json({
-          error: 'Discount code not found',
-          message: 'Código de descuento no encontrado o inactivo'
+        discountCodeDoc = await DiscountCode.findOne({
+          code: discountCode.toUpperCase().trim(),
+          active: true
         });
+
+        if (!discountCodeDoc) {
+          console.log('❌ Código no encontrado o inactivo');
+          return res.status(404).json({
+            error: 'Discount code not found',
+            message: 'Código de descuento no encontrado o inactivo'
+          });
+        }
+
+        console.log('✅ Código encontrado:', discountCodeDoc.code);
+
+        const validation = discountCodeDoc.isValidForBooking({
+          nights: Number(nights),
+          roomLugar: availability.room.lugar
+        });
+
+        if (!validation.valid) {
+          console.log('❌ Código no válido:', validation.reason);
+          return res.status(400).json({
+            error: 'Invalid discount code',
+            message: validation.reason
+          });
+        }
+
+        // Usar precio final fijo del código
+        finalTotal = discountCodeDoc.finalPrice;
+        discountAmount = originalTotal - finalTotal;
+
+        console.log('💰 Descuento aplicado (precio fijo):');
+        console.log('  - Precio original (con impuestos):', originalTotal);
+        console.log('  - Precio final (código):', finalTotal);
+        console.log('  - Descuento total:', discountAmount);
       }
 
-      console.log('✅ Código encontrado:', discountCodeDoc.code);
-
-      const validation = discountCodeDoc.isValidForBooking({
-        nights: Number(nights),
-        roomLugar: availability.room.lugar
-      });
-
-      if (!validation.valid) {
-        console.log('❌ Código no válido:', validation.reason);
-        return res.status(400).json({
-          error: 'Invalid discount code',
-          message: validation.reason
-        });
-      }
-
-      // Usar precio final fijo del código
-      finalTotal = discountCodeDoc.finalPrice;
-      discountAmount = originalTotal - finalTotal;
-
-      console.log('💰 Descuento aplicado (precio fijo):');
-      console.log('  - Precio original (con impuestos):', originalTotal);
-      console.log('  - Precio final (código):', finalTotal);
-      console.log('  - Descuento total:', discountAmount);
+      // Calcular impuestos basados en el precio final
+      finalTax = finalTotal * (16 / 120);
+      finalMunicipalTax = finalTotal * (4 / 120);
+      finalSubtotal = finalTotal - finalTax - finalMunicipalTax;
     }
-
-    // Calcular impuestos basados en el precio final
-    const finalTax = finalTotal * (16 / 120);
-    const finalMunicipalTax = finalTotal * (4 / 120);
-    const finalSubtotal = finalTotal - finalTax - finalMunicipalTax;
 
     console.log('📊 Cálculo final:');
     console.log('  - Subtotal:', finalSubtotal);
@@ -758,7 +785,7 @@ exports.createBooking = async (req, res, next) => {
       secondNightPayment = finalTotal * 0.5;
     }
 
-    // 🔥 VERIFICAR PAYMENT INTENT (SI SE PROPORCIONA)
+    // VERIFICAR PAYMENT INTENT (SI SE PROPORCIONA)
     let stripeChargeId = null;
     let paymentStatus = 'pending';
 
@@ -828,10 +855,12 @@ exports.createBooking = async (req, res, next) => {
       secondNightNoteId: secondNightPayment > 0 ? `NOTE-${bookingId}-2ND-NIGHT` : null,
       status: 'active',
       specialRequests: specialRequests || '',
-      // 🆕 Campos para auditoría de admin bypass
+      // Campos para auditoría de admin bypass
       createdBy: req.user ? req.user._id : null,
       createdByRole: req.user ? req.user.role : 'guest',
-      adminOverride: shouldIgnoreBlocks && availability.blockedUnits > 0
+      adminOverride: shouldIgnoreBlocks && availability.blockedUnits > 0,
+      // 🆕 Marcar si se usó precio manual
+      isPrecioManual: isPrecioManual
     });
 
     await newBooking.save();
@@ -839,6 +868,9 @@ exports.createBooking = async (req, res, next) => {
     console.log(`✅ Reserva creada: ${newBooking.bookingId} para ${guestInfo.email}`);
     if (newBooking.adminOverride) {
       console.log(`🔓 Reserva creada con ADMIN OVERRIDE (ignoró bloqueos)`);
+    }
+    if (isPrecioManual) {
+      console.log(`💰 Reserva creada con PRECIO MANUAL: ${formatMXN(finalTotal)}`);
     }
 
     // Incrementar uso del código de descuento si se aplicó
@@ -848,7 +880,7 @@ exports.createBooking = async (req, res, next) => {
       await discountCodeDoc.save();
     }
 
-    // 🔥 ENVIAR EMAIL DE CONFIRMACIÓN
+    // ENVIAR EMAIL DE CONFIRMACIÓN
     console.log(`\n📧 Preparando envío de email a ${guestInfo.email}...`);
     
     let emailResult = null;
@@ -859,9 +891,13 @@ exports.createBooking = async (req, res, next) => {
       console.error(`❌ Error crítico enviando email:`, emailError);
     }
 
-    const successMessage = discountAmount > 0
-      ? `✅ Reserva confirmada con descuento de ${formatMXN(discountAmount)} aplicado. Revisa tu email para el voucher.`
-      : '✅ Reserva creada exitosamente. Revisa tu email para el voucher.';
+    let successMessage = '✅ Reserva creada exitosamente. Revisa tu email para el voucher.';
+    
+    if (discountAmount > 0) {
+      successMessage = `✅ Reserva confirmada con descuento de ${formatMXN(discountAmount)} aplicado. Revisa tu email para el voucher.`;
+    } else if (isPrecioManual) {
+      successMessage = `✅ Reserva creada con precio personalizado de ${formatMXN(finalTotal)}. Revisa tu email para el voucher.`;
+    }
 
     res.status(201).json({
       success: true,
@@ -873,6 +909,7 @@ exports.createBooking = async (req, res, next) => {
       discountCode: discountCodeDoc ? discountCodeDoc.code : null,
       emailSent: emailResult ? true : false,
       adminOverride: newBooking.adminOverride || false,
+      isPrecioManual: isPrecioManual,
       secondNightNote: secondNightPayment > 0 ? {
         id: newBooking.secondNightNoteId,
         amount: secondNightPayment,
@@ -944,7 +981,7 @@ exports.updateBooking = async (req, res, next) => {
 
     const TZ = process.env.TIMEZONE || 'America/Mexico_City';
 
-    // 🔥 DETERMINAR SI SE DEBEN IGNORAR BLOQUEOS PARA ACTUALIZACIÓN
+    // DETERMINAR SI SE DEBEN IGNORAR BLOQUEOS PARA ACTUALIZACIÓN
     const isAdmin = req.user && req.user.role === 'admin';
     const shouldIgnoreBlocks = isAdmin;
 
@@ -1210,7 +1247,7 @@ exports.generateCheckin = async (req, res, next) => {
     } catch (pdfError) {
       console.error('Error al generar el PDF de check-in:', pdfError);
       return res.status(500).json({
-        message: 'Error al generar el documento de check-in',
+        message: 'Error al generar el PDF de check-in',
         error: pdfError.message
       });
     }
@@ -1220,73 +1257,25 @@ exports.generateCheckin = async (req, res, next) => {
   }
 };
 
-// Descargar voucher en PDF
+// Descargar voucher (ya manejado por ruta directa, pero incluido aquí por compatibilidad)
 exports.downloadVoucher = async (req, res, next) => {
   try {
-    const { id } = req.params;
-
-    console.log('📥 Solicitud de voucher para ID:', id);
-
-    let booking;
-    if (/^[0-9a-fA-F]{24}$/.test(id)) {
-      booking = await Booking.findById(id);
-    } else {
-      booking = await Booking.findOne({ bookingId: id });
-    }
+    const { bookingId } = req.params;
+    const booking = await Booking.findOne({ bookingId }).lean();
 
     if (!booking) {
-      console.error('❌ Reserva no encontrada:', id);
-      return res.status(404).json({ message: 'Reserva no encontrada' });
+      return res.status(404).json({ error: 'Booking not found' });
     }
-
-    console.log('✅ Reserva encontrada:', booking.bookingId);
-
-    let roomDetails = null;
-    try {
-      if (booking.roomId) {
-        roomDetails = await Room.findById(booking.roomId).lean();
-        console.log('✅ Detalles de habitación obtenidos:', roomDetails?.name);
-      }
-    } catch (roomErr) {
-      console.warn('⚠️ No se pudo obtener info de Room:', roomErr.message);
-    }
-
-    const bookingPayload = booking.toObject ? booking.toObject() : { ...booking };
-    if (roomDetails) {
-      bookingPayload.room = roomDetails;
-    }
-
-    console.log('🎨 Generando PDF del voucher...');
 
     const { generateVoucherPDF } = require('../services/pdfService');
-    const pdfBuffer = await generateVoucherPDF(bookingPayload);
+    const pdfBuffer = await generateVoucherPDF(booking);
 
-    console.log('✅ PDF generado correctamente, tamaño:', pdfBuffer.length, 'bytes');
-
-    if (!pdfBuffer || pdfBuffer.length === 0) {
-      throw new Error('El PDF generado está vacío');
-    }
-
-    res.writeHead(200, {
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="Voucher_${booking.bookingId}.pdf"`,
-      'Content-Length': pdfBuffer.length,
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0'
-    });
-
-    res.end(pdfBuffer, 'binary');
-
-    console.log('✅ PDF voucher enviado al cliente');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="Voucher_${bookingId}.pdf"`);
+    res.send(pdfBuffer);
   } catch (error) {
-    console.error('❌ Error generando voucher:', error);
-
-    if (res.headersSent) {
-      res.end();
-    } else {
-      next(error);
-    }
+    console.error('Error al descargar voucher:', error);
+    next(error);
   }
 };
 
@@ -1294,239 +1283,153 @@ exports.downloadVoucher = async (req, res, next) => {
 exports.resendBookingEmail = async (req, res, next) => {
   try {
     const { bookingId } = req.params;
-
-    console.log(`📧 Reenviando email para reserva: ${bookingId}`);
-
-    let booking;
-    if (/^[0-9a-fA-F]{24}$/.test(bookingId)) {
-      booking = await Booking.findById(bookingId);
-    } else {
-      booking = await Booking.findOne({ bookingId: bookingId });
-    }
+    const booking = await Booking.findOne({ bookingId });
 
     if (!booking) {
-      console.error('❌ Reserva no encontrada:', bookingId);
       return res.status(404).json({
-        success: false,
+        error: 'Booking not found',
         message: 'Reserva no encontrada'
       });
     }
 
-    console.log(`✅ Reserva encontrada: ${booking.bookingId} para ${booking.guestInfo.email}`);
-    console.log('📋 Detalles de la reserva:', {
-      nombre: `${booking.guestInfo.firstName} ${booking.guestInfo.lastName}`,
-      habitacion: booking.roomName,
-      checkIn: booking.checkIn,
-      checkOut: booking.checkOut,
-      noches: booking.nights,
-      total: booking.totalPrice
-    });
+    console.log(`\n📧 Reenviando email para reserva: ${booking.bookingId}`);
 
-    try {
-      const result = await generateAndSendVoucher(booking);
+    const emailResult = await sendBookingConfirmationEmail(booking);
 
-      console.log(`✅ Email reenviado exitosamente a ${booking.guestInfo.email}`);
-
+    if (emailResult.success) {
       res.json({
         success: true,
-        message: `Email reenviado exitosamente a ${booking.guestInfo.email}`,
-        bookingId: booking.bookingId,
-        email: booking.guestInfo.email,
-        nombre: `${booking.guestInfo.firstName} ${booking.guestInfo.lastName}`,
-        fechaEnvio: new Date().toISOString(),
-        details: {
-          pdfGenerado: result.pdfBuffer ? true : false,
-          emailEnviado: result.success || true
-        }
+        message: 'Email de confirmación reenviado exitosamente',
+        messageId: emailResult.messageId
       });
-    } catch (emailError) {
-      console.error('❌ Error reenviando email:', emailError);
-
+    } else {
       res.status(500).json({
         success: false,
-        message: 'Error reenviando email',
-        error: emailError.message,
-        bookingId: booking.bookingId,
-        email: booking.guestInfo.email,
-        details: {
-          code: emailError.code,
-          command: emailError.command,
-          response: emailError.response
-        }
+        message: 'Error al reenviar el email',
+        error: emailResult.error
       });
     }
   } catch (error) {
-    console.error('❌ Error en resendBookingEmail:', error);
+    console.error('Error al reenviar email:', error);
     next(error);
   }
 };
 
-// Reenviar email a reserva existente por bookingId o email del huésped
+// Enviar email de prueba a reserva existente (DESARROLLO/DEBUG)
 exports.sendTestEmailToExistingBooking = async (req, res, next) => {
   try {
-    const { bookingId, email } = req.body;
-
-    if (!bookingId && !email) {
-      return res.status(400).json({
-        success: false,
-        message: 'Se requiere bookingId o email'
-      });
-    }
-
-    let booking;
-    if (bookingId) {
-      booking = await Booking.findOne({
-        $or: [
-          { _id: bookingId },
-          { bookingId: bookingId }
-        ]
-      });
-    } else if (email) {
-      booking = await Booking.findOne({ 'guestInfo.email': email })
-        .sort({ createdAt: -1 });
-    }
+    const { bookingId } = req.params;
+    const booking = await Booking.findOne({ bookingId });
 
     if (!booking) {
       return res.status(404).json({
-        success: false,
+        error: 'Booking not found',
         message: 'Reserva no encontrada'
       });
     }
 
-    console.log(`📧 Enviando email a reserva existente: ${booking.bookingId}`);
-    console.log(`📧 Email: ${booking.guestInfo.email}`);
-    console.log('📋 Detalles:', {
-      nombre: `${booking.guestInfo.firstName} ${booking.guestInfo.lastName}`,
-      habitacion: booking.roomName,
-      noches: booking.nights
-    });
+    console.log(`\n🧪 Enviando email de PRUEBA para reserva: ${booking.bookingId}`);
+    console.log(`📧 Email destino: ${booking.guestInfo.email}`);
 
-    const result = await generateAndSendVoucher(booking);
+    const emailResult = await sendBookingConfirmationEmail(booking);
 
     res.json({
       success: true,
-      message: `Email enviado a ${booking.guestInfo.email}`,
-      booking: {
-        id: booking._id,
+      message: `Email de prueba enviado a ${booking.guestInfo.email}`,
+      emailResult,
+      bookingDetails: {
         bookingId: booking.bookingId,
-        email: booking.guestInfo.email,
-        nombre: `${booking.guestInfo.firstName} ${booking.guestInfo.lastName}`,
+        guestEmail: booking.guestInfo.email,
         roomName: booking.roomName,
         checkIn: booking.checkIn,
         checkOut: booking.checkOut,
-        nights: booking.nights,
         totalPrice: booking.totalPrice
-      },
-      emailResult: result,
-      fechaEnvio: new Date().toISOString()
+      }
     });
   } catch (error) {
-    console.error('❌ Error en sendTestEmailToExistingBooking:', error);
+    console.error('Error al enviar email de prueba:', error);
     next(error);
   }
 };
 
-// Test email endpoint
+// Test de email básico
 exports.testEmail = async (req, res, next) => {
   try {
     const { email } = req.body;
 
     if (!email) {
       return res.status(400).json({
-        message: 'Se requiere un email para la prueba'
+        message: 'Se requiere un email de destino'
       });
     }
 
-    console.log('📧 Probando envío de email a:', email);
-    console.log('📧 Usando cuenta:', process.env.EMAIL_USERNAME);
-
     const nodemailer = require('nodemailer');
-
     const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 587,
+      host: process.env.SMTP_HOST,
+      port: process.env.SMTP_PORT,
       secure: false,
       auth: {
-        user: process.env.EMAIL_USERNAME,
-        pass: process.env.EMAIL_PASSWORD
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
       },
-      debug: true,
-      logger: true
+      tls: {
+        rejectUnauthorized: false
+      }
     });
 
-    const mailOptions = {
-      from: `"La Capilla Hotel - Test" <${process.env.EMAIL_USERNAME}>`,
+    const info = await transporter.sendMail({
+      from: `"Hotel La Capilla" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
       to: email,
-      cc: 'fredyesparza08@gmail.com, lacapillasl@gmail.com',
-      subject: 'Test Email - La Capilla Hotel',
-      text: 'Este es un email de prueba del sistema de reservas de La Capilla Hotel.',
+      subject: 'Test Email - Hotel La Capilla',
       html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: #1a1a1a; color: #C9A961; padding: 20px; text-align: center; }
-            .content { padding: 20px; background: #f9f9f9; }
-            .footer { background: #eee; padding: 15px; text-align: center; font-size: 12px; color: #666; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>LA CAPILLA HOTEL</h1>
-              <p>Test de Sistema de Emails</p>
-            </div>
-            <div class="content">
-              <h2>¡Email de prueba exitoso!</h2>
-              <p>Este email confirma que el sistema de envío de correos está funcionando correctamente.</p>
-              <p><strong>Fecha:</strong> ${new Date().toLocaleString('es-MX')}</p>
-              <p><strong>Destinatario:</strong> ${email}</p>
-              <p>Si recibes este email, significa que la configuración SMTP con Gmail está funcionando.</p>
-            </div>
-            <div class="footer">
-              <p>La Capilla Hotel | Sistema Automático de Pruebas</p>
-            </div>
-          </div>
-        </body>
-        </html>
+        <div style="font-family: Arial, sans-serif; padding: 20px;">
+          <h1>Email de Prueba</h1>
+          <p>Este es un email de prueba del sistema de reservas del Hotel La Capilla.</p>
+          <p>Si recibes este mensaje, la configuración de email está funcionando correctamente.</p>
+          <hr>
+          <p style="color: #666; font-size: 12px;">
+            Fecha: ${new Date().toLocaleString('es-MX')}
+          </p>
+        </div>
       `
-    };
-
-    console.log('📤 Enviando email de prueba...');
-
-    const result = await transporter.sendMail(mailOptions);
-
-    console.log('✅ Email de prueba enviado exitosamente');
-    console.log('✅ Response:', result.response);
+    });
 
     res.json({
       success: true,
       message: 'Email de prueba enviado exitosamente',
-      details: {
-        to: email,
-        from: process.env.EMAIL_USERNAME,
-        response: result.response,
-        messageId: result.messageId
-      }
+      messageId: info.messageId,
+      recipient: email
     });
   } catch (error) {
-    console.error('❌ Error en test email:', error);
-    console.error('❌ Error details:', {
-      code: error.code,
-      command: error.command,
-      response: error.response
-    });
-
+    console.error('Error al enviar email de prueba:', error);
     res.status(500).json({
       success: false,
-      error: error.message,
-      details: {
-        code: error.code,
-        command: error.command,
-        response: error.response
-      }
+      message: 'Error al enviar email de prueba',
+      error: error.message
     });
   }
+};
+
+// ─────────────────────────────────────────────
+// EXPORTAR TODAS LAS FUNCIONES
+// ─────────────────────────────────────────────
+
+module.exports = {
+  createPaymentIntent: exports.createPaymentIntent,
+  createBooking: exports.createBooking,
+  getAllBookings: exports.getAllBookings,
+  getBooking: exports.getBooking,
+  getBookingById: exports.getBookingById,
+  updateBooking: exports.updateBooking,
+  cancelBooking: exports.cancelBooking,
+  markSecondNightPaid: exports.markSecondNightPaid,
+  getBookingStats: exports.getBookingStats,
+  getDiscountCodeUsageStats: exports.getDiscountCodeUsageStats,
+  checkAvailability: exports.checkAvailability,
+  checkMultipleAvailability: exports.checkMultipleAvailability,
+  generateCheckin: exports.generateCheckin,
+  downloadVoucher: exports.downloadVoucher,
+  resendBookingEmail: exports.resendBookingEmail,
+  sendTestEmailToExistingBooking: exports.sendTestEmailToExistingBooking,
+  testEmail: exports.testEmail
 };
