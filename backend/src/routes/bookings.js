@@ -12,8 +12,8 @@ const { protect, adminOnly, optionalAuth } = require('../middleware/auth');
 // Crear Payment Intent (público)
 router.post('/payment-intent', bookingController.createPaymentIntent);
 
-// Verificar disponibilidad (público)
-router.get('/availability', bookingController.checkRoomAvailability);
+// 🔥 CORREGIDO: Verificar disponibilidad (público)
+router.get('/availability', bookingController.checkAvailability);
 
 // Descargar voucher (público)
 router.get('/download/:bookingId', async (req, res, next) => {
