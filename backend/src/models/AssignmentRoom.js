@@ -39,6 +39,25 @@ const assignmentRoomSchema = new mongoose.Schema({
     enum: ['casa_hotel', 'boutique'],
     required: true
   },
+  // Referencia al tipo de habitación de roomsSeed
+  roomType: {
+    type: {
+      type: String,
+      enum: ['STANDARD', 'SUITE', 'MASTER'],
+      required: true
+    },
+    lugar: {
+      type: String,
+      enum: ['casaHotel', 'boutique'],
+      required: true
+    }
+  },
+  // 🆕 Referencia al Room (tipo de habitación) en MongoDB
+  roomRefId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Room',
+    default: null
+  },
   isActive: {
     type: Boolean,
     default: true
