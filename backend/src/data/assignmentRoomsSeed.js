@@ -2,7 +2,7 @@
 // Semilla para las habitaciones de asignacion (Casa Hotel y Boutique)
 
 const ASSIGNMENT_ROOMS_SEED = [
-  // CASA HOTEL
+  // CASA HOTEL - STANDARD (Standard Suite)
   {
     roomId: 'CH1',
     name: 'Hab 1 San Jose',
@@ -12,9 +12,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 2,
     description: 'SALIDA JARDIN',
     type: 'casa_hotel',
+    roomType: { type: 'STANDARD', lugar: 'casaHotel' },
     isActive: true,
     order: 1
   },
+  // CASA HOTEL - SUITE (Junior Suite)
   {
     roomId: 'CH2',
     name: 'Hab 2 San Juan',
@@ -24,9 +26,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 2,
     description: '',
     type: 'casa_hotel',
+    roomType: { type: 'SUITE', lugar: 'casaHotel' },
     isActive: true,
     order: 2
   },
+  // CASA HOTEL - SUITE (Junior Suite)
   {
     roomId: 'CH3',
     name: 'Hab 3 San Carlos',
@@ -36,9 +40,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 2,
     description: 'DOS CAMAS QUEEN SIZE',
     type: 'casa_hotel',
+    roomType: { type: 'SUITE', lugar: 'casaHotel' },
     isActive: true,
     order: 3
   },
+  // CASA HOTEL - MASTER (Master Suite)
   {
     roomId: 'CH4',
     name: 'Hab 4 Santa Maria',
@@ -48,9 +54,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 4,
     description: 'CAMA KING + QUEEN SIZE',
     type: 'casa_hotel',
+    roomType: { type: 'MASTER', lugar: 'casaHotel' },
     isActive: true,
     order: 4
   },
+  // CASA HOTEL - MASTER (Master Suite)
   {
     roomId: 'CH5',
     name: 'Hab 5 San Alejandro',
@@ -60,9 +68,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 4,
     description: 'CAMA KING + QUEEN SIZE',
     type: 'casa_hotel',
+    roomType: { type: 'MASTER', lugar: 'casaHotel' },
     isActive: true,
     order: 5
   },
+  // CASA HOTEL - MASTER (Master Suite)
   {
     roomId: 'CH6',
     name: 'Hab 6 San Rafael',
@@ -72,9 +82,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 4,
     description: '',
     type: 'casa_hotel',
+    roomType: { type: 'MASTER', lugar: 'casaHotel' },
     isActive: true,
     order: 6
   },
+  // CASA HOTEL - SUITE (Junior Suite)
   {
     roomId: 'CH7',
     name: 'Hab 7 Santa Glafira',
@@ -84,9 +96,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 2,
     description: '',
     type: 'casa_hotel',
+    roomType: { type: 'SUITE', lugar: 'casaHotel' },
     isActive: true,
     order: 7
   },
+  // CASA HOTEL - SUITE (Junior Suite)
   {
     roomId: 'CH8',
     name: 'Hab 8 Santa Trinidad',
@@ -96,9 +110,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 2,
     description: '',
     type: 'casa_hotel',
+    roomType: { type: 'SUITE', lugar: 'casaHotel' },
     isActive: true,
     order: 8
   },
+  // CASA HOTEL - SUITE (Junior Suite)
   {
     roomId: 'CH9',
     name: 'Hab 9 Santa Socorro',
@@ -108,9 +124,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 2,
     description: '',
     type: 'casa_hotel',
+    roomType: { type: 'SUITE', lugar: 'casaHotel' },
     isActive: true,
     order: 9
   },
+  // CASA HOTEL - STANDARD (Standard Suite)
   {
     roomId: 'CH10',
     name: 'Hab 10 Santa Esther',
@@ -120,9 +138,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 2,
     description: '',
     type: 'casa_hotel',
+    roomType: { type: 'STANDARD', lugar: 'casaHotel' },
     isActive: true,
     order: 10
   },
+  // CASA HOTEL - STANDARD (Standard Suite)
   {
     roomId: 'CH11',
     name: 'Hab 11 San Jorge',
@@ -132,9 +152,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 2,
     description: '',
     type: 'casa_hotel',
+    roomType: { type: 'STANDARD', lugar: 'casaHotel' },
     isActive: true,
     order: 11
   },
+  // CASA HOTEL - STANDARD (Standard Suite)
   {
     roomId: 'CH12',
     name: 'Hab 12 San Guillermo',
@@ -144,9 +166,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 2,
     description: '',
     type: 'casa_hotel',
+    roomType: { type: 'STANDARD', lugar: 'casaHotel' },
     isActive: true,
     order: 12
   },
+  // CASA HOTEL - STANDARD (Standard Suite)
   {
     roomId: 'CH13',
     name: 'Hab 13 San Miguel',
@@ -156,9 +180,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 2,
     description: '',
     type: 'casa_hotel',
+    roomType: { type: 'STANDARD', lugar: 'casaHotel' },
     isActive: true,
     order: 13
   },
+  // CASA HOTEL - SUITE (Junior Suite)
   {
     roomId: 'CH14',
     name: 'Hab 14 San Isidro',
@@ -168,9 +194,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 2,
     description: '',
     type: 'casa_hotel',
+    roomType: { type: 'SUITE', lugar: 'casaHotel' },
     isActive: true,
     order: 14
   },
+  // CASA HOTEL - MASTER (Master Suite)
   {
     roomId: 'CH15',
     name: 'Hab 15 San Pedro',
@@ -180,11 +208,12 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 4,
     description: 'DOS CAMAS QUEEN SIZE',
     type: 'casa_hotel',
+    roomType: { type: 'MASTER', lugar: 'casaHotel' },
     isActive: true,
     order: 15
   },
 
-  // HOTEL BOUTIQUE
+  // HOTEL BOUTIQUE - SUITE (Junior Suite Deluxe)
   {
     roomId: 'BT101',
     name: 'Habitacion 101',
@@ -194,9 +223,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 2,
     description: 'TERRAZA TRASERA',
     type: 'boutique',
+    roomType: { type: 'SUITE', lugar: 'boutique' },
     isActive: true,
     order: 1
   },
+  // HOTEL BOUTIQUE - STANDARD (Standard Deluxe)
   {
     roomId: 'BT102',
     name: 'Habitacion 102',
@@ -206,9 +237,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 2,
     description: 'TERRAZA TRASERA',
     type: 'boutique',
+    roomType: { type: 'STANDARD', lugar: 'boutique' },
     isActive: true,
     order: 2
   },
+  // HOTEL BOUTIQUE - SUITE (Junior Suite Deluxe)
   {
     roomId: 'BT103',
     name: 'Habitacion 103',
@@ -218,9 +251,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 2,
     description: 'TERRAZA TRASERA',
     type: 'boutique',
+    roomType: { type: 'SUITE', lugar: 'boutique' },
     isActive: true,
     order: 3
   },
+  // HOTEL BOUTIQUE - SUITE (Junior Suite Deluxe)
   {
     roomId: 'BT104',
     name: 'Habitacion 104',
@@ -230,9 +265,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 2,
     description: 'TERRAZA TRASERA / TINA',
     type: 'boutique',
+    roomType: { type: 'SUITE', lugar: 'boutique' },
     isActive: true,
     order: 4
   },
+  // HOTEL BOUTIQUE - STANDARD (Standard Deluxe)
   {
     roomId: 'BT105',
     name: 'Habitacion 105',
@@ -242,9 +279,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 2,
     description: 'TERRAZA TRASERA',
     type: 'boutique',
+    roomType: { type: 'STANDARD', lugar: 'boutique' },
     isActive: true,
     order: 5
   },
+  // HOTEL BOUTIQUE - STANDARD (Standard Deluxe)
   {
     roomId: 'BT106',
     name: 'Habitacion 106',
@@ -254,9 +293,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 2,
     description: 'TERRAZA TRASERA / TINA',
     type: 'boutique',
+    roomType: { type: 'STANDARD', lugar: 'boutique' },
     isActive: true,
     order: 6
   },
+  // HOTEL BOUTIQUE - SUITE (Junior Suite Deluxe)
   {
     roomId: 'BT107',
     name: 'Habitacion 107',
@@ -266,9 +307,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 2,
     description: 'TERRAZA JARDIN',
     type: 'boutique',
+    roomType: { type: 'SUITE', lugar: 'boutique' },
     isActive: true,
     order: 7
   },
+  // HOTEL BOUTIQUE - SUITE (Junior Suite Deluxe)
   {
     roomId: 'BT108',
     name: 'Habitacion 108',
@@ -278,9 +321,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 2,
     description: 'TERRAZA JARDIN',
     type: 'boutique',
+    roomType: { type: 'SUITE', lugar: 'boutique' },
     isActive: true,
     order: 8
   },
+  // HOTEL BOUTIQUE - SUITE (Junior Suite Deluxe)
   {
     roomId: 'BT109',
     name: 'Habitacion 109',
@@ -290,9 +335,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 2,
     description: 'TERRAZA JARDIN',
     type: 'boutique',
+    roomType: { type: 'SUITE', lugar: 'boutique' },
     isActive: true,
     order: 9
   },
+  // HOTEL BOUTIQUE - SUITE (Junior Suite Deluxe)
   {
     roomId: 'BT110',
     name: 'Habitacion 110',
@@ -302,9 +349,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 2,
     description: 'TERRAZA JARDIN',
     type: 'boutique',
+    roomType: { type: 'SUITE', lugar: 'boutique' },
     isActive: true,
     order: 10
   },
+  // HOTEL BOUTIQUE - SUITE (Junior Suite Deluxe)
   {
     roomId: 'BT200',
     name: 'Habitacion 200',
@@ -314,9 +363,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 2,
     description: 'TINA',
     type: 'boutique',
+    roomType: { type: 'SUITE', lugar: 'boutique' },
     isActive: true,
     order: 11
   },
+  // HOTEL BOUTIQUE - SUITE (Junior Suite Deluxe)
   {
     roomId: 'BT201',
     name: 'Habitacion 201',
@@ -326,9 +377,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 2,
     description: 'TINA',
     type: 'boutique',
+    roomType: { type: 'SUITE', lugar: 'boutique' },
     isActive: true,
     order: 12
   },
+  // HOTEL BOUTIQUE - SUITE (Junior Suite Deluxe)
   {
     roomId: 'BT202',
     name: 'Habitacion 202',
@@ -338,9 +391,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 2,
     description: 'TINA',
     type: 'boutique',
+    roomType: { type: 'SUITE', lugar: 'boutique' },
     isActive: true,
     order: 13
   },
+  // HOTEL BOUTIQUE - SUITE (Junior Suite Deluxe)
   {
     roomId: 'BT203',
     name: 'Habitacion 203',
@@ -350,9 +405,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 2,
     description: 'TINA',
     type: 'boutique',
+    roomType: { type: 'SUITE', lugar: 'boutique' },
     isActive: true,
     order: 14
   },
+  // HOTEL BOUTIQUE - SUITE (Junior Suite Deluxe)
   {
     roomId: 'BT204',
     name: 'Habitacion 204',
@@ -362,9 +419,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 2,
     description: '',
     type: 'boutique',
+    roomType: { type: 'SUITE', lugar: 'boutique' },
     isActive: true,
     order: 15
   },
+  // HOTEL BOUTIQUE - SUITE (Junior Suite Deluxe)
   {
     roomId: 'BT205',
     name: 'Habitacion 205',
@@ -374,9 +433,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 2,
     description: '',
     type: 'boutique',
+    roomType: { type: 'SUITE', lugar: 'boutique' },
     isActive: true,
     order: 16
   },
+  // HOTEL BOUTIQUE - MASTER (Master Suite Deluxe)
   {
     roomId: 'BT206',
     name: 'Habitacion 206',
@@ -386,9 +447,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 4,
     description: '',
     type: 'boutique',
+    roomType: { type: 'MASTER', lugar: 'boutique' },
     isActive: true,
     order: 17
   },
+  // HOTEL BOUTIQUE - MASTER (Master Suite Deluxe)
   {
     roomId: 'BT207',
     name: 'Habitacion 207',
@@ -398,9 +461,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 4,
     description: '',
     type: 'boutique',
+    roomType: { type: 'MASTER', lugar: 'boutique' },
     isActive: true,
     order: 18
   },
+  // HOTEL BOUTIQUE - MASTER (Master Suite Deluxe)
   {
     roomId: 'BT208',
     name: 'Habitacion 208',
@@ -410,9 +475,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 4,
     description: '',
     type: 'boutique',
+    roomType: { type: 'MASTER', lugar: 'boutique' },
     isActive: true,
     order: 19
   },
+  // HOTEL BOUTIQUE - MASTER (Master Suite Deluxe)
   {
     roomId: 'BT209',
     name: 'Habitacion 209',
@@ -422,9 +489,11 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 4,
     description: '',
     type: 'boutique',
+    roomType: { type: 'MASTER', lugar: 'boutique' },
     isActive: true,
     order: 20
   },
+  // HOTEL BOUTIQUE - MASTER (Master Suite Deluxe)
   {
     roomId: 'BT210',
     name: 'Habitacion 210',
@@ -434,6 +503,7 @@ const ASSIGNMENT_ROOMS_SEED = [
     capacity: 4,
     description: '',
     type: 'boutique',
+    roomType: { type: 'MASTER', lugar: 'boutique' },
     isActive: true,
     order: 21
   }
