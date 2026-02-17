@@ -92,17 +92,16 @@ DiscountCodeSchema.pre('save', function(next) {
   next();
 });
 
-// 🔥 CORREGIDO: Validación para bodas - valida contra fechas de CHECK-IN, no fecha actual
+// 🔥 CORREGIDO: Validación simplificada - sin validar fechas de check-in
+// Permite reservar con anticipación para cualquier fecha futura
 DiscountCodeSchema.methods.isValidForBooking = function(bookingData) {
-  const { nights, roomLugar, checkIn } = bookingData;
+  const { nights, roomLugar } = bookingData;
   
   console.log('🔍 VALIDANDO CÓDIGO DE DESCUENTO');
   console.log('Código:', this.code);
   console.log('Activo:', this.active);
-  console.log('Válido desde:', this.validFrom);
-  console.log('Válido hasta:', this.validUntil);
   console.log('Noches de la reserva:', nights);
-  console.log('Check-in de la reserva (string):', checkIn);
+  console.log('Lugar de la habitación:', roomLugar);
   
   // 1. Verificar si está activo
   if (!this.active) {
@@ -110,52 +109,9 @@ DiscountCodeSchema.methods.isValidForBooking = function(bookingData) {
     return { valid: false, reason: 'Código desactivado' };
   }
   
-  // 2. 🔥 CORREGIDO: Crear fecha en zona local para evitar desfase
-  // Si checkIn viene como "2026-02-25", creamos la fecha a las 12:00 hora local
-  let checkInDate;
-  if (checkIn) {
-    if (typeof checkIn === 'string' && checkIn.includes('-')) {
-      // Formato YYYY-MM-DD
-      const [year, month, day] = checkIn.split('T')[0].split('-');
-      checkInDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), 12, 0, 0);
-    } else {
-      checkInDate = new Date(checkIn);
-    }
-  } else {
-    checkInDate = new Date();
-  }
+  console.log('✅ Código activo');
   
-  console.log('Check-in procesado:', checkInDate.toLocaleDateString('es-MX'));
-  
-  // Normalizar fechas del código a medianoche para comparación justa
-  const validFromNormalized = new Date(this.validFrom);
-  validFromNormalized.setHours(0, 0, 0, 0);
-  
-  const validUntilNormalized = new Date(this.validUntil);
-  validUntilNormalized.setHours(23, 59, 59, 999);
-  
-  const checkInNormalized = new Date(checkInDate);
-  checkInNormalized.setHours(12, 0, 0, 0);
-  
-  if (checkInNormalized < validFromNormalized) {
-    console.log('❌ Check-in antes de la fecha de inicio del código');
-    return { 
-      valid: false, 
-      reason: `Código válido desde ${this.validFrom.toLocaleDateString('es-MX')}. Tu check-in es ${checkInDate.toLocaleDateString('es-MX')}.` 
-    };
-  }
-  
-  if (checkInNormalized > validUntilNormalized) {
-    console.log('❌ Check-in después de la fecha de fin del código');
-    return { 
-      valid: false, 
-      reason: `Código válido hasta ${this.validUntil.toLocaleDateString('es-MX')}. Tu check-in es ${checkInDate.toLocaleDateString('es-MX')}.` 
-    };
-  }
-  
-  console.log('✅ Check-in dentro del rango válido');
-  
-  // 3. Verificar que sea para 2 noches (bodas)
+  // 2. Verificar que sea para 2 noches (bodas)
   if (nights !== 2) {
     console.log('❌ No son 2 noches');
     return { valid: false, reason: 'Este código solo aplica para reservas de 2 noches' };
@@ -163,7 +119,7 @@ DiscountCodeSchema.methods.isValidForBooking = function(bookingData) {
   
   console.log('✅ Son 2 noches');
   
-  // 4. Verificar lugar aplicable
+  // 3. Verificar lugar aplicable
   if (this.applicableTo !== 'all' && roomLugar && roomLugar !== this.applicableTo) {
     console.log('❌ Lugar no aplicable');
     return { 
@@ -172,6 +128,7 @@ DiscountCodeSchema.methods.isValidForBooking = function(bookingData) {
     };
   }
   
+  console.log('✅ Lugar aplicable');
   console.log('✅ Código válido para esta reserva');
   
   return { valid: true };
