@@ -943,7 +943,7 @@ exports.sendDiscountCodeWhatsApp = async (req, res) => {
         
         const bookingLink = `${baseUrl}?${bookingParams.toString()}`;
         
-        const message = `Hola, muy buen día 😊
+const message = `Hola ${guest.guestName}, muy buen día 
 
 Nos da mucho gusto saber que formarás parte de la celebración de ${brideName}.
 
@@ -959,7 +959,7 @@ Hemos preparado un acceso exclusivo para tu hospedaje dentro del recinto:
 
 Para confirmar tu estancia, solo debes ingresar al siguiente enlace (la habitación ya está preseleccionada para ti):
 
-👉 ${bookingLink}
+${bookingLink}
 
 Al aplicar el código indicado, se reflejará automáticamente la tarifa especial correspondiente al evento.
 
