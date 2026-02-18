@@ -7,7 +7,7 @@ const nodemailer = require('nodemailer');
 const fs = require('fs');
 const path = require('path');
 const ASSIGNMENT_ROOMS_SEED = require('../data/assignmentRoomsSeed');
-
+//hola
 // Configurar transporter para emails
 const transporter = nodemailer.createTransport({
   service: 'gmail',
