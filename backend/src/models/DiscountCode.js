@@ -134,33 +134,8 @@ DiscountCodeSchema.methods.isValidForBooking = function(bookingData) {
   
   console.log('Check-in procesado:', checkInDate.toLocaleDateString('es-MX'));
   
-  // Normalizar fechas del código a medianoche para comparación justa
-  const validFromNormalized = new Date(this.validFrom);
-  validFromNormalized.setHours(0, 0, 0, 0);
-  
-  const validUntilNormalized = new Date(this.validUntil);
-  validUntilNormalized.setHours(23, 59, 59, 999);
-  
-  const checkInNormalized = new Date(checkInDate);
-  checkInNormalized.setHours(12, 0, 0, 0);
-  
-  if (checkInNormalized < validFromNormalized) {
-    console.log('❌ Check-in antes de la fecha de inicio del código');
-    return { 
-      valid: false, 
-      reason: `Código válido desde ${this.validFrom.toLocaleDateString('es-MX')}. Tu check-in es ${checkInDate.toLocaleDateString('es-MX')}.` 
-    };
-  }
-  
-  if (checkInNormalized > validUntilNormalized) {
-    console.log('❌ Check-in después de la fecha de fin del código');
-    return { 
-      valid: false, 
-      reason: `Código válido hasta ${this.validUntil.toLocaleDateString('es-MX')}. Tu check-in es ${checkInDate.toLocaleDateString('es-MX')}.` 
-    };
-  }
-  
-  console.log('✅ Check-in dentro del rango válido');
+  // 🔥 QUITADO: Validación de fechas eliminada para todos los códigos
+  console.log('✅ Saltando validación de fechas (deshabilitada para todos los códigos)');
   
   // 3. Verificar que sea para 2 noches (bodas)
   if (nights !== 2) {
