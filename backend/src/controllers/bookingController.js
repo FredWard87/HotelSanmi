@@ -20,27 +20,28 @@ const generateBookingId = () => {
 };
 
 // 🔥 CORREGIDO: Formatear fecha SIN conversión de zona horaria
-// Mantener la fecha exacta como viene (YYYY-MM-DD a las 00:00:00)
+// Mantener la fecha exacta como viene (YYYY-MM-DD a las 00:00:00 hora local)
 const formatDateWithTimezone = (value) => {
   if (!value) return null;
   
-  // Si es string en formato YYYY-MM-DD, crear fecha en UTC a medianoche
+  // Si es string en formato YYYY-MM-DD, crear fecha en hora LOCAL (no UTC)
   if (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}$/)) {
     const [year, month, day] = value.split('-').map(Number);
-    return new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+    // Crear fecha en hora local a medianoche
+    return new Date(year, month - 1, day, 0, 0, 0, 0);
   }
   
   // Si es Date o string con hora, extraer solo la parte de fecha
   const d = new Date(value);
   if (isNaN(d)) return null;
   
-  // Crear nueva fecha en UTC usando los componentes de fecha local
-  return new Date(Date.UTC(
+  // Crear nueva fecha en hora local usando los componentes
+  return new Date(
     d.getFullYear(),
     d.getMonth(),
     d.getDate(),
     0, 0, 0, 0
-  ));
+  );
 };
 
 // Sanitizar valores undefined/null/string "undefined"
@@ -758,11 +759,16 @@ exports.createBooking = async (req, res, next) => {
           });
         }
 
-        finalTotal = discountCodeDoc.finalPrice;
+        // 🔥 NUEVO: Calcular precio usando el método que considera chargeFullPrice
+        const pricePerNight = room.price || 0;
+        finalTotal = discountCodeDoc.calculateFinalPrice(originalTotal, Number(nights), pricePerNight);
         discountAmount = originalTotal - finalTotal;
 
         console.log('💰 Descuento aplicado (precio fijo):');
         console.log('  - Precio original (con impuestos):', originalTotal);
+        console.log('  - Precio por noche:', pricePerNight);
+        console.log('  - Noches:', nights);
+        console.log('  - Cobrar precio completo:', discountCodeDoc.chargeFullPrice || false);
         console.log('  - Precio final (código):', finalTotal);
         console.log('  - Descuento total:', discountAmount);
         
@@ -1048,9 +1054,11 @@ exports.updateBooking = async (req, res, next) => {
           });
 
           if (validation.valid) {
-            // Usar calculateFinalPrice para obtener el precio fijo (total sin impuestos)
-            const finalPrice = discountCodeDoc.calculateFinalPrice(newSubtotal);
-            discountAmount = discountCodeDoc.calculateDiscountAmount(newSubtotal);
+            // 🔥 NUEVO: Calcular precio usando el método que considera chargeFullPrice
+            const roomForPrice = await Room.findById(booking.roomId);
+            const pricePerNight = roomForPrice?.price || 0;
+            const finalPrice = discountCodeDoc.calculateFinalPrice(newSubtotal, newNights, pricePerNight);
+            discountAmount = discountCodeDoc.calculateDiscountAmount(newSubtotal, newNights, pricePerNight);
             newSubtotal = finalPrice; // El precio fijo ya es el total
             
             // 🎯 Para códigos de descuento de bodas (finalPrice), no hay impuestos
