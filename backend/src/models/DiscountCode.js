@@ -186,9 +186,16 @@ DiscountCodeSchema.methods.isValidForBooking = function(bookingData) {
 
 // 🆕 SIMPLIFICADO: Calcular descuento (precio final fijo)
 DiscountCodeSchema.methods.calculateFinalPrice = function(originalTotal, nights = 2, pricePerNight = 0) {
+  console.log('🔍 DEBUG calculateFinalPrice:');
+  console.log('  - this.chargeFullPrice:', this.chargeFullPrice, '(type:', typeof this.chargeFullPrice, ')');
+  console.log('  - this.finalPrice:', this.finalPrice);
+  console.log('  - pricePerNight:', pricePerNight);
+  console.log('  - nights:', nights);
+  
   // Si chargeFullPrice es true, cobrar todas las noches
   // Si es false (default), solo cobrar la primera noche (2 noches por precio de 1)
-  if (this.chargeFullPrice) {
+  if (this.chargeFullPrice === true) {
+    console.log('  → Cobrando precio completo:', this.finalPrice);
     // Cobrar el precio fijo por todas las noches
     return this.finalPrice;
   }
@@ -197,6 +204,7 @@ DiscountCodeSchema.methods.calculateFinalPrice = function(originalTotal, nights 
   // El finalPrice ya representa el precio total para 2 noches
   // Pero si el usuario reserva 2 noches, solo cobramos 1 noche
   const firstNightPrice = pricePerNight > 0 ? pricePerNight : (this.finalPrice / nights);
+  console.log('  → Cobrando solo primera noche:', firstNightPrice);
   return firstNightPrice;
 };
 
