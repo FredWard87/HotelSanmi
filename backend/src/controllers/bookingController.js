@@ -765,11 +765,18 @@ exports.createBooking = async (req, res, next) => {
         console.log('  - Precio original (con impuestos):', originalTotal);
         console.log('  - Precio final (código):', finalTotal);
         console.log('  - Descuento total:', discountAmount);
+        
+        // 🎯 El precio fijo de códigos de descuento de bodas es el TOTAL (sin impuestos adicionales)
+        // El precio final ya incluye todo - no se deben agregar IVA ni impuesto municipal
+        finalSubtotal = finalTotal;
+        finalTax = 0;
+        finalMunicipalTax = 0;
+      } else {
+        // Sin código de descuento - calcular impuestos normalmente
+        finalTax = finalTotal * (16 / 100);
+        finalMunicipalTax = finalTotal * (4 / 100);
+        finalSubtotal = finalTotal - finalTax - finalMunicipalTax;
       }
-
-      finalTax = finalTotal * (16 / 120);
-      finalMunicipalTax = finalTotal * (4 / 120);
-      finalSubtotal = finalTotal - finalTax - finalMunicipalTax;
     }
 
     console.log('📊 Cálculo final:');
@@ -1041,33 +1048,51 @@ exports.updateBooking = async (req, res, next) => {
           });
 
           if (validation.valid) {
-            discountAmount = discountCodeDoc.calculateDiscount(newSubtotal);
-            newSubtotal = newSubtotal - discountAmount;
+            // Usar calculateFinalPrice para obtener el precio fijo (total sin impuestos)
+            const finalPrice = discountCodeDoc.calculateFinalPrice(newSubtotal);
+            discountAmount = discountCodeDoc.calculateDiscountAmount(newSubtotal);
+            newSubtotal = finalPrice; // El precio fijo ya es el total
+            
+            // 🎯 Para códigos de descuento de bodas (finalPrice), no hay impuestos
+            booking.subtotalBeforeDiscount = booking.pricePerNight * newNights;
+            booking.discountAmount = discountAmount;
+            booking.subtotal = newSubtotal;
+            booking.tax = 0;
+            booking.municipalTax = 0;
+            booking.totalPrice = newSubtotal;
+            
+            if (newNights === 1) {
+              booking.initialPayment = newSubtotal;
+              booking.secondNightPayment = 0;
+            } else {
+              booking.initialPayment = newSubtotal * 0.5;
+              booking.secondNightPayment = newSubtotal * 0.5;
+            }
           } else {
             booking.discountCode = null;
             booking.discountCodeId = null;
             booking.discountAmount = 0;
+            
+            // Si el código no es válido, calcular normalmente con impuestos
+            const newTax = newSubtotal * 0.16;
+            const newMunicipalTax = newSubtotal * 0.04;
+            const newTotalPrice = newSubtotal + newTax + newMunicipalTax;
+            
+            booking.subtotalBeforeDiscount = booking.pricePerNight * newNights;
+            booking.subtotal = newSubtotal;
+            booking.tax = newTax;
+            booking.municipalTax = newMunicipalTax;
+            booking.totalPrice = newTotalPrice;
+            
+            if (newNights === 1) {
+              booking.initialPayment = newTotalPrice;
+              booking.secondNightPayment = 0;
+            } else {
+              booking.initialPayment = newTotalPrice * 0.5;
+              booking.secondNightPayment = newTotalPrice * 0.5;
+            }
           }
         }
-      }
-
-      const newTax = newSubtotal * 0.16;
-      const newMunicipalTax = newSubtotal * 0.04;
-      const newTotalPrice = newSubtotal + newTax + newMunicipalTax;
-
-      booking.subtotalBeforeDiscount = booking.pricePerNight * newNights;
-      booking.discountAmount = discountAmount;
-      booking.subtotal = newSubtotal;
-      booking.tax = newTax;
-      booking.municipalTax = newMunicipalTax;
-      booking.totalPrice = newTotalPrice;
-
-      if (newNights === 1) {
-        booking.initialPayment = newTotalPrice;
-        booking.secondNightPayment = 0;
-      } else {
-        booking.initialPayment = newTotalPrice * 0.5;
-        booking.secondNightPayment = newTotalPrice * 0.5;
       }
     }
 
