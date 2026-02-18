@@ -241,12 +241,13 @@ exports.validateDiscountCode = async (req, res, next) => {
         _id: discountCode._id,
         code: discountCode.code,
         description: discountCode.description,
-        finalPrice: discountCode.finalPrice
+        finalPrice: finalPrice, // 🔥 CORREGIDO: Usar el precio calculado, no el de la DB
+        chargeFullPrice: discountCode.chargeFullPrice || false
       },
       discountAmount,
       originalTotal: Number(totalPrice),
       finalPrice,
-      message: `Precio especial para bodas: $${finalPrice.toFixed(2)} MXN (2 noches)`
+      message: `Precio especial para bodas: ${finalPrice.toFixed(2)} MXN (2 noches)`
     });
   } catch (error) {
     console.error('Error validando código:', error);
