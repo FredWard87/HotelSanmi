@@ -164,7 +164,7 @@ exports.getDiscountCode = async (req, res, next) => {
 // 🔥 CORREGIDO: Validar código para una reserva - ahora pasa checkIn
 exports.validateDiscountCode = async (req, res, next) => {
   try {
-    const { code, checkIn, checkOut, nights, totalPrice, roomId } = req.body;
+    const { code, checkIn, checkOut, nights, totalPrice, roomId, pricePerNight } = req.body;
 
     console.log('=== VALIDANDO CÓDIGO DE DESCUENTO ===');
     console.log('Código:', code);
@@ -224,8 +224,11 @@ exports.validateDiscountCode = async (req, res, next) => {
     }
 
     // Calcular precio final y descuento
-    const finalPrice = discountCode.calculateFinalPrice(Number(totalPrice));
-    const discountAmount = discountCode.calculateDiscountAmount(Number(totalPrice));
+    // Usar pricePerNight del request si está disponible, sino usar el de la habitación
+    const roomPrice = room.price || 0;
+    const priceToUse = pricePerNight || roomPrice;
+    const finalPrice = discountCode.calculateFinalPrice(Number(totalPrice), Number(nights), priceToUse);
+    const discountAmount = discountCode.calculateDiscountAmount(Number(totalPrice), Number(nights), priceToUse);
 
     console.log('💰 Resultado:');
     console.log('  - Precio original:', totalPrice);
