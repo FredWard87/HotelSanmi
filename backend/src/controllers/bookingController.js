@@ -424,7 +424,7 @@ exports.getDiscountCodeUsageStats = async (req, res, next) => {
 // Verificar disponibilidad de una habitación
 exports.checkAvailability = async (req, res, next) => {
   try {
-    const { roomId, checkIn, checkOut } = req.query;
+    const { roomId, checkIn, checkOut, discountCode } = req.query;
 
     if (!roomId || !checkIn || !checkOut) {
       return res.status(400).json({
@@ -441,7 +441,20 @@ exports.checkAvailability = async (req, res, next) => {
       });
     }
 
-    const availability = await checkRoomAvailabilityInternal(roomId, start, end);
+    // 🔥 NUEVO: Si hay código de descuento válido, ignorar bloqueos
+    let ignoreBlocksForAvailability = false;
+    if (discountCode && discountCode.trim()) {
+      const discountCodeCheck = await DiscountCode.findOne({
+        code: discountCode.toUpperCase().trim(),
+        active: true
+      });
+      if (discountCodeCheck) {
+        ignoreBlocksForAvailability = true;
+        console.log('🎟️ Código de descuento válido en verificación de disponibilidad - ignorando bloqueos');
+      }
+    }
+
+    const availability = await checkRoomAvailabilityInternal(roomId, start, end, { ignoreBlocks: ignoreBlocksForAvailability });
 
     if (availability.error) {
       return res.status(404).json({ message: availability.error });
@@ -639,17 +652,34 @@ exports.createBooking = async (req, res, next) => {
 
     // DETERMINAR SI SE DEBEN IGNORAR BLOQUEOS
     const isAdmin = req.user && req.user.role === 'admin';
-    const shouldIgnoreBlocks = isAdmin;
+    
+    // 🔥 NUEVO: Pre-validar código de descuento para saber si ignorar bloqueos
+    let hasValidDiscountCode = false;
+    if (discountCode && discountCode.trim()) {
+      const preCheckDiscountCode = await DiscountCode.findOne({
+        code: discountCode.toUpperCase().trim(),
+        active: true
+      });
+      if (preCheckDiscountCode) {
+        hasValidDiscountCode = true;
+        console.log('🎟️ Código de descuento válido detectado - se ignorarán bloqueos de habitación');
+      }
+    }
+    
+    const shouldIgnoreBlocks = isAdmin || hasValidDiscountCode;
 
-    if (shouldIgnoreBlocks) {
+    if (isAdmin) {
       console.log('🔓 ADMIN DETECTADO - IGNORANDO BLOQUEOS DE HABITACIÓN');
+    }
+    if (hasValidDiscountCode) {
+      console.log('🔓 CÓDIGO DE DESCUENTO VÁLIDO - IGNORANDO BLOQUEOS DE HABITACIÓN');
     }
 
     // Verificar disponibilidad
     const availability = await checkRoomAvailabilityInternal(
-      roomId, 
-      startDate, 
-      endDate, 
+      roomId,
+      startDate,
+      endDate,
       { ignoreBlocks: shouldIgnoreBlocks }
     );
 
