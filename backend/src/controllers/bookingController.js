@@ -1479,6 +1479,7 @@ module.exports = {
   getBookingStats: exports.getBookingStats,
   getDiscountCodeUsageStats: exports.getDiscountCodeUsageStats,
   checkAvailability: exports.checkAvailability,
+  checkRoomAvailability: exports.checkAvailability, // 🔥 Alias para compatibilidad con rutas
   checkMultipleAvailability: exports.checkMultipleAvailability,
   generateCheckin: exports.generateCheckin,
   downloadVoucher: exports.downloadVoucher,
