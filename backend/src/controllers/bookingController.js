@@ -595,13 +595,15 @@ exports.createBooking = async (req, res, next) => {
       paymentIntentId,
       paymentMethodId,
       specialRequests,
-      discountCode
+      discountCode,
+      chargeFullPrice
     } = req.body;
 
     console.log('=== CREANDO RESERVA ===');
     console.log('Check-in recibido:', checkIn);
     console.log('Check-out recibido:', checkOut);
     console.log('Código de descuento recibido:', discountCode);
+    console.log('Charge full price:', chargeFullPrice);
     console.log('Email del huésped:', guestInfo?.email);
     console.log('Usuario que crea la reserva:', req.user?.email, '| Rol:', req.user?.role);
 
@@ -793,7 +795,7 @@ exports.createBooking = async (req, res, next) => {
 
     // Lógica de pagos
     let initialPayment, secondNightPayment;
-    if (Number(nights) === 1) {
+    if (Number(nights) === 1 || chargeFullPrice === true) {
       initialPayment = finalTotal;
       secondNightPayment = 0;
     } else {
@@ -1069,7 +1071,9 @@ exports.updateBooking = async (req, res, next) => {
             booking.municipalTax = 0;
             booking.totalPrice = newSubtotal;
             
-            if (newNights === 1) {
+            // 🔥 NUEVO: Si es código con chargeFullPrice, pagar 100% ahora
+            const isFullPriceCode = discountCodeDoc?.chargeFullPrice === true;
+            if (newNights === 1 || isFullPriceCode) {
               booking.initialPayment = newSubtotal;
               booking.secondNightPayment = 0;
             } else {
