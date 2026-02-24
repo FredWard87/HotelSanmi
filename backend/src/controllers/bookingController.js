@@ -605,6 +605,7 @@ exports.createBooking = async (req, res, next) => {
       tax,
       municipalTax,
       totalPrice,
+      advancePayment,
       paymentIntentId,
       paymentMethodId,
       specialRequests,
@@ -825,10 +826,24 @@ exports.createBooking = async (req, res, next) => {
 
     // Lógica de pagos
     let initialPayment, secondNightPayment;
-    if (Number(nights) === 1 || chargeFullPrice === true) {
-      initialPayment = finalTotal;
+    
+    // Si se proporciona advancePayment (del admin), usarlo; si no, calcular normalmente
+    const adminAdvancePayment = advancePayment && advancePayment > 0 ? advancePayment : null;
+    
+    if (Number(nights) === 1 || chargeFullPrice === true || (adminAdvancePayment && adminAdvancePayment >= finalTotal)) {
+      // Pago completo (incluye caso donde el anticipo del admin cubre el total)
+      initialPayment = adminAdvancePayment ? Math.min(adminAdvancePayment, finalTotal) : finalTotal;
       secondNightPayment = 0;
+      if (adminAdvancePayment && adminAdvancePayment >= finalTotal) {
+        console.log('💰 PAGO COMPLETO detectado por anticipo del admin:', adminAdvancePayment, '>=', finalTotal);
+      }
+    } else if (adminAdvancePayment && adminAdvancePayment > 0) {
+      // Anticipo parcial del admin
+      initialPayment = adminAdvancePayment;
+      secondNightPayment = Math.max(0, finalTotal - adminAdvancePayment);
+      console.log('💰 ANTICIPO PARCIAL del admin:', adminAdvancePayment, '| Resta:', secondNightPayment);
     } else {
+      // Cálculo normal: 50% initial, 50% second night
       initialPayment = finalTotal * 0.5;
       secondNightPayment = finalTotal * 0.5;
     }
@@ -863,8 +878,16 @@ exports.createBooking = async (req, res, next) => {
         });
       }
     } else {
-      console.log('⚠️ Creando reserva sin Payment Intent - estado: pending');
-      paymentStatus = 'pending';
+      // No hay Payment Intent de Stripe
+      // Verificar si es una reserva del admin con anticipo
+      if (adminAdvancePayment && adminAdvancePayment > 0) {
+        // Admin registró un anticipo
+        paymentStatus = adminAdvancePayment >= finalTotal ? 'completed' : 'partial';
+        console.log('💰 Reserva admin con anticipo - paymentStatus:', paymentStatus);
+      } else {
+        console.log('⚠️ Creando reserva sin Payment Intent - estado: pending');
+        paymentStatus = 'pending';
+      }
     }
 
     // Generar ID de reserva único
