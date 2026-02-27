@@ -1637,6 +1637,203 @@ async function generateAndSendVoucher(booking) {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════
+// EMAIL DE RECORDATORIO DE SEGUNDO PAGO (30 días antes)
+// ═══════════════════════════════════════════════════════════════
+
+async function sendSecondPaymentReminderEmail(booking, paymentLink) {
+  try {
+    console.log(`\n📧 ===== ENVIANDO EMAIL DE SEGUNDO PAGO =====`);
+    console.log(`📧 Para: ${booking.guestInfo.email}`);
+    console.log(`📧 Booking ID: ${booking.bookingId}`);
+    console.log(`📧 Link de pago: ${paymentLink}`);
+
+    const attachments = [];
+    
+    // Agregar logo si existe
+    if (logoBuffer) {
+      attachments.push({
+        filename: 'logo.png',
+        content: logoBuffer,
+        contentType: 'image/png',
+        cid: LOGO_CID
+      });
+    }
+
+    // Formatear fechas
+    const checkInDate = new Date(booking.checkIn).toLocaleDateString('es-MX', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    
+    const checkOutDate = new Date(booking.checkOut).toLocaleDateString('es-MX', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+
+    const guestName = `${booking.guestInfo.firstName} ${booking.guestInfo.lastName}`.trim();
+    const amountDue = booking.secondNightPayment || (booking.totalPrice - booking.initialPayment);
+
+    const mailOptions = {
+      from: `"Hotel La Capilla" <${process.env.EMAIL_FROM || 'lacapillasl@gmail.com'}>`,
+      to: booking.guestInfo.email,
+      subject: `Recordatorio: Pago restante de tu reservación - ${booking.bookingId}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Recordatorio de Pago - Hotel La Capilla</title>
+        </head>
+        <body style="margin: 0; padding: 0; font-family: Georgia, 'Times New Roman', serif; background-color: #ffffff;">
+          
+          <!-- Header con logo -->
+          <div style="background-color: #ffffff; padding: 30px 20px; text-align: center; border-bottom: 3px solid #d4af37;">
+            ${logoBuffer ? 
+              `<img src="cid:${LOGO_CID}" alt="Hotel La Capilla" style="max-width: 200px; height: auto; display: block; margin: 0 auto;">` : 
+              `<h1 style="color: #1a1a1a; margin: 0; font-size: 24px; font-family: Georgia, serif;">HOTEL LA CAPILLA</h1>`
+            }
+          </div>
+          
+          <!-- Contenido principal -->
+          <div style="max-width: 600px; margin: 0 auto; background: #ffffff; padding: 40px 50px;">
+            
+            <!-- Saludo -->
+            <p style="font-size: 16px; color: #1a1a1a; margin-bottom: 20px; font-family: Georgia, serif;">
+              Estimado/a ${guestName || 'Huésped'},
+            </p>
+            
+            <!-- Título -->
+            <h2 style="color: #1a1a1a; font-size: 20px; margin: 30px 0 20px 0; font-family: Georgia, serif; text-align: center;">
+              Recordatorio de Pago Pendiente
+            </h2>
+            
+            <!-- Información de la reserva -->
+            <div style="background-color: #f8f8f8; border-left: 4px solid #d4af37; padding: 20px; margin: 25px 0;">
+              <p style="margin: 0 0 10px 0; font-size: 14px; color: #1a1a1a;">
+                <strong>Reserva:</strong> ${booking.bookingId}
+              </p>
+              <p style="margin: 0 0 10px 0; font-size: 14px; color: #1a1a1a;">
+                <strong>Habitación:</strong> ${booking.roomName}
+              </p>
+              <p style="margin: 0 0 10px 0; font-size: 14px; color: #1a1a1a;">
+                <strong>Check-in:</strong> ${checkInDate}
+              </p>
+              <p style="margin: 0 0 10px 0; font-size: 14px; color: #1a1a1a;">
+                <strong>Check-out:</strong> ${checkOutDate}
+              </p>
+              <p style="margin: 0; font-size: 14px; color: #1a1a1a;">
+                <strong>Noches:</strong> ${booking.nights}
+              </p>
+            </div>
+            
+            <!-- Información del pago -->
+            <div style="background-color: #fff8e1; border: 1px solid #d4af37; padding: 20px; margin: 25px 0; text-align: center;">
+              <p style="margin: 0 0 10px 0; font-size: 14px; color: #666666;">
+                Monto pendiente por pagar:
+              </p>
+              <p style="margin: 0; font-size: 32px; color: #1a1a1a; font-weight: bold; font-family: Georgia, serif;">
+                ${amountDue.toFixed(2)} MXN
+              </p>
+              <p style="margin: 10px 0 0 0; font-size: 12px; color: #666666;">
+                (Primera noche ya pagada: ${(booking.initialPayment || 0).toFixed(2)} MXN)
+              </p>
+            </div>
+            
+            <!-- Mensaje importante -->
+            <p style="font-size: 14px; color: #1a1a1a; line-height: 1.6; margin: 30px 0;">
+              Te recordamos que el pago del monto restante debe realizarse <strong>30 días antes</strong> de tu fecha de llegada para confirmar tu reservación.
+            </p>
+            
+            <!-- Botón de pago -->
+            <div style="text-align: center; margin: 35px 0;">
+              <a href="${paymentLink}" style="display: inline-block; background-color: #1a1a1a; color: #ffffff; padding: 16px 40px; text-decoration: none; font-size: 14px; font-weight: bold; border-radius: 4px;">
+                PAGAR AHORA
+              </a>
+            </div>
+            
+            <!-- Link alternativo -->
+            <div style="background-color: #f5f5f5; padding: 15px; margin: 25px 0;">
+              <p style="margin: 0 0 8px 0; font-size: 12px; color: #666666;">
+                O copie y pegue este enlace en su navegador:
+              </p>
+              <p style="margin: 0; font-size: 12px; color: #1a1a1a; word-break: break-all; font-family: monospace;">
+                ${paymentLink}
+              </p>
+            </div>
+            
+            <!-- Información de contacto -->
+            <div style="margin-top: 35px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
+              <p style="margin: 0 0 8px 0; font-size: 14px; color: #1a1a1a; font-weight: bold; font-family: Georgia, serif;">
+                ¿Necesitas ayuda?
+              </p>
+              <p style="margin: 0; font-size: 13px; color: #666666; line-height: 1.6;">
+                Contáctanos directamente para cualquier duda o cambio en tu reservación.
+              </p>
+              <p style="margin: 15px 0 0 0; font-size: 13px; color: #666666;">
+                📞 +52 4777 347474 | ✉️ lacapillasl@gmail.com
+              </p>
+            </div>
+            
+          </div>
+          
+          <!-- Footer -->
+          <div style="background-color: #f5f5f5; padding: 30px 20px; text-align: center; border-top: 1px solid #cccccc;">
+            <p style="margin: 0 0 8px 0; font-size: 14px; color: #1a1a1a; font-weight: bold; font-family: Georgia, serif;">
+              HOTEL LA CAPILLA
+            </p>
+            <p style="margin: 0; font-size: 12px; color: #666666;">
+              lacapillasl@gmail.com | +52 4777 347474
+            </p>
+            <p style="margin: 15px 0 0 0; font-size: 11px; color: #999999;">
+              © ${new Date().getFullYear()} Hotel La Capilla - Todos los derechos reservados
+            </p>
+          </div>
+          
+        </body>
+        </html>
+      `,
+      text: `HOTEL LA CAPILLA - Recordatorio de Pago
+
+Estimado/a ${guestName || 'Huésped'},
+
+Te contactamos respecto a tu reservación ${booking.bookingId}.
+
+DETALLES DE LA RESERVA:
+- Habitación: ${booking.roomName}
+- Check-in: ${checkInDate}
+- Check-out: ${checkOutDate}
+- Noches: ${booking.nights}
+
+MONTO PENDIENTE: ${amountDue.toFixed(2)} MXN
+(Primera noche ya pagada: ${(booking.initialPayment || 0).toFixed(2)} MXN)
+
+Por favor, completa tu pago 30 días antes de tu llegada:
+${paymentLink}
+
+¿Necesitas ayuda?
+Contáctanos: +52 4777 347474 | lacapillasl@gmail.com
+
+--
+HOTEL LA CAPILLA
+© ${new Date().getFullYear()}`,
+      attachments: attachments
+    };
+
+    const result = await transporter.sendMail(mailOptions);
+    console.log(`✅ EMAIL DE SEGUNDO PAGO ENVIADO a ${booking.guestInfo.email}:`, result.messageId);
+    return { success: true, messageId: result.messageId };
+  } catch (error) {
+    console.error(`❌ Error enviando email de segundo pago:`, error.message);
+    throw error;
+  }
+}
+
 module.exports = {
   generateVoucherPDF,
   sendVoucherEmail,
@@ -1644,5 +1841,6 @@ module.exports = {
   generateFullPaymentVoucherPDF,
   generatePartialPaymentVoucherPDF,
   sendFullPaymentEmail,
-  sendPartialPaymentEmail
+  sendPartialPaymentEmail,
+  sendSecondPaymentReminderEmail
 };
