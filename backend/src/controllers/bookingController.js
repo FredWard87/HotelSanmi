@@ -19,29 +19,19 @@ const generateBookingId = () => {
   return `LC-${year}-${timestamp}${random.substr(0, 3)}`;
 };
 
-// 🔥 CORREGIDO: Formatear fecha SIN conversión de zona horaria
-// Mantener la fecha exacta como viene (YYYY-MM-DD a las 00:00:00 hora local)
+// Formatear fecha SIN conversión de zona horaria
 const formatDateWithTimezone = (value) => {
   if (!value) return null;
-  
-  // Si es string en formato YYYY-MM-DD, crear fecha en hora LOCAL (no UTC)
+
   if (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}$/)) {
     const [year, month, day] = value.split('-').map(Number);
-    // Crear fecha en hora local a medianoche
     return new Date(year, month - 1, day, 0, 0, 0, 0);
   }
-  
-  // Si es Date o string con hora, extraer solo la parte de fecha
+
   const d = new Date(value);
   if (isNaN(d)) return null;
-  
-  // Crear nueva fecha en hora local usando los componentes
-  return new Date(
-    d.getFullYear(),
-    d.getMonth(),
-    d.getDate(),
-    0, 0, 0, 0
-  );
+
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
 };
 
 // Sanitizar valores undefined/null/string "undefined"
@@ -82,7 +72,7 @@ function formatMXN(amount) {
 
 async function checkRoomAvailabilityInternal(roomId, startDate, endDate, options = {}) {
   const { ignoreBlocks = false } = options;
-  
+
   const room = await Room.findById(roomId);
   if (!room) {
     return {
@@ -119,9 +109,8 @@ async function checkRoomAvailabilityInternal(roomId, startDate, endDate, options
         { scope: 'casaHotel', affectedRooms: room._id, active: true },
         { scope: 'boutique', affectedRooms: room._id, active: true }
       ],
-      $or: [
-        { startDate: { $lt: end }, endDate: { $gt: start } }
-      ]
+      startDate: { $lt: end },
+      endDate: { $gt: start }
     });
 
     overlappingBlocks.forEach(block => {
@@ -183,13 +172,204 @@ async function sendBookingConfirmationEmail(booking) {
     if (error.command) console.error(`❌ Command:`, error.command);
     if (error.response) console.error(`❌ Response:`, error.response);
     console.error(`❌ ===== FIN ERROR EMAIL =====\n`);
-    
-    return { 
-      success: false, 
+
+    return {
+      success: false,
       error: error.message,
       code: error.code,
       command: error.command
     };
+  }
+}
+
+// ─────────────────────────────────────────────
+// FUNCIÓN INTERNA: Enviar email de cancelación
+// ─────────────────────────────────────────────
+
+async function sendCancellationEmail(booking, refundResult = null) {
+  try {
+    console.log(`\n📧 ===== ENVIANDO EMAIL DE CANCELACIÓN =====`);
+    console.log(`📧 Para: ${booking.guestInfo.email}`);
+    console.log(`📧 Booking ID: ${booking.bookingId}`);
+
+    const nodemailer = require('nodemailer');
+    const fs = require('fs');
+    const path = require('path');
+
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false,
+      auth: {
+        user: process.env.EMAIL_USERNAME || 'audit3674@gmail.com',
+        pass: process.env.EMAIL_PASSWORD || 'xarv ywnv gdkv jofm',
+      },
+      tls: {
+        rejectUnauthorized: false,
+        minVersion: 'TLSv1.2'
+      }
+    });
+
+    let logoBuffer = null;
+    try {
+      const logoPath = path.join(__dirname, '../assets/logo.png');
+      if (fs.existsSync(logoPath)) {
+        logoBuffer = fs.readFileSync(logoPath);
+      }
+    } catch (logoError) {
+      console.warn('⚠️ Logo no encontrado para email de cancelación');
+    }
+
+    const attachments = [];
+    if (logoBuffer) {
+      attachments.push({
+        filename: 'logo.png',
+        content: logoBuffer,
+        contentType: 'image/png',
+        cid: 'la-capilla-logo@cancelacion'
+      });
+    }
+
+    const checkInDate = new Date(booking.checkIn).toLocaleDateString('es-MX', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+
+    const checkOutDate = new Date(booking.checkOut).toLocaleDateString('es-MX', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+
+    const guestName = booking.guestInfo.firstName + ' ' + booking.guestInfo.lastName;
+    const refundAmount = refundResult ? (refundResult.amount / 100).toFixed(2) : '0.00';
+    const refundStatus = refundResult ? refundResult.status : 'no procesado';
+
+    const mailOptions = {
+      from: `"Hotel La Capilla" <${process.env.EMAIL_FROM || 'lacapillasl@gmail.com'}>`,
+      to: booking.guestInfo.email,
+      subject: `Confirmación de Cancelación - Reserva ${booking.bookingId}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Cancelación de Reserva - Hotel La Capilla</title>
+        </head>
+        <body style="margin: 0; padding: 0; font-family: Georgia, 'Times New Roman', serif; background-color: #f5f5f5;">
+
+          <div style="background-color: #ffffff; padding: 30px 20px; text-align: center; border-bottom: 3px solid #d4af37;">
+            ${logoBuffer
+              ? `<img src="cid:la-capilla-logo@cancelacion" alt="Hotel La Capilla" style="max-width: 200px; height: auto; display: block; margin: 0 auto;">`
+              : `<h1 style="color: #1a1a1a; margin: 0; font-size: 24px; font-family: Georgia, serif;">HOTEL LA CAPILLA</h1>`
+            }
+          </div>
+
+          <div style="max-width: 600px; margin: 0 auto; background: #ffffff; padding: 40px 50px;">
+
+            <p style="font-size: 16px; color: #1a1a1a; margin-bottom: 20px; font-family: Georgia, serif;">
+              Estimado/a <strong>${guestName || 'Huésped'}</strong>,
+            </p>
+
+            <p style="font-size: 14px; color: #1a1a1a; line-height: 1.8; margin: 25px 0; font-family: Georgia, serif;">
+              Reciba un cordial saludo de parte de La Capilla Hotel.
+            </p>
+
+            <p style="font-size: 14px; color: #1a1a1a; line-height: 1.8; margin: 25px 0; font-family: Georgia, serif;">
+              Nos comunicamos con usted en relación con su reciente reserva realizada para las fechas <strong>${checkInDate} al ${checkOutDate}</strong>. Lamentablemente, debido a un error en nuestro sistema de verificación de disponibilidad, su reservación fue confirmada cuando ya no contábamos con habitaciones disponibles (sold out) para esas fechas.
+            </p>
+
+            <p style="font-size: 14px; color: #1a1a1a; line-height: 1.8; margin: 25px 0; font-family: Georgia, serif;">
+              Le ofrecemos una sincera disculpa por este inconveniente. Entendemos que esta situación puede afectar su planificación y realmente lamentamos lo sucedido.
+            </p>
+
+            <div style="background-color: #e8f5e9; border: 1px solid #2e7d32; padding: 20px; margin: 25px 0; text-align: center;">
+              <p style="margin: 0 0 10px 0; font-size: 14px; color: #2e7d32; font-weight: bold;">
+                Reembolso Procesado
+              </p>
+              <p style="margin: 0 0 10px 0; font-size: 13px; color: #1a1a1a;">
+                Queremos informarle que hemos procedido con el reembolso total del importe pagado a través de Stripe.
+              </p>
+              <p style="margin: 0; font-size: 12px; color: #666666;">
+                Dependiendo de su entidad bancaria, el monto podría verse reflejado en su cuenta en un plazo de 5 a 10 días hábiles.
+              </p>
+            </div>
+
+            <p style="font-size: 14px; color: #1a1a1a; line-height: 1.8; margin: 25px 0; font-family: Georgia, serif;">
+              Si lo desea, estaremos encantados de ayudarle a encontrar disponibilidad en fechas alternativas o asistirle con cualquier otra gestión que necesite.
+            </p>
+
+            <p style="font-size: 14px; color: #1a1a1a; line-height: 1.8; margin: 25px 0; font-family: Georgia, serif;">
+              Agradecemos su comprensión y esperamos poder recibirle en una próxima oportunidad para brindarle la experiencia que merece.
+            </p>
+
+            <p style="font-size: 14px; color: #1a1a1a; line-height: 1.8; margin: 30px 0; font-family: Georgia, serif;">
+              Quedamos atentos a cualquier consulta.
+            </p>
+
+            <div style="margin-top: 35px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
+              <p style="margin: 0 0 5px 0; font-size: 14px; color: #1a1a1a; font-weight: bold; font-family: Georgia, serif;">
+                Atentamente,
+              </p>
+              <p style="margin: 0 0 5px 0; font-size: 14px; color: #1a1a1a; font-weight: bold; font-family: Georgia, serif;">
+                Alejandro López Lizárraga
+              </p>
+              <p style="margin: 0 0 5px 0; font-size: 12px; color: #666666; font-family: Georgia, serif;">
+                Dueño del Hotel
+              </p>
+              <p style="margin: 0 0 15px 0; font-size: 14px; color: #d4af37; font-weight: bold; font-family: Georgia, serif;">
+                La Capilla Hotel
+              </p>
+              <p style="margin: 0; font-size: 13px; color: #666666;">
+                📞 +52 4777 347474 | ✉️ lacapillasl@gmail.com
+              </p>
+            </div>
+
+          </div>
+
+          <div style="background-color: #f5f5f5; padding: 30px 20px; text-align: center; border-top: 1px solid #cccccc;">
+            <p style="margin: 0 0 8px 0; font-size: 14px; color: #1a1a1a; font-weight: bold; font-family: Georgia, serif;">
+              HOTEL LA CAPILLA
+            </p>
+            <p style="margin: 0 0 8px 0; font-size: 12px; color: #666666;">
+              lacapillasl@gmail.com | +52 4777 347474
+            </p>
+            <p style="margin: 15px 0 0 0; font-size: 11px; color: #999999;">
+              © ${new Date().getFullYear()} Hotel La Capilla - Todos los derechos reservados
+            </p>
+          </div>
+
+        </body>
+        </html>
+      `,
+      text: 'HOTEL LA CAPILLA - Confirmacion de Cancelacion\n\n' +
+        'Estimado/a ' + (guestName || 'Huesped') + ',\n\n' +
+        'Reciba un cordial saludo de parte de La Capilla Hotel.\n\n' +
+        'Nos comunicamos con usted en relacion con su reciente reserva realizada para las fechas ' + checkInDate + ' al ' + checkOutDate + '. Lamentablemente, debido a un error en nuestro sistema de verificacion de disponibilidad, su reservacion fue confirmada cuando ya no contabamos con habitaciones disponibles (sold out) para esas fechas.\n\n' +
+        'Le ofrecemos una sincera disculpa por este inconvenience. Entendemos que esta situacion puede afectar su planificacion y realmente lamentamos lo sucedido.\n\n' +
+        ' queremos informarle que hemos procedido con el reembolso total del importe pagado a traves de Stripe. Dependiendo de su entidad bancaria, el monto podria verse reflejado en su cuenta en un plazo de 5 a 10 dias habiles.\n\n' +
+        'Si lo desea, estaremos encantados de ayudarle a encontrar disponibilidad en fechas alternativas o asistirle con cualquier otra gestion que necesite.\n\n' +
+        'Agradecemos su compresion y esperamos poder recibirle en una proxima oportunidad para brindarle la experiencia que merece.\n\n' +
+        'Quedamos atentos a cualquier consulta.\n\n' +
+        'Atentamente,\n\n' +
+        'Alejandro Lopez Lizarraga\n' +
+        'Dueno del Hotel\n' +
+        'La Capilla Hotel\n\n' +
+        '+52 4777 347474\n' +
+        'lacapillasl@gmail.com',
+      attachments: attachments
+    };
+
+    const result = await transporter.sendMail(mailOptions);
+    console.log(`✅ EMAIL DE CANCELACIÓN ENVIADO a ${booking.guestInfo.email}:`, result.messageId);
+    return { success: true, messageId: result.messageId };
+  } catch (error) {
+    console.error(`❌ Error enviando email de cancelación:`, error.message);
+    throw error;
   }
 }
 
@@ -238,10 +418,7 @@ exports.getBookingStats = async (req, res, next) => {
     if (startDate && endDate) {
       const start = formatDateWithTimezone(startDate);
       const end = formatDateWithTimezone(endDate);
-      filter.createdAt = {
-        $gte: start,
-        $lte: end
-      };
+      filter.createdAt = { $gte: start, $lte: end };
     }
 
     const stats = await Booking.aggregate([
@@ -317,10 +494,7 @@ exports.getDiscountCodeUsageStats = async (req, res, next) => {
     if (startDate && endDate) {
       const start = formatDateWithTimezone(startDate);
       const end = formatDateWithTimezone(endDate);
-      match.createdAt = {
-        $gte: start,
-        $lte: end
-      };
+      match.createdAt = { $gte: start, $lte: end };
     }
 
     const stats = await Booking.aggregate([
@@ -427,21 +601,16 @@ exports.checkAvailability = async (req, res, next) => {
     const { roomId, checkIn, checkOut, discountCode } = req.query;
 
     if (!roomId || !checkIn || !checkOut) {
-      return res.status(400).json({
-        message: 'Se requieren roomId, checkIn y checkOut'
-      });
+      return res.status(400).json({ message: 'Se requieren roomId, checkIn y checkOut' });
     }
 
     const start = formatDateWithTimezone(checkIn);
     const end = formatDateWithTimezone(checkOut);
 
     if (end <= start) {
-      return res.status(400).json({
-        message: 'La fecha de salida debe ser posterior a la fecha de entrada'
-      });
+      return res.status(400).json({ message: 'La fecha de salida debe ser posterior a la fecha de entrada' });
     }
 
-    // 🔥 NUEVO: Si hay código de descuento válido, ignorar bloqueos
     let ignoreBlocksForAvailability = false;
     if (discountCode && discountCode.trim()) {
       const discountCodeCheck = await DiscountCode.findOne({
@@ -494,18 +663,14 @@ exports.checkMultipleAvailability = async (req, res, next) => {
     const { checkIn, checkOut, scope } = req.query;
 
     if (!checkIn || !checkOut) {
-      return res.status(400).json({
-        message: 'Se requieren checkIn y checkOut'
-      });
+      return res.status(400).json({ message: 'Se requieren checkIn y checkOut' });
     }
 
     const start = formatDateWithTimezone(checkIn);
     const end = formatDateWithTimezone(checkOut);
 
     if (end <= start) {
-      return res.status(400).json({
-        message: 'La fecha de salida debe ser posterior a la fecha de entrada'
-      });
+      return res.status(400).json({ message: 'La fecha de salida debe ser posterior a la fecha de entrada' });
     }
 
     let filter = {};
@@ -566,18 +731,14 @@ exports.createPaymentIntent = async (req, res, next) => {
     const { amount, currency = 'mxn' } = req.body;
 
     if (!amount || amount <= 0) {
-      return res.status(400).json({
-        message: 'Se requiere un monto válido'
-      });
+      return res.status(400).json({ message: 'Se requiere un monto válido' });
     }
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100),
       currency: currency.toLowerCase(),
       payment_method_types: ['card'],
-      metadata: {
-        integration_check: 'accept_a_payment'
-      }
+      metadata: { integration_check: 'accept_a_payment' }
     });
 
     res.json({
@@ -590,7 +751,7 @@ exports.createPaymentIntent = async (req, res, next) => {
   }
 };
 
-// Crear reserva - CORREGIDO CON FECHAS Y PRECIO MANUAL
+// Crear reserva
 exports.createBooking = async (req, res, next) => {
   try {
     const {
@@ -621,7 +782,6 @@ exports.createBooking = async (req, res, next) => {
     console.log('Email del huésped:', guestInfo?.email);
     console.log('Usuario que crea la reserva:', req.user?.email, '| Rol:', req.user?.role);
 
-    // Validar datos requeridos
     if (!roomId || !guestInfo || !checkIn || !checkOut || !nights || !pricePerNight) {
       return res.status(400).json({
         message: 'Faltan datos requeridos',
@@ -629,7 +789,6 @@ exports.createBooking = async (req, res, next) => {
       });
     }
 
-    // Validar que el email no esté vacío
     if (!guestInfo.email || guestInfo.email.trim() === '') {
       return res.status(400).json({
         message: 'El email del huésped es requerido',
@@ -637,24 +796,19 @@ exports.createBooking = async (req, res, next) => {
       });
     }
 
-    // 🔥 CORREGIDO: Formatear fechas SIN conversión de zona horaria
     const startDate = formatDateWithTimezone(checkIn);
     const endDate = formatDateWithTimezone(checkOut);
 
-    console.log('Fechas formateadas (UTC):');
+    console.log('Fechas formateadas:');
     console.log('  - Check-in:', startDate);
     console.log('  - Check-out:', endDate);
 
     if (endDate <= startDate) {
-      return res.status(400).json({
-        message: 'La fecha de salida debe ser posterior a la fecha de entrada'
-      });
+      return res.status(400).json({ message: 'La fecha de salida debe ser posterior a la fecha de entrada' });
     }
 
-    // DETERMINAR SI SE DEBEN IGNORAR BLOQUEOS
     const isAdmin = req.user && req.user.role === 'admin';
-    
-    // 🔥 NUEVO: Pre-validar código de descuento para saber si ignorar bloqueos
+
     let hasValidDiscountCode = false;
     if (discountCode && discountCode.trim()) {
       const preCheckDiscountCode = await DiscountCode.findOne({
@@ -666,23 +820,13 @@ exports.createBooking = async (req, res, next) => {
         console.log('🎟️ Código de descuento válido detectado - se ignorarán bloqueos de habitación');
       }
     }
-    
+
     const shouldIgnoreBlocks = isAdmin || hasValidDiscountCode;
 
-    if (isAdmin) {
-      console.log('🔓 ADMIN DETECTADO - IGNORANDO BLOQUEOS DE HABITACIÓN');
-    }
-    if (hasValidDiscountCode) {
-      console.log('🔓 CÓDIGO DE DESCUENTO VÁLIDO - IGNORANDO BLOQUEOS DE HABITACIÓN');
-    }
+    if (isAdmin) console.log('🔓 ADMIN DETECTADO - IGNORANDO BLOQUEOS DE HABITACIÓN');
+    if (hasValidDiscountCode) console.log('🔓 CÓDIGO DE DESCUENTO VÁLIDO - IGNORANDO BLOQUEOS DE HABITACIÓN');
 
-    // Verificar disponibilidad
-    const availability = await checkRoomAvailabilityInternal(
-      roomId,
-      startDate,
-      endDate,
-      { ignoreBlocks: shouldIgnoreBlocks }
-    );
+    const availability = await checkRoomAvailabilityInternal(roomId, startDate, endDate, { ignoreBlocks: shouldIgnoreBlocks });
 
     if (!availability.available) {
       let message = `❌ Lo sentimos, esta habitación no está disponible para las fechas seleccionadas.\n\n`;
@@ -729,7 +873,6 @@ exports.createBooking = async (req, res, next) => {
       console.log(`⚠️ ADMIN OVERRIDE: Se ignoraron ${availability.blockedUnits} unidades bloqueadas`);
     }
 
-    // 🔥 CORREGIDO: Manejo de precio manual vs automático
     let discountAmount = 0;
     let discountCodeDoc = null;
     const originalSubtotal = pricePerNight * nights;
@@ -742,25 +885,19 @@ exports.createBooking = async (req, res, next) => {
     let finalMunicipalTax;
 
     if (totalPrice && typeof totalPrice === 'number' && totalPrice > 0) {
-      // 🆕 PRECIO MANUAL - SIN IMPUESTOS (el precio entered es el total)
+      // PRECIO MANUAL - el precio ingresado es el total, sin impuestos adicionales
       finalTotal = totalPrice;
       isPrecioManual = true;
-      
-      // El precio manual es el TOTAL, sin impuestos
       finalSubtotal = totalPrice;
       finalTax = 0;
       finalMunicipalTax = 0;
-      
+
       console.log('💰 Usando PRECIO MANUAL (sin impuestos):');
       console.log('  - Total recibido:', finalTotal);
-      console.log('  - Subtotal:', finalSubtotal.toFixed(2));
-      console.log('  - IVA 16%:', finalTax.toFixed(2));
-      console.log('  - Municipal 4%:', finalMunicipalTax.toFixed(2));
-      
     } else {
-      // PRECIO AUTOMÁTICO - aplicar descuentos si hay
+      // PRECIO AUTOMÁTICO
       finalTotal = originalTotal;
-      
+
       if (discountCode && discountCode.trim()) {
         console.log('🎟️ Validando código de descuento:', discountCode);
 
@@ -792,21 +929,19 @@ exports.createBooking = async (req, res, next) => {
           });
         }
 
-        // 🔥 NUEVO: Calcular precio usando el método que considera chargeFullPrice
-        const pricePerNight = room.price || 0;
-        finalTotal = discountCodeDoc.calculateFinalPrice(originalTotal, Number(nights), pricePerNight);
+        // FIX: usar availability.room.price en lugar de variable `room` no definida
+        const roomPricePerNight = availability.room.price || 0;
+        finalTotal = discountCodeDoc.calculateFinalPrice(originalTotal, Number(nights), roomPricePerNight);
         discountAmount = originalTotal - finalTotal;
 
-        console.log('💰 Descuento aplicado (precio fijo):');
+        console.log('💰 Descuento aplicado:');
         console.log('  - Precio original (con impuestos):', originalTotal);
-        console.log('  - Precio por noche:', pricePerNight);
+        console.log('  - Precio por noche:', roomPricePerNight);
         console.log('  - Noches:', nights);
         console.log('  - Cobrar precio completo:', discountCodeDoc.chargeFullPrice || false);
         console.log('  - Precio final (código):', finalTotal);
         console.log('  - Descuento total:', discountAmount);
-        
-        // 🎯 El precio fijo de códigos de descuento de bodas es el TOTAL (sin impuestos adicionales)
-        // El precio final ya incluye todo - no se deben agregar IVA ni impuesto municipal
+
         finalSubtotal = finalTotal;
         finalTax = 0;
         finalMunicipalTax = 0;
@@ -824,31 +959,24 @@ exports.createBooking = async (req, res, next) => {
     console.log('  - Impuesto Municipal 4%:', finalMunicipalTax.toFixed(2));
     console.log('  - Total:', finalTotal.toFixed(2));
 
-    // Lógica de pagos
     let initialPayment, secondNightPayment;
-    
-    // Si se proporciona advancePayment (del admin), usarlo; si no, calcular normalmente
     const adminAdvancePayment = advancePayment && advancePayment > 0 ? advancePayment : null;
-    
+
     if (Number(nights) === 1 || chargeFullPrice === true || (adminAdvancePayment && adminAdvancePayment >= finalTotal)) {
-      // Pago completo (incluye caso donde el anticipo del admin cubre el total)
       initialPayment = adminAdvancePayment ? Math.min(adminAdvancePayment, finalTotal) : finalTotal;
       secondNightPayment = 0;
       if (adminAdvancePayment && adminAdvancePayment >= finalTotal) {
         console.log('💰 PAGO COMPLETO detectado por anticipo del admin:', adminAdvancePayment, '>=', finalTotal);
       }
     } else if (adminAdvancePayment && adminAdvancePayment > 0) {
-      // Anticipo parcial del admin
       initialPayment = adminAdvancePayment;
       secondNightPayment = Math.max(0, finalTotal - adminAdvancePayment);
       console.log('💰 ANTICIPO PARCIAL del admin:', adminAdvancePayment, '| Resta:', secondNightPayment);
     } else {
-      // Cálculo normal: 50% initial, 50% second night
       initialPayment = finalTotal * 0.5;
       secondNightPayment = finalTotal * 0.5;
     }
 
-    // VERIFICAR PAYMENT INTENT
     let stripeChargeId = null;
     let paymentStatus = 'pending';
 
@@ -878,10 +1006,7 @@ exports.createBooking = async (req, res, next) => {
         });
       }
     } else {
-      // No hay Payment Intent de Stripe
-      // Verificar si es una reserva del admin con anticipo
       if (adminAdvancePayment && adminAdvancePayment > 0) {
-        // Admin registró un anticipo
         paymentStatus = adminAdvancePayment >= finalTotal ? 'completed' : 'partial';
         console.log('💰 Reserva admin con anticipo - paymentStatus:', paymentStatus);
       } else {
@@ -890,10 +1015,8 @@ exports.createBooking = async (req, res, next) => {
       }
     }
 
-    // Generar ID de reserva único
     const bookingId = generateBookingId();
 
-    // Crear la reserva
     const newBooking = new Booking({
       bookingId,
       roomId: availability.room._id,
@@ -930,23 +1053,16 @@ exports.createBooking = async (req, res, next) => {
     await newBooking.save();
 
     console.log(`✅ Reserva creada: ${newBooking.bookingId} para ${guestInfo.email}`);
-    if (newBooking.adminOverride) {
-      console.log(`🔓 Reserva creada con ADMIN OVERRIDE (ignoró bloqueos)`);
-    }
-    if (isPrecioManual) {
-      console.log(`💰 Reserva creada con PRECIO MANUAL: ${formatMXN(finalTotal)}`);
-    }
+    if (newBooking.adminOverride) console.log(`🔓 Reserva creada con ADMIN OVERRIDE (ignoró bloqueos)`);
+    if (isPrecioManual) console.log(`💰 Reserva creada con PRECIO MANUAL: ${formatMXN(finalTotal)}`);
 
-    // Incrementar uso del código de descuento
     if (discountCodeDoc) {
       console.log('📈 Incrementando uso del código:', discountCodeDoc.code);
       discountCodeDoc.currentUses = (discountCodeDoc.currentUses || 0) + 1;
       await discountCodeDoc.save();
     }
 
-    // ENVIAR EMAIL DE CONFIRMACIÓN
     console.log(`\n📧 Preparando envío de email a ${guestInfo.email}...`);
-    
     let emailResult = null;
     try {
       emailResult = await generateAndSendVoucher(newBooking);
@@ -956,7 +1072,6 @@ exports.createBooking = async (req, res, next) => {
     }
 
     let successMessage = '✅ Reserva creada exitosamente. Revisa tu email para el voucher.';
-    
     if (discountAmount > 0) {
       successMessage = `✅ Reserva confirmada con descuento de ${formatMXN(discountAmount)} aplicado. Revisa tu email para el voucher.`;
     } else if (isPrecioManual) {
@@ -1037,10 +1152,7 @@ exports.updateBooking = async (req, res, next) => {
 
     const booking = await Booking.findOne({ bookingId });
     if (!booking) {
-      return res.status(404).json({
-        error: 'Booking not found',
-        message: 'Reserva no encontrada'
-      });
+      return res.status(404).json({ error: 'Booking not found', message: 'Reserva no encontrada' });
     }
 
     const isAdmin = req.user && req.user.role === 'admin';
@@ -1051,12 +1163,7 @@ exports.updateBooking = async (req, res, next) => {
       const newCheckIn = formatDateWithTimezone(checkIn || booking.checkIn);
       const newCheckOut = formatDateWithTimezone(checkOut || booking.checkOut);
 
-      const availability = await checkRoomAvailabilityInternal(
-        newRoomId, 
-        newCheckIn, 
-        newCheckOut,
-        { ignoreBlocks: shouldIgnoreBlocks }
-      );
+      const availability = await checkRoomAvailabilityInternal(newRoomId, newCheckIn, newCheckOut, { ignoreBlocks: shouldIgnoreBlocks });
 
       if (!availability.available) {
         return res.status(409).json({
@@ -1094,37 +1201,34 @@ exports.updateBooking = async (req, res, next) => {
       booking.checkOut = endDate;
 
       let newSubtotal = booking.pricePerNight * newNights;
-      let discountAmount = 0;
 
       if (booking.discountCodeId) {
         const discountCodeDoc = await DiscountCode.findById(booking.discountCodeId);
         if (discountCodeDoc && discountCodeDoc.active) {
+          const roomForValidation = await Room.findById(booking.roomId);
           const validation = discountCodeDoc.isValidForBooking({
             checkIn: startDate,
             checkOut: endDate,
             nights: newNights,
             subtotal: newSubtotal,
             roomId: booking.roomId,
-            roomLugar: (await Room.findById(booking.roomId)).lugar
+            roomLugar: roomForValidation ? roomForValidation.lugar : null
           });
 
           if (validation.valid) {
-            // 🔥 NUEVO: Calcular precio usando el método que considera chargeFullPrice
             const roomForPrice = await Room.findById(booking.roomId);
-            const pricePerNight = roomForPrice?.price || 0;
-            const finalPrice = discountCodeDoc.calculateFinalPrice(newSubtotal, newNights, pricePerNight);
-            discountAmount = discountCodeDoc.calculateDiscountAmount(newSubtotal, newNights, pricePerNight);
-            newSubtotal = finalPrice; // El precio fijo ya es el total
-            
-            // 🎯 Para códigos de descuento de bodas (finalPrice), no hay impuestos
+            const roomPricePerNight = roomForPrice?.price || 0;
+            const finalPrice = discountCodeDoc.calculateFinalPrice(newSubtotal, newNights, roomPricePerNight);
+            const discountAmount = discountCodeDoc.calculateDiscountAmount(newSubtotal, newNights, roomPricePerNight);
+            newSubtotal = finalPrice;
+
             booking.subtotalBeforeDiscount = booking.pricePerNight * newNights;
             booking.discountAmount = discountAmount;
             booking.subtotal = newSubtotal;
             booking.tax = 0;
             booking.municipalTax = 0;
             booking.totalPrice = newSubtotal;
-            
-            // 🔥 NUEVO: Si es código con chargeFullPrice, pagar 100% ahora
+
             const isFullPriceCode = discountCodeDoc?.chargeFullPrice === true;
             if (newNights === 1 || isFullPriceCode) {
               booking.initialPayment = newSubtotal;
@@ -1137,18 +1241,17 @@ exports.updateBooking = async (req, res, next) => {
             booking.discountCode = null;
             booking.discountCodeId = null;
             booking.discountAmount = 0;
-            
-            // Si el código no es válido, calcular normalmente con impuestos
+
             const newTax = newSubtotal * 0.16;
             const newMunicipalTax = newSubtotal * 0.04;
             const newTotalPrice = newSubtotal + newTax + newMunicipalTax;
-            
+
             booking.subtotalBeforeDiscount = booking.pricePerNight * newNights;
             booking.subtotal = newSubtotal;
             booking.tax = newTax;
             booking.municipalTax = newMunicipalTax;
             booking.totalPrice = newTotalPrice;
-            
+
             if (newNights === 1) {
               booking.initialPayment = newTotalPrice;
               booking.secondNightPayment = 0;
@@ -1162,10 +1265,7 @@ exports.updateBooking = async (req, res, next) => {
     }
 
     if (guestInfo) {
-      booking.guestInfo = {
-        ...booking.guestInfo.toObject(),
-        ...guestInfo
-      };
+      booking.guestInfo = { ...booking.guestInfo.toObject(), ...guestInfo };
     }
 
     if (status) {
@@ -1192,7 +1292,7 @@ exports.updateBooking = async (req, res, next) => {
 exports.cancelBooking = async (req, res, next) => {
   try {
     const { bookingId } = req.params;
-    const { reason } = req.body;
+    const { reason, processRefund = true } = req.body;
 
     const booking = await Booking.findOne({ bookingId });
     if (!booking) {
@@ -1203,27 +1303,61 @@ exports.cancelBooking = async (req, res, next) => {
       return res.status(400).json({ message: 'La reserva ya está cancelada' });
     }
 
+    let refundResult = null;
+    if (processRefund && (booking.stripeChargeId || booking.paymentIntentId) && booking.initialPayment > 0) {
+      try {
+        console.log(`💰 Procesando reembolso para reserva ${booking.bookingId}...`);
+        console.log(`💰 Monto a reembolsar: ${booking.initialPayment}`);
+        console.log(`💰 Stripe Charge ID: ${booking.stripeChargeId}`);
+        console.log(`💰 Payment Intent ID: ${booking.paymentIntentId}`);
+
+        const chargeIdToRefund = booking.stripeChargeId ||
+          (booking.paymentIntentId ? `ch_${booking.paymentIntentId.slice(3)}` : null);
+
+        if (chargeIdToRefund && !chargeIdToRefund.startsWith('ch_TEST')) {
+          refundResult = await stripe.refunds.create({
+            payment_intent: booking.paymentIntentId,
+            amount: Math.round(booking.initialPayment * 100)
+          });
+          booking.refundId = refundResult.id;
+          booking.refundStatus = refundResult.status;
+          console.log(`✅ Reembolso procesado: ${refundResult.id} - Estado: ${refundResult.status}`);
+        } else if (chargeIdToRefund && chargeIdToRefund.startsWith('ch_TEST')) {
+          console.log('⚠️ Modo prueba - simulando reembolso');
+          booking.refundId = `refund_test_${Date.now()}`;
+          booking.refundStatus = 'succeeded';
+        } else {
+          console.log('⚠️ No se encontró ID de cargo para reembolsar');
+        }
+      } catch (stripeError) {
+        console.error('❌ Error procesando reembolso:', stripeError);
+        booking.refundError = stripeError.message;
+      }
+    }
+
     booking.status = 'cancelled';
     booking.cancellationReason = reason || 'Cancelado por el huésped';
     booking.cancelledAt = Date.now();
     booking.updatedAt = Date.now();
 
     await booking.save();
-
-    try {
-      if (booking.stripeChargeId || booking.paymentIntentId) {
-        console.log(`Reembolso necesario para reserva ${booking.bookingId}`);
-      }
-    } catch (stripeError) {
-      console.error('Error procesando reembolso:', stripeError);
-    }
-
     await booking.populate('roomId', 'name type totalUnits');
     await booking.populate('discountCodeId', 'code description');
 
+    try {
+      await sendCancellationEmail(booking, refundResult);
+    } catch (emailError) {
+      console.error('❌ Error enviando email de cancelación:', emailError);
+    }
+
     res.json({
       success: true,
-      message: 'Reserva cancelada exitosamente',
+      message: refundResult ? 'Reserva cancelada y reembolso procesado exitosamente' : 'Reserva cancelada exitosamente',
+      refund: refundResult ? {
+        id: refundResult.id,
+        status: refundResult.status,
+        amount: refundResult.amount / 100
+      } : null,
       booking
     });
   } catch (error) {
@@ -1239,23 +1373,15 @@ exports.markSecondNightPaid = async (req, res, next) => {
 
     const booking = await Booking.findOne({ bookingId });
     if (!booking) {
-      return res.status(404).json({
-        error: 'Booking not found',
-        message: 'Reserva no encontrada'
-      });
+      return res.status(404).json({ error: 'Booking not found', message: 'Reserva no encontrada' });
     }
 
     if (booking.secondNightPayment === 0) {
-      return res.status(400).json({
-        message: 'Esta reserva no tiene pago de segunda noche pendiente'
-      });
+      return res.status(400).json({ message: 'Esta reserva no tiene pago de segunda noche pendiente' });
     }
 
     if (booking.secondNightPaid || booking.secondNightNotePaid) {
-      return res.status(400).json({
-        error: 'Already paid',
-        message: 'La segunda noche ya fue marcada como pagada'
-      });
+      return res.status(400).json({ error: 'Already paid', message: 'La segunda noche ya fue marcada como pagada' });
     }
 
     booking.secondNightPaid = true;
@@ -1289,15 +1415,9 @@ exports.generateCheckin = async (req, res, next) => {
     const estado = sanitizeValue(rawBody.estado);
     const breakfastBoolean = toBoolean(rawBody.includeBreakfast);
 
-    if (!signature) {
-      return res.status(400).json({ message: 'Se requiere la firma del huésped' });
-    }
-    if (!ciudad) {
-      return res.status(400).json({ message: 'Se requiere la ciudad' });
-    }
-    if (!estado) {
-      return res.status(400).json({ message: 'Se requiere el estado' });
-    }
+    if (!signature) return res.status(400).json({ message: 'Se requiere la firma del huésped' });
+    if (!ciudad) return res.status(400).json({ message: 'Se requiere la ciudad' });
+    if (!estado) return res.status(400).json({ message: 'Se requiere el estado' });
 
     const booking = await Booking.findOne({ bookingId });
     if (!booking) {
@@ -1305,13 +1425,7 @@ exports.generateCheckin = async (req, res, next) => {
     }
 
     try {
-      const pdfBuffer = await generateCheckinPDF(
-        booking,
-        signature,
-        ciudad,
-        estado,
-        breakfastBoolean
-      );
+      const pdfBuffer = await generateCheckinPDF(booking, signature, ciudad, estado, breakfastBoolean);
 
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="Checkin_${bookingId}.pdf"`);
@@ -1362,10 +1476,7 @@ exports.resendBookingEmail = async (req, res, next) => {
     const booking = await Booking.findOne({ bookingId });
 
     if (!booking) {
-      return res.status(404).json({
-        error: 'Booking not found',
-        message: 'Reserva no encontrada'
-      });
+      return res.status(404).json({ error: 'Booking not found', message: 'Reserva no encontrada' });
     }
 
     console.log(`\n📧 Reenviando email para reserva: ${booking.bookingId}`);
@@ -1398,10 +1509,7 @@ exports.sendTestEmailToExistingBooking = async (req, res, next) => {
     const booking = await Booking.findOne({ bookingId });
 
     if (!booking) {
-      return res.status(404).json({
-        error: 'Booking not found',
-        message: 'Reserva no encontrada'
-      });
+      return res.status(404).json({ error: 'Booking not found', message: 'Reserva no encontrada' });
     }
 
     console.log(`\n🧪 Enviando email de PRUEBA para reserva: ${booking.bookingId}`);
@@ -1434,9 +1542,7 @@ exports.testEmail = async (req, res, next) => {
     const { email } = req.body;
 
     if (!email) {
-      return res.status(400).json({
-        message: 'Se requiere un email de destino'
-      });
+      return res.status(400).json({ message: 'Se requiere un email de destino' });
     }
 
     const nodemailer = require('nodemailer');
@@ -1448,9 +1554,7 @@ exports.testEmail = async (req, res, next) => {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
       },
-      tls: {
-        rejectUnauthorized: false
-      }
+      tls: { rejectUnauthorized: false }
     });
 
     const info = await transporter.sendMail({
@@ -1463,9 +1567,7 @@ exports.testEmail = async (req, res, next) => {
           <p>Este es un email de prueba del sistema de reservas del Hotel La Capilla.</p>
           <p>Si recibes este mensaje, la configuración de email está funcionando correctamente.</p>
           <hr>
-          <p style="color: #666; font-size: 12px;">
-            Fecha: ${new Date().toLocaleString('es-MX')}
-          </p>
+          <p style="color: #666; font-size: 12px;">Fecha: ${new Date().toLocaleString('es-MX')}</p>
         </div>
       `
     });
@@ -1502,7 +1604,7 @@ module.exports = {
   getBookingStats: exports.getBookingStats,
   getDiscountCodeUsageStats: exports.getDiscountCodeUsageStats,
   checkAvailability: exports.checkAvailability,
-  checkRoomAvailability: exports.checkAvailability, // 🔥 Alias para compatibilidad con rutas
+  checkRoomAvailability: exports.checkAvailability,
   checkMultipleAvailability: exports.checkMultipleAvailability,
   generateCheckin: exports.generateCheckin,
   downloadVoucher: exports.downloadVoucher,
