@@ -65,6 +65,9 @@ router.patch('/:bookingId', protect, bookingController.updateBooking);
 // Marcar segunda noche como pagada (admin/employee)
 router.patch('/:bookingId/mark-paid', protect, bookingController.markSecondNightPaid);
 
+// Reenviar voucher de pago por email (admin/employee)
+router.post('/:bookingId/resend-voucher', protect, bookingController.resendBookingEmail);
+
 // Cancelar reserva (admin/employee)
 router.delete('/:bookingId/cancel', protect, bookingController.cancelBooking);
 
