@@ -884,7 +884,7 @@ exports.createBooking = async (req, res, next) => {
     let finalTax;
     let finalMunicipalTax;
 
-    if (totalPrice && typeof totalPrice === 'number' && totalPrice > 0) {
+    if (isAdmin && totalPrice && typeof totalPrice === 'number' && totalPrice > 0) {
       // PRECIO MANUAL - el precio ingresado es el total, sin impuestos adicionales
       finalTotal = totalPrice;
       isPrecioManual = true;
@@ -947,9 +947,10 @@ exports.createBooking = async (req, res, next) => {
         finalMunicipalTax = 0;
       } else {
         // Sin código de descuento - calcular impuestos normalmente
-        finalTax = finalTotal * (16 / 100);
-        finalMunicipalTax = finalTotal * (4 / 100);
-        finalSubtotal = finalTotal - finalTax - finalMunicipalTax;
+        finalSubtotal = originalSubtotal;
+        finalTax = finalSubtotal * (16 / 100);
+        finalMunicipalTax = finalSubtotal * (4 / 100);
+        finalTotal = finalSubtotal + finalTax + finalMunicipalTax;
       }
     }
 
