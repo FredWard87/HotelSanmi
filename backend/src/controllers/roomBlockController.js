@@ -3,6 +3,13 @@ const RoomBlock = require('../models/RoomBlock');
 const Room = require('../models/Room');
 const Booking = require('../models/Booking');
 
+const getRoomImpactConditions = (roomId) => ([
+  { scope: 'specific', roomId: roomId },
+  { scope: 'all' },
+  { scope: 'casaHotel', affectedRooms: roomId },
+  { scope: 'boutique', affectedRooms: roomId }
+]);
+
 // Obtener todos los bloqueos con filtros opcionales
 exports.getAllBlocks = async (req, res) => {
   try {
@@ -13,19 +20,13 @@ exports.getAllBlocks = async (req, res) => {
     if (active !== undefined) filter.active = active === 'true';
     
     if (startDate && endDate) {
-      filter.$or = [
-        { startDate: { $lt: new Date(endDate) }, endDate: { $gt: new Date(startDate) } }
-      ];
+      filter.startDate = { $lt: new Date(endDate) };
+      filter.endDate = { $gt: new Date(startDate) };
     }
     
     // Si se filtra por habitación, buscar bloqueos que la afecten
     if (roomId) {
-      filter.$or = [
-        { scope: 'specific', roomId: roomId },
-        { scope: 'all' },
-        { scope: 'casaHotel', affectedRooms: roomId },
-        { scope: 'boutique', affectedRooms: roomId }
-      ];
+      filter.$or = getRoomImpactConditions(roomId);
     }
     
     const blocks = await RoomBlock.find(filter)
@@ -50,12 +51,7 @@ exports.getBlocksByRoom = async (req, res) => {
     const { active = true, future = false } = req.query;
     
     const filter = {
-      $or: [
-        { scope: 'specific', roomId: roomId },
-        { scope: 'all' },
-        { scope: 'casaHotel', affectedRooms: roomId },
-        { scope: 'boutique', affectedRooms: roomId }
-      ]
+      $or: getRoomImpactConditions(roomId)
     };
     
     if (active !== 'all') filter.active = active === 'true';
@@ -155,8 +151,10 @@ exports.createBlock = async (req, res) => {
       });
     }
 
+    const effectiveBlockAll = scope === 'specific' ? !!blockAll : true;
+
     // Validar cantidad bloqueada para habitaciones específicas
-    if (scope === 'specific' && !blockAll) {
+    if (scope === 'specific' && !effectiveBlockAll) {
       if (!quantityBlocked || quantityBlocked <= 0) {
         return res.status(400).json({ 
           message: 'Debe especificar una cantidad válida a bloquear' 
@@ -175,46 +173,39 @@ exports.createBlock = async (req, res) => {
     for (const room of rooms) {
       // Verificar superposición con otros bloqueos activos
       const overlappingBlocks = await RoomBlock.find({
-        $or: [
-          { scope: 'specific', roomId: room._id, active: true },
-          { scope: 'all', active: true },
-          { scope: 'casaHotel', affectedRooms: room._id, active: true },
-          { scope: 'boutique', affectedRooms: room._id, active: true }
-        ],
-        $or: [
-          { startDate: { $lt: end }, endDate: { $gt: start } }
-        ]
+        active: true,
+        $or: getRoomImpactConditions(room._id),
+        startDate: { $lt: end },
+        endDate: { $gt: start }
       });
 
       // Verificar también reservas activas
       const overlappingBookings = await Booking.countDocuments({
         roomId: room._id,
         status: 'active',
-        $or: [
-          { checkIn: { $lt: end }, checkOut: { $gt: start } }
-        ]
+        checkIn: { $lt: end },
+        checkOut: { $gt: start }
       });
 
-      // 🔥 USAR MÁXIMO EN LUGAR DE SUMA
-      let maxBlockedByBlocks = 0;
+      // Calcular unidades ya bloqueadas
+      let totalBlocked = overlappingBookings;
       overlappingBlocks.forEach(block => {
         if (block.blockAll) {
-          maxBlockedByBlocks = Math.max(maxBlockedByBlocks, room.totalUnits);
+          totalBlocked += room.totalUnits;
         } else {
-          maxBlockedByBlocks = Math.max(maxBlockedByBlocks, block.quantityBlocked || 0);
+          totalBlocked += block.quantityBlocked || 0;
         }
       });
 
-      const totalBlocked = overlappingBookings + maxBlockedByBlocks;
-      const requestedBlock = blockAll ? room.totalUnits : (quantityBlocked || 1);
       const available = Math.max(0, room.totalUnits - Math.min(totalBlocked, room.totalUnits));
+      const requestedBlock = effectiveBlockAll ? available : Number(quantityBlocked || 1);
 
       availabilityResults.push({
         roomId: room._id,
         roomName: room.name,
         totalUnits: room.totalUnits,
         bookedUnits: overlappingBookings,
-        blockedUnits: maxBlockedByBlocks,
+        blockedUnits: totalBlocked - overlappingBookings,
         availableUnits: available,
         isAvailable: available >= requestedBlock,
         requestedUnits: requestedBlock
@@ -238,8 +229,8 @@ exports.createBlock = async (req, res) => {
       endDate: end,
       blockType: blockType || 'Mantenimiento',
       reason,
-      blockAll: !!blockAll,
-      quantityBlocked: blockAll ? null : (quantityBlocked || 1),
+      blockAll: effectiveBlockAll,
+      quantityBlocked: effectiveBlockAll ? null : Number(quantityBlocked || 1),
       active: true,
       affectedRooms: rooms.map(r => r._id)
     });
@@ -324,6 +315,9 @@ exports.updateBlock = async (req, res) => {
       
       block.scope = scope;
       block.affectedRooms = rooms.map(r => r._id);
+      if (scope !== 'specific') {
+        block.roomId = null;
+      }
     } else {
       // Mantener las habitaciones actuales
       rooms = await Room.find({ _id: { $in: block.affectedRooms } });
@@ -333,6 +327,10 @@ exports.updateBlock = async (req, res) => {
     if (startDate && endDate) {
       const start = new Date(startDate);
       const end = new Date(endDate);
+      const scopeToValidate = scope || block.scope;
+      const effectiveBlockAll = scopeToValidate === 'specific'
+        ? (blockAll !== undefined ? !!blockAll : !!block.blockAll)
+        : true;
       
       if (end <= start) {
         return res.status(400).json({ 
@@ -344,41 +342,32 @@ exports.updateBlock = async (req, res) => {
       for (const room of rooms) {
         const overlappingBlocks = await RoomBlock.find({
           _id: { $ne: id },
-          $or: [
-            { scope: 'specific', roomId: room._id, active: true },
-            { scope: 'all', active: true },
-            { scope: 'casaHotel', affectedRooms: room._id, active: true },
-            { scope: 'boutique', affectedRooms: room._id, active: true }
-          ],
-          $or: [
-            { startDate: { $lt: end }, endDate: { $gt: start } }
-          ]
+          active: true,
+          $or: getRoomImpactConditions(room._id),
+          startDate: { $lt: end },
+          endDate: { $gt: start }
         });
 
         const overlappingBookings = await Booking.countDocuments({
           roomId: room._id,
           status: 'active',
-          $or: [
-            { checkIn: { $lt: end }, checkOut: { $gt: start } }
-          ]
+          checkIn: { $lt: end },
+          checkOut: { $gt: start }
         });
 
-        // 🔥 USAR MÁXIMO EN LUGAR DE SUMA
-        let maxBlockedByBlocks = 0;
+        let totalBlocked = overlappingBookings;
         overlappingBlocks.forEach(b => {
           if (b.blockAll) {
-            maxBlockedByBlocks = Math.max(maxBlockedByBlocks, room.totalUnits);
+            totalBlocked += room.totalUnits;
           } else {
-            maxBlockedByBlocks = Math.max(maxBlockedByBlocks, b.quantityBlocked || 0);
+            totalBlocked += b.quantityBlocked || 0;
           }
         });
 
-        const totalBlocked = overlappingBookings + maxBlockedByBlocks;
-        const newRequestedBlock = (blockAll !== undefined ? blockAll : block.blockAll) 
-          ? room.totalUnits 
-          : (quantityBlocked || block.quantityBlocked || 1);
-        
-        const available = Math.max(0, room.totalUnits - totalBlocked);
+        const available = Math.max(0, room.totalUnits - Math.min(totalBlocked, room.totalUnits));
+        const newRequestedBlock = effectiveBlockAll
+          ? available
+          : Number(quantityBlocked || block.quantityBlocked || 1);
 
         if (newRequestedBlock > available) {
           return res.status(400).json({
@@ -396,22 +385,32 @@ exports.updateBlock = async (req, res) => {
     // Actualizar otros campos
     if (blockType) block.blockType = blockType;
     if (reason !== undefined) block.reason = reason;
-    if (blockAll !== undefined) {
-      block.blockAll = blockAll;
-      if (blockAll) {
-        block.quantityBlocked = null;
-      }
+    const finalScope = scope || block.scope;
+    const effectiveBlockAllFinal = finalScope === 'specific'
+      ? (blockAll !== undefined ? !!blockAll : !!block.blockAll)
+      : true;
+
+    block.blockAll = effectiveBlockAllFinal;
+    if (effectiveBlockAllFinal) {
+      block.quantityBlocked = null;
     }
-    if (!blockAll && quantityBlocked) {
-      if (block.scope === 'specific') {
+
+    if (!effectiveBlockAllFinal && quantityBlocked !== undefined) {
+      if (Number(quantityBlocked) <= 0) {
+        return res.status(400).json({
+          message: 'Debe especificar una cantidad válida a bloquear'
+        });
+      }
+
+      if (finalScope === 'specific') {
         const room = await Room.findById(block.roomId);
-        if (room && quantityBlocked > room.totalUnits) {
+        if (room && Number(quantityBlocked) > room.totalUnits) {
           return res.status(400).json({ 
             message: `La cantidad no puede exceder las ${room.totalUnits} unidades disponibles` 
           });
         }
       }
-      block.quantityBlocked = quantityBlocked;
+      block.quantityBlocked = Number(quantityBlocked);
     }
     if (active !== undefined) block.active = active;
 
@@ -510,41 +509,29 @@ exports.checkAvailability = async (req, res) => {
     for (const room of rooms) {
       // Buscar bloqueos que afecten a esta habitación
       const overlappingBlocks = await RoomBlock.find({
-        $or: [
-          { scope: 'specific', roomId: room._id, active: true },
-          { scope: 'all', active: true },
-          { scope: 'casaHotel', affectedRooms: room._id, active: true },
-          { scope: 'boutique', affectedRooms: room._id, active: true }
-        ],
-        $or: [
-          { startDate: { $lt: end }, endDate: { $gt: start } }
-        ]
+        active: true,
+        $or: getRoomImpactConditions(room._id),
+        startDate: { $lt: end },
+        endDate: { $gt: start }
       });
 
       // Buscar reservas que se superponen
       const overlappingBookings = await Booking.countDocuments({
         roomId: room._id,
         status: 'active',
-        $or: [
-          { checkIn: { $lt: end }, checkOut: { $gt: start } }
-        ]
+        checkIn: { $lt: end },
+        checkOut: { $gt: start }
       });
 
-      // 🔥 USAR MÁXIMO EN LUGAR DE SUMA
-      let maxBlockedByBlocks = 0;
+      let totalBlocked = overlappingBookings;
       const blockDetails = [];
       
       overlappingBlocks.forEach(block => {
-        let unitsBlockedByThisBlock = 0;
-        
         if (block.blockAll) {
-          unitsBlockedByThisBlock = room.totalUnits;
+          totalBlocked += room.totalUnits;
         } else {
-          unitsBlockedByThisBlock = block.quantityBlocked || 0;
+          totalBlocked += block.quantityBlocked || 0;
         }
-        
-        // Tomar el MÁXIMO, no sumar
-        maxBlockedByBlocks = Math.max(maxBlockedByBlocks, unitsBlockedByThisBlock);
         
         blockDetails.push({
           id: block._id,
@@ -554,15 +541,11 @@ exports.checkAvailability = async (req, res) => {
           startDate: block.startDate,
           endDate: block.endDate,
           blockAll: block.blockAll,
-          quantityBlocked: block.quantityBlocked,
-          unitsBlockedByThisBlock
+          quantityBlocked: block.quantityBlocked
         });
       });
 
-      // Total bloqueado = reservas + el bloqueo más restrictivo
-      const totalBlocked = overlappingBookings + maxBlockedByBlocks;
-      const blockedUnits = Math.min(totalBlocked, room.totalUnits);
-      const available = Math.max(0, room.totalUnits - blockedUnits);
+      const available = Math.max(0, room.totalUnits - Math.min(totalBlocked, room.totalUnits));
 
       availabilityResults.push({
         roomId: room._id,
@@ -570,8 +553,7 @@ exports.checkAvailability = async (req, res) => {
         lugar: room.lugar,
         totalUnits: room.totalUnits,
         bookedUnits: overlappingBookings,
-        blockedUnits: maxBlockedByBlocks,
-        totalUnavailable: blockedUnits,
+        blockedUnits: Math.min(totalBlocked - overlappingBookings, room.totalUnits),
         availableUnits: available,
         isAvailable: available > 0,
         blocks: blockDetails
