@@ -7,7 +7,7 @@ const nodemailer = require('nodemailer');
 const fs = require('fs');
 const path = require('path');
 const ASSIGNMENT_ROOMS_SEED = require('../data/assignmentRoomsSeed');
-//hola
+
 // Configurar transporter para emails
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -254,7 +254,7 @@ exports.getAllAssignmentRooms = async (req, res) => {
 // ADMIN: Crear nueva asignación
 exports.createAssignment = async (req, res) => {
   try {
-    const { eventName, brideEmail, brideName, bridePhone } = req.body;
+    const { eventName, brideEmail, brideName, bridePhone, hotelType } = req.body;
 
     // Validaciones
     if (!eventName || !brideEmail || !brideName) {
@@ -275,33 +275,62 @@ exports.createAssignment = async (req, res) => {
     // Generar token único
     const token = crypto.randomBytes(32).toString('hex');
 
-    // Obtener habitaciones desde la base de datos
-    const casaHotelRooms = await getCasaHotelRooms();
-    const boutiqueRooms = await getBoutiqueRooms();
 
-    // Inicializar con estructuras vacías
-    const casaHotelAssignments = casaHotelRooms.map(room => ({
-      roomId: room.roomId,
-      name: room.name,
-      number: room.number,
-      m2: room.m2,
-      bed: room.bed,
-      capacity: room.capacity,
-      description: room.description,
-      guestName: '',
-      guestWhatsapp: ''
-    }));
-
-    const boutiqueAssignments = boutiqueRooms.map(room => ({
-      roomId: room.roomId,
-      name: room.name,
-      number: room.number,
-      bed: room.bed,
-      capacity: room.capacity,
-      description: room.description,
-      guestName: '',
-      guestWhatsapp: ''
-    }));
+    // Obtener habitaciones según hotelType
+    let casaHotelAssignments = [];
+    let boutiqueAssignments = [];
+    if (!hotelType || hotelType === 'all') {
+      const casaHotelRooms = await getCasaHotelRooms();
+      const boutiqueRooms = await getBoutiqueRooms();
+      casaHotelAssignments = casaHotelRooms.map(room => ({
+        roomId: room.roomId,
+        name: room.name,
+        number: room.number,
+        m2: room.m2,
+        bed: room.bed,
+        capacity: room.capacity,
+        description: room.description,
+        guestName: '',
+        guestWhatsapp: ''
+      }));
+      boutiqueAssignments = boutiqueRooms.map(room => ({
+        roomId: room.roomId,
+        name: room.name,
+        number: room.number,
+        bed: room.bed,
+        capacity: room.capacity,
+        description: room.description,
+        guestName: '',
+        guestWhatsapp: ''
+      }));
+    } else if (hotelType === 'casa') {
+      const casaHotelRooms = await getCasaHotelRooms();
+      casaHotelAssignments = casaHotelRooms.map(room => ({
+        roomId: room.roomId,
+        name: room.name,
+        number: room.number,
+        m2: room.m2,
+        bed: room.bed,
+        capacity: room.capacity,
+        description: room.description,
+        guestName: '',
+        guestWhatsapp: ''
+      }));
+      boutiqueAssignments = [];
+    } else if (hotelType === 'boutique') {
+      const boutiqueRooms = await getBoutiqueRooms();
+      boutiqueAssignments = boutiqueRooms.map(room => ({
+        roomId: room.roomId,
+        name: room.name,
+        number: room.number,
+        bed: room.bed,
+        capacity: room.capacity,
+        description: room.description,
+        guestName: '',
+        guestWhatsapp: ''
+      }));
+      casaHotelAssignments = [];
+    }
 
     const assignment = new GuestAssignment({
       eventName,
@@ -312,7 +341,8 @@ exports.createAssignment = async (req, res) => {
       casaHotelRooms: casaHotelAssignments,
       boutiqueRooms: boutiqueAssignments,
       status: 'pending',
-      invitationSentAt: null
+      invitationSentAt: null,
+      hotelType: hotelType || 'all'
     });
 
     await assignment.save();
@@ -339,33 +369,42 @@ exports.createAssignment = async (req, res) => {
 
     const totalRooms = casaHotelAssignments.length + boutiqueAssignments.length;
 
+    // Solo incluir el arreglo de habitaciones correspondiente al hotelType
+    let responseData = {
+      _id: assignment._id.toString(),
+      __v: assignment.__v,
+      eventName: assignment.eventName,
+      brideEmail: assignment.brideEmail,
+      brideName: assignment.brideName,
+      bridePhone: assignment.bridePhone,
+      token: assignment.token,
+      status: assignment.status,
+      createdAt: assignment.createdAt,
+      updatedAt: assignment.updatedAt,
+      invitationSentAt: assignment.invitationSentAt,
+      emailSent,
+      emailError,
+      hotelType: assignment.hotelType,
+      stats: {
+        totalRooms,
+        filledRooms: 0,
+        percentage: 0
+      }
+    };
+    if (assignment.hotelType === 'all') {
+      responseData.casaHotelRooms = assignment.casaHotelRooms;
+      responseData.boutiqueRooms = assignment.boutiqueRooms;
+    } else if (assignment.hotelType === 'casa') {
+      responseData.casaHotelRooms = assignment.casaHotelRooms;
+    } else if (assignment.hotelType === 'boutique') {
+      responseData.boutiqueRooms = assignment.boutiqueRooms;
+    }
     res.status(201).json({
       success: true,
       message: emailSent 
         ? 'Asignación creada y email enviado exitosamente' 
         : 'Asignación creada (el email no pudo ser enviado)',
-      data: {
-        _id: assignment._id.toString(),
-        __v: assignment.__v,
-        eventName: assignment.eventName,
-        brideEmail: assignment.brideEmail,
-        brideName: assignment.brideName,
-        bridePhone: assignment.bridePhone,
-        token: assignment.token,
-        casaHotelRooms: assignment.casaHotelRooms,
-        boutiqueRooms: assignment.boutiqueRooms,
-        status: assignment.status,
-        createdAt: assignment.createdAt,
-        updatedAt: assignment.updatedAt,
-        invitationSentAt: assignment.invitationSentAt,
-        emailSent,
-        emailError,
-        stats: {
-          totalRooms,
-          filledRooms: 0,
-          percentage: 0
-        }
-      }
+      data: responseData
     });
   } catch (error) {
     console.error('❌ Error creating assignment:', error);
@@ -442,21 +481,36 @@ exports.getAssignmentDetails = async (req, res) => {
       return res.status(404).json({ error: 'No encontrada', message: 'Asignación no encontrada' });
     }
 
-    const casaRooms = assignment.casaHotelRooms || [];
-    const boutiqueRooms = assignment.boutiqueRooms || [];
+    // Solo incluir el arreglo de habitaciones correspondiente al hotelType
+    let responseData = {
+      ...assignment,
+      stats: {}
+    };
+    let casaRooms = assignment.casaHotelRooms || [];
+    let boutiqueRooms = assignment.boutiqueRooms || [];
+    if (assignment.hotelType === 'all') {
+      // ambos
+      responseData.casaHotelRooms = casaRooms;
+      responseData.boutiqueRooms = boutiqueRooms;
+    } else if (assignment.hotelType === 'casa') {
+      responseData.casaHotelRooms = casaRooms;
+      delete responseData.boutiqueRooms;
+      boutiqueRooms = [];
+    } else if (assignment.hotelType === 'boutique') {
+      responseData.boutiqueRooms = boutiqueRooms;
+      delete responseData.casaHotelRooms;
+      casaRooms = [];
+    }
     const totalRooms = casaRooms.length + boutiqueRooms.length;
     const filledRooms = [...casaRooms, ...boutiqueRooms].filter(r => r.guestName && r.guestName.trim()).length;
-
+    responseData.stats = {
+      totalRooms,
+      filledRooms,
+      percentage: totalRooms > 0 ? Math.round((filledRooms / totalRooms) * 100) : 0
+    };
     res.json({
       success: true,
-      data: {
-        ...assignment,
-        stats: {
-          totalRooms,
-          filledRooms,
-          percentage: totalRooms > 0 ? Math.round((filledRooms / totalRooms) * 100) : 0
-        }
-      }
+      data: responseData
     });
   } catch (error) {
     console.error('Error getting assignment details:', error);
