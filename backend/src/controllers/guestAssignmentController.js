@@ -254,7 +254,7 @@ exports.getAllAssignmentRooms = async (req, res) => {
 // ADMIN: Crear nueva asignación
 exports.createAssignment = async (req, res) => {
   try {
-    const { eventName, brideEmail, brideName, bridePhone, hotelType } = req.body;
+    const { eventName, brideEmail, groomEmail, brideName, bridePhone, hotelType } = req.body;
 
     // Validaciones
     if (!eventName || !brideEmail || !brideName) {
@@ -335,6 +335,7 @@ exports.createAssignment = async (req, res) => {
     const assignment = new GuestAssignment({
       eventName,
       brideEmail,
+      groomEmail: groomEmail || '',
       brideName,
       bridePhone: bridePhone || '',
       token,
@@ -354,13 +355,15 @@ exports.createAssignment = async (req, res) => {
     try {
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
       const accessUrl = `${frontendUrl}guest-assignment/${token}`;
-      
+      // Enviar a la novia
       await sendInvitationEmail(brideEmail, brideName, accessUrl, eventName);
-      
+      // Enviar al novio si hay correo
+      if (groomEmail && groomEmail.trim() !== '') {
+        await sendInvitationEmail(groomEmail, brideName, accessUrl, eventName);
+      }
       // Actualizar fecha de envío
       assignment.invitationSentAt = new Date();
       await assignment.save();
-      
       emailSent = true;
     } catch (error) {
       emailError = error.message;
