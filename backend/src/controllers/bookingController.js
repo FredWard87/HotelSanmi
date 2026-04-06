@@ -691,6 +691,8 @@ exports.checkMultipleAvailability = async (req, res, next) => {
         roomName: room.name,
         roomType: room.type,
         lugar: room.lugar,
+        price: room.price,
+        capacity: room.capacity,
         totalUnits: availability.totalUnits,
         bookedUnits: availability.bookedUnits,
         blockedUnits: availability.blockedUnits,
