@@ -15,6 +15,9 @@ router.post('/payment-intent', bookingController.createPaymentIntent);
 // Verificar disponibilidad (público)
 router.get('/availability', bookingController.checkRoomAvailability);
 
+// Verificar disponibilidad múltiple (público) — usado por chatbot
+router.get('/availability/multiple', bookingController.checkMultipleAvailability);
+
 // Descargar voucher (público)
 router.get('/download/:bookingId', async (req, res, next) => {
   try {
