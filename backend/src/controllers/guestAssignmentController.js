@@ -1,6 +1,7 @@
 // controllers/guestAssignmentController.js
 const GuestAssignment = require('../models/GuestAssignment');
 const AssignmentRoom = require('../models/AssignmentRoom');
+const Booking = require('../models/Booking');
 const Room = require('../models/Room');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
@@ -1059,5 +1060,131 @@ Atentamente,
   } catch (error) {
     console.error('Error sending discount code:', error);
     res.status(500).json({ error: 'Error al enviar código de descuento' });
+  }
+};
+
+// ─────────────────────────────────────────────
+// CONTROL DE PAGOS: Cruzar huéspedes con reservas
+// ─────────────────────────────────────────────
+
+function normalizePhone(phone) {
+  if (!phone) return '';
+  return phone.replace(/[\s\-\+\(\)]/g, '').replace(/^52/, '').replace(/^1/, '').slice(-10);
+}
+
+exports.getPaymentStatus = async (req, res) => {
+  try {
+    const assignment = await GuestAssignment.findById(req.params.id);
+    if (!assignment) {
+      return res.status(404).json({ error: 'Asignación no encontrada' });
+    }
+
+    // Collect all guests with names from both hotel arrays
+    const guests = [];
+    const addGuests = (rooms, hotel) => {
+      (rooms || []).forEach(room => {
+        if (room.guestName && room.guestName.trim()) {
+          guests.push({
+            roomId: room.roomId,
+            roomName: room.name,
+            bed: room.bed,
+            capacity: room.capacity,
+            guestName: room.guestName.trim(),
+            guestWhatsapp: room.guestWhatsapp || '',
+            hotel
+          });
+        }
+      });
+    };
+    addGuests(assignment.casaHotelRooms, 'Casa Hotel');
+    addGuests(assignment.boutiqueRooms, 'Boutique');
+
+    // Fetch all active bookings once
+    const bookings = await Booking.find({ status: 'active' }).lean();
+
+    // Cross-reference each guest with bookings
+    const results = guests.map(guest => {
+      const guestPhoneNorm = normalizePhone(guest.guestWhatsapp);
+      const guestNameLower = guest.guestName.toLowerCase().trim();
+      const guestNameParts = guestNameLower.split(/\s+/).filter(Boolean);
+
+      let matchedBooking = null;
+
+      for (const b of bookings) {
+        // Try phone match first (most reliable)
+        if (guestPhoneNorm && guestPhoneNorm.length >= 7) {
+          const bookingPhoneNorm = normalizePhone(b.guestInfo?.phone);
+          if (bookingPhoneNorm && bookingPhoneNorm === guestPhoneNorm) {
+            matchedBooking = b;
+            break;
+          }
+        }
+
+        // Try name match: all parts of guest name appear in booking name
+        const bookingFullName = `${b.guestInfo?.firstName || ''} ${b.guestInfo?.lastName || ''}`.toLowerCase().trim();
+        if (bookingFullName && guestNameParts.length > 0) {
+          const allPartsMatch = guestNameParts.every(part => bookingFullName.includes(part));
+          const reverseMatch = bookingFullName.split(/\s+/).filter(Boolean).every(part => guestNameLower.includes(part));
+          if (allPartsMatch || reverseMatch) {
+            matchedBooking = b;
+            break;
+          }
+        }
+      }
+
+      return {
+        roomId: guest.roomId,
+        roomName: guest.roomName,
+        bed: guest.bed,
+        capacity: guest.capacity,
+        guestName: guest.guestName,
+        guestWhatsapp: guest.guestWhatsapp,
+        hotel: guest.hotel,
+        hasPaid: !!matchedBooking,
+        booking: matchedBooking ? {
+          bookingId: matchedBooking.bookingId,
+          roomName: matchedBooking.roomName,
+          paymentStatus: matchedBooking.paymentStatus,
+          totalPrice: matchedBooking.totalPrice,
+          initialPayment: matchedBooking.initialPayment,
+          secondNightPayment: matchedBooking.secondNightPayment,
+          checkIn: matchedBooking.checkIn,
+          checkOut: matchedBooking.checkOut,
+          nights: matchedBooking.nights,
+          discountCode: matchedBooking.discountCode,
+          discountAmount: matchedBooking.discountAmount,
+          guestEmail: matchedBooking.guestInfo?.email,
+          guestPhone: matchedBooking.guestInfo?.phone,
+        } : null
+      };
+    });
+
+    const totalGuests = results.length;
+    const paidGuests = results.filter(r => r.hasPaid).length;
+    const completedPayments = results.filter(r => r.booking?.paymentStatus === 'completed').length;
+    const partialPayments = results.filter(r => r.booking?.paymentStatus === 'partial').length;
+
+    res.json({
+      success: true,
+      data: {
+        assignment: {
+          _id: assignment._id,
+          eventName: assignment.eventName,
+          brideName: assignment.brideName,
+          status: assignment.status,
+        },
+        guests: results,
+        summary: {
+          totalGuests,
+          paidGuests,
+          unpaidGuests: totalGuests - paidGuests,
+          completedPayments,
+          partialPayments,
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error getting payment status:', error);
+    res.status(500).json({ error: 'Error al obtener estado de pagos' });
   }
 };
