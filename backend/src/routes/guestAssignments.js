@@ -59,6 +59,9 @@ router.get('/:id/discount-codes', guestAssignmentController.getDiscountCodesForA
 // ADMIN: Enviar código de descuento por WhatsApp
 router.post('/:id/send-discount-whatsapp', guestAssignmentController.sendDiscountCodeWhatsApp);
 
+// ADMIN: Control de pagos - cruzar huéspedes con reservas
+router.get('/:id/payment-status', guestAssignmentController.getPaymentStatus);
+
 // PUBLICO: Obtener asignacion por token
 router.get('/token/:token', guestAssignmentController.getAssignmentByToken);
 
