@@ -303,19 +303,19 @@ function generateFullPaymentVoucherPDF(booking) {
 
       doc.moveDown(1);
 
-      const cardPaymentY = doc.y;
-      doc.roundedRect(margin, cardPaymentY, contentWidth, 85, 8)
+            const cardPaymentY = doc.y;
+      doc.roundedRect(margin, cardPaymentY, contentWidth, 95, 8)  // 85 → 95
         .lineWidth(2).strokeColor(successGreen).fillAndStroke(successBg, successGreen);
 
       doc.fontSize(10).font('Helvetica-Bold').fillColor(successGreen);
-      doc.text('PAGO COMPLETO REALIZADO', margin + 15, cardPaymentY + 16);
+      doc.text('PAGO COMPLETO REALIZADO', margin + 15, cardPaymentY + 14);
 
       doc.fontSize(8.5).font('Helvetica').fillColor(mediumGray);
-      doc.text(`Monto total: $${totalWithTaxes.toFixed(2)} MXN`, margin + 15, cardPaymentY + 34);
-      doc.text(`Método de pago: Stripe (Tarjeta)`, margin + 15, cardPaymentY + 62);
+      doc.text(`Monto total: $${totalWithTaxes.toFixed(2)} MXN`, margin + 15, cardPaymentY + 32);
+      doc.text(`Método de pago: Stripe (Tarjeta)`, margin + 15, cardPaymentY + 48); // 62 → 48
 
-      // ✅ FIX: Actualizar doc.y después del card dibujado con coordenadas absolutas
-      doc.y = cardPaymentY + 85;
+      // ✅ FIX actualizado
+      doc.y = cardPaymentY + 95;  // 85 → 95
       doc.moveDown(1.5);
 
       // INFORMACIÓN IMPORTANTE
@@ -461,10 +461,7 @@ function generateFullPaymentVoucherPDF(booking) {
         .lineWidth(1).stroke(gold);
 
       doc.fontSize(8.5).font('Helvetica-Bold').fillColor(charcoal);
-      doc.text('Este documento es tu comprobante oficial de reserva', margin, footerY + 12, {
-        align: 'center',
-        width: contentWidth
-      });
+      
 
       doc.fontSize(7).font('Helvetica').fillColor(mediumGray);
       const timestamp = new Date().toLocaleString('es-MX', {
@@ -474,12 +471,6 @@ function generateFullPaymentVoucherPDF(booking) {
         hour: '2-digit',
         minute: '2-digit'
       });
-      doc.text(
-        `Documento generado: ${timestamp} | Reserva: ${booking.bookingId}`,
-        margin,
-        footerY + 25,
-        { align: 'center', width: contentWidth }
-      );
 
       doc.moveTo(margin, footerY + 42).lineTo(margin + contentWidth, footerY + 42)
         .lineWidth(1.5).stroke(gold);
