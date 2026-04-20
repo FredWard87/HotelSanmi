@@ -119,7 +119,6 @@ function generateFullPaymentVoucherPDF(booking) {
           });
 
           // ✅ FIX: Actualizar doc.y manualmente después de image() con coordenadas absolutas
-          // PDFKit no mueve el cursor automáticamente al usar coordenadas absolutas
           doc.y = logoY + logoHeight + 60;
 
         } else {
@@ -291,7 +290,6 @@ function generateFullPaymentVoucherPDF(booking) {
         align: 'right'
       });
 
-      // ✅ FIX: Actualizar doc.y después de la tabla dibujada con coordenadas absolutas
       doc.y = tableY + lineHeight * rowCount + 8;
       doc.moveDown(1.5);
 
@@ -303,8 +301,9 @@ function generateFullPaymentVoucherPDF(booking) {
 
       doc.moveDown(1);
 
-            const cardPaymentY = doc.y;
-      doc.roundedRect(margin, cardPaymentY, contentWidth, 95, 8)  // 85 → 95
+      // ✅ FIX: card más alto y texto reposicionado para evitar desborde
+      const cardPaymentY = doc.y;
+      doc.roundedRect(margin, cardPaymentY, contentWidth, 95, 8)
         .lineWidth(2).strokeColor(successGreen).fillAndStroke(successBg, successGreen);
 
       doc.fontSize(10).font('Helvetica-Bold').fillColor(successGreen);
@@ -312,10 +311,9 @@ function generateFullPaymentVoucherPDF(booking) {
 
       doc.fontSize(8.5).font('Helvetica').fillColor(mediumGray);
       doc.text(`Monto total: $${totalWithTaxes.toFixed(2)} MXN`, margin + 15, cardPaymentY + 32);
-      doc.text(`Método de pago: Stripe (Tarjeta)`, margin + 15, cardPaymentY + 48); // 62 → 48
+      doc.text(`Método de pago: Stripe (Tarjeta)`, margin + 15, cardPaymentY + 48);
 
-      // ✅ FIX actualizado
-      doc.y = cardPaymentY + 95;  // 85 → 95
+      doc.y = cardPaymentY + 95;
       doc.moveDown(1.5);
 
       // INFORMACIÓN IMPORTANTE
@@ -351,7 +349,6 @@ function generateFullPaymentVoucherPDF(booking) {
         );
       });
 
-      // ✅ FIX: Actualizar doc.y después del box de instrucciones
       doc.y = boxY + boxHeight;
       doc.moveDown(1.5);
 
@@ -420,7 +417,6 @@ function generateFullPaymentVoucherPDF(booking) {
         }
       });
 
-      // ✅ FIX: Actualizar doc.y después del box de políticas
       doc.y = policiesBoxY + policiesBoxHeight;
       doc.moveDown(1.5);
 
@@ -451,9 +447,14 @@ function generateFullPaymentVoucherPDF(booking) {
       doc.text('Email:', margin + 15, contactInfoY + 14);
       doc.text('lacapillasl@gmail.com', margin + 70, contactInfoY + 14);
 
-      // ✅ FIX: Actualizar doc.y después del contact box
       doc.y = contactBoxY + 60;
       doc.moveDown(1.5);
+
+      // ✅ FIX: Verificar que el footer cabe en la página actual
+      if (doc.y + 70 > 842) {
+        doc.addPage();
+        doc.y = margin;
+      }
 
       // FOOTER
       const footerY = doc.y + 15;
@@ -461,7 +462,10 @@ function generateFullPaymentVoucherPDF(booking) {
         .lineWidth(1).stroke(gold);
 
       doc.fontSize(8.5).font('Helvetica-Bold').fillColor(charcoal);
-      
+      doc.text('Este documento es tu comprobante oficial de reserva', margin, footerY + 12, {
+        align: 'center',
+        width: contentWidth
+      });
 
       doc.fontSize(7).font('Helvetica').fillColor(mediumGray);
       const timestamp = new Date().toLocaleString('es-MX', {
@@ -471,6 +475,12 @@ function generateFullPaymentVoucherPDF(booking) {
         hour: '2-digit',
         minute: '2-digit'
       });
+      doc.text(
+        `Documento generado: ${timestamp} | Reserva: ${booking.bookingId}`,
+        margin,
+        footerY + 25,
+        { align: 'center', width: contentWidth }
+      );
 
       doc.moveTo(margin, footerY + 42).lineTo(margin + contentWidth, footerY + 42)
         .lineWidth(1.5).stroke(gold);
@@ -591,7 +601,6 @@ function generatePartialPaymentVoucherPDF(booking) {
       doc.fontSize(18).font('Helvetica-Bold').fillColor(gold);
       doc.text(booking.bookingId, margin + 15, bookingIdY + 25);
 
-      // ✅ FIX: Actualizar doc.y después del bloque de reserva
       doc.y = bookingIdY + 55;
       doc.moveDown(1.5);
 
@@ -687,7 +696,6 @@ function generatePartialPaymentVoucherPDF(booking) {
       doc.text(checkOutDate, margin + 110, detailsStartY + 36, { width: contentWidth - 130 });
       doc.text(`${booking.nights} ${booking.nights === 1 ? 'noche' : 'noches'}`, margin + 110, detailsStartY + 54);
 
-      // ✅ FIX: Actualizar doc.y después del card de estancia
       doc.y = cardY + 75;
       doc.moveDown(1.5);
 
@@ -772,7 +780,6 @@ function generatePartialPaymentVoucherPDF(booking) {
         align: 'right'
       });
 
-      // ✅ FIX: Actualizar doc.y después de la tabla
       doc.y = tableY + lineHeight * rowCount + 8;
       doc.moveDown(1.5);
 
@@ -806,7 +813,6 @@ function generatePartialPaymentVoucherPDF(booking) {
       })}`, margin + 15, card1Y + 40);
       doc.text(`Método: Stripe (Tarjeta)`, margin + 250, card1Y + 40);
 
-      // ✅ FIX: Actualizar doc.y después del card 1
       doc.y = card1Y + cardHeight1;
       doc.moveDown(1.5);
 
@@ -825,7 +831,6 @@ function generatePartialPaymentVoucherPDF(booking) {
       doc.text(`Fecha límite: ${checkOutDate}`, margin + 15, card2Y + 58);
       doc.text(`Métodos: Efectivo, Tarjeta`, margin + 250, card2Y + 58);
 
-      // ✅ FIX: Actualizar doc.y después del card 2
       doc.y = card2Y + cardHeight2;
       doc.moveDown(1.5);
 
@@ -931,7 +936,6 @@ function generatePartialPaymentVoucherPDF(booking) {
         }
       });
 
-      // ✅ FIX: Actualizar doc.y después del box de políticas
       doc.y = policiesBoxY + policiesBoxHeight;
       doc.moveDown(1.5);
 
@@ -962,9 +966,14 @@ function generatePartialPaymentVoucherPDF(booking) {
       doc.text('Email:', margin + 15, contactInfoY + 14);
       doc.text('lacapillasl@gmail.com', margin + 70, contactInfoY + 14);
 
-      // ✅ FIX: Actualizar doc.y después del contact box
       doc.y = contactBoxY + 60;
       doc.moveDown(1.5);
+
+      // ✅ FIX: Verificar que el footer cabe en la página actual
+      if (doc.y + 70 > 842) {
+        doc.addPage();
+        doc.y = margin;
+      }
 
       // FOOTER EN SEGUNDA PÁGINA
       const footerY = doc.y + 15;
