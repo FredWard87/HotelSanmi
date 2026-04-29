@@ -16,6 +16,8 @@ const BookingSchema = new mongoose.Schema({
   checkOut: { type: Date, required: true },
   nights: { type: Number, required: true },
   pricePerNight: { type: Number, required: true },
+  // 🆕 Campo para reservas gratuitas
+  isFree: { type: Boolean, default: false },
   // 🆕 Campos para código de descuento
   subtotalBeforeDiscount: { type: Number, default: 0 }, // Subtotal original antes del descuento
   discountCode: { type: String, default: null }, // Código usado (ej: "BODA2025")
