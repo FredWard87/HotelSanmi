@@ -868,41 +868,11 @@ function generatePartialPaymentVoucherPDF(booking) {
         );
       });
 
-      // ✅ FIX: FOOTER SIEMPRE en página 1 en posición fija
-      // Usar bufferPages: true para poder navegar entre páginas
-      const firstPageFooterY = 770;
-      
-      // Guardar referencia a la última página actual
-      const lastPageIdx = doc.bufferedPageRange().count - 1;
-      
-      // Ir a página 1 y poner el footer
-      doc.switchToPage(0);
-      doc.y = firstPageFooterY;
-
-      doc.moveTo(margin, firstPageFooterY).lineTo(margin + contentWidth, firstPageFooterY)
-        .lineWidth(1).stroke(gold);
-
-      doc.fontSize(8.5).font('Helvetica-Bold').fillColor(charcoal);
-      
-
-      doc.fontSize(7).font('Helvetica').fillColor(mediumGray);
-      const timestamp = new Date().toLocaleString('es-MX', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-      
-
-      doc.moveTo(margin, firstPageFooterY + 42).lineTo(margin + contentWidth, firstPageFooterY + 42)
-        .lineWidth(1.5).stroke(gold);
-
-      // Volver a la última página para continuar con políticas
-      doc.switchToPage(lastPageIdx);
+      // SEGUNDA PÁGINA PARA POLÍTICAS
+      doc.addPage();
       doc.y = margin;
 
-      // POLÍTICAS DEL HOTEL - siempre en página 2
+      // POLÍTICAS DEL HOTEL
       const policiesY = doc.y;
       doc.fontSize(11).font('Helvetica-Bold').fillColor(charcoal);
       doc.text('POLÍTICAS DEL HOTEL', margin, policiesY);
@@ -911,7 +881,7 @@ function generatePartialPaymentVoucherPDF(booking) {
       doc.moveDown(0.8);
 
       const policiesBoxY = doc.y;
-      const policiesBoxHeight = 420;
+      const policiesBoxHeight = 600;
       doc.roundedRect(margin, policiesBoxY, contentWidth, policiesBoxHeight, 5).fill(lightGray);
 
       doc.fontSize(7.5).font('Helvetica').fillColor(charcoal);
@@ -996,7 +966,34 @@ function generatePartialPaymentVoucherPDF(booking) {
       doc.y = contactBoxY + 60;
       doc.moveDown(1.5);
 
-      // ✅ FIX: Footer ya está en la primera página, no agregar duplicado en segunda página
+      // FOOTER EN SEGUNDA PÁGINA
+      const footerY = doc.y + 15;
+      doc.moveTo(margin, footerY).lineTo(margin + contentWidth, footerY)
+        .lineWidth(1).stroke(gold);
+
+      doc.fontSize(8.5).font('Helvetica-Bold').fillColor(charcoal);
+      doc.text('Este documento es tu comprobante oficial de reserva', margin, footerY + 12, {
+        align: 'center',
+        width: contentWidth
+      });
+
+      doc.fontSize(7).font('Helvetica').fillColor(mediumGray);
+      const timestamp = new Date().toLocaleString('es-MX', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      doc.text(
+        `Documento generado: ${timestamp} | Reserva: ${booking.bookingId}`,
+        margin,
+        footerY + 25,
+        { align: 'center', width: contentWidth }
+      );
+
+      doc.moveTo(margin, footerY + 42).lineTo(margin + contentWidth, footerY + 42)
+        .lineWidth(1.5).stroke(gold);
 
       doc.end();
     } catch (error) {
