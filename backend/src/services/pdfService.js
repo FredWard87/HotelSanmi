@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const Room = require('../models/Room');
 
-// 🔥 Configurar transporte de email con configuración robusta
+// 🔥 Configurar transporte de email
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
   port: 587,
@@ -24,28 +24,14 @@ const transporter = nodemailer.createTransport({
   logger: true
 });
 
-// 🔥 Verificar conexión al inicio con mejor logging
 transporter.verify((error, success) => {
   if (error) {
     console.error('❌ Error en configuración de email:', error);
-    console.error('❌ Error details:', {
-      code: error.code,
-      command: error.command,
-      response: error.response,
-      responseCode: error.responseCode
-    });
   } else {
     console.log('✅ Servidor de email listo para enviar mensajes');
-    console.log('✅ Configuración:', {
-      host: 'smtp.gmail.com',
-      port: 587,
-      user: process.env.EMAIL_USERNAME,
-      secure: false
-    });
   }
 });
 
-// Leer el logo una sola vez
 let logoBuffer = null;
 try {
   const logoPath = path.join(__dirname, '../assets/logo.png');
@@ -60,6 +46,10 @@ try {
 }
 
 const LOGO_CID = 'la-capilla-logo@reserva';
+
+// ─────────────────────────────────────────────
+// PDF VOUCHER — PAGO COMPLETO
+// ─────────────────────────────────────────────
 
 function generateFullPaymentVoucherPDF(booking) {
   return new Promise((resolve, reject) => {
@@ -101,10 +91,7 @@ function generateFullPaymentVoucherPDF(booking) {
           const logoX = (pageWidth - logoWidth) / 2;
           const logoY = 20;
 
-          doc.image(logoPath, logoX, logoY, {
-            width: logoWidth,
-            height: logoHeight
-          });
+          doc.image(logoPath, logoX, logoY, { width: logoWidth, height: logoHeight });
 
           doc.fontSize(13).fillColor(gold).font('Helvetica-Bold');
           doc.text('CONFIRMACIÓN DE RESERVA', margin, logoY + logoHeight + 12, {
@@ -118,35 +105,18 @@ function generateFullPaymentVoucherPDF(booking) {
             width: contentWidth
           });
 
-          // ✅ FIX: Actualizar doc.y manualmente después de image() con coordenadas absolutas
-          // PDFKit no mueve el cursor automáticamente al usar coordenadas absolutas
           doc.y = logoY + logoHeight + 60;
-
         } else {
           doc.fontSize(13).fillColor(gold).font('Helvetica');
-          doc.text('CONFIRMACIÓN DE RESERVA', margin, 35, {
-            align: 'center',
-            width: contentWidth
-          });
-
+          doc.text('CONFIRMACIÓN DE RESERVA', margin, 35, { align: 'center', width: contentWidth });
           doc.fontSize(11).fillColor(mediumGray).font('Helvetica');
-          doc.text('PAGO COMPLETADO', margin, 55, {
-            align: 'center',
-            width: contentWidth
-          });
+          doc.text('PAGO COMPLETADO', margin, 55, { align: 'center', width: contentWidth });
         }
       } catch (logoError) {
         doc.fontSize(13).fillColor(gold).font('Helvetica');
-        doc.text('CONFIRMACIÓN DE RESERVA', margin, 35, {
-          align: 'center',
-          width: contentWidth
-        });
-
+        doc.text('CONFIRMACIÓN DE RESERVA', margin, 35, { align: 'center', width: contentWidth });
         doc.fontSize(11).fillColor(mediumGray).font('Helvetica');
-        doc.text('PAGO COMPLETADO', margin, 55, {
-          align: 'center',
-          width: contentWidth
-        });
+        doc.text('PAGO COMPLETADO', margin, 55, { align: 'center', width: contentWidth });
       }
 
       doc.moveDown(1);
@@ -156,15 +126,10 @@ function generateFullPaymentVoucherPDF(booking) {
       doc.rect(margin - 5, bookingIdY, contentWidth + 10, 55).fill(lightGray);
       doc.rect(margin, bookingIdY + 5, contentWidth, 45).fill('white');
       doc.rect(margin, bookingIdY + 5, contentWidth, 45).lineWidth(2).stroke(gold);
-
       doc.fontSize(9).font('Helvetica').fillColor(mediumGray);
-      doc.text('NÚMERO DE RESERVA', margin + 15, bookingIdY + 12, {
-        characterSpacing: 1
-      });
-
+      doc.text('NÚMERO DE RESERVA', margin + 15, bookingIdY + 12, { characterSpacing: 1 });
       doc.fontSize(18).font('Helvetica-Bold').fillColor(gold);
       doc.text(booking.bookingId, margin + 15, bookingIdY + 25);
-
       doc.y = bookingIdY + 55;
       doc.moveDown(1.5);
 
@@ -173,21 +138,17 @@ function generateFullPaymentVoucherPDF(booking) {
       doc.fontSize(11).font('Helvetica-Bold').fillColor(charcoal);
       doc.text('INFORMACIÓN DEL HUÉSPED', margin, guestInfoY);
       doc.rect(margin, guestInfoY + 14, 70, 1.5).fill(gold);
-
       doc.moveDown(1);
 
       const infoStartY = doc.y;
       doc.fontSize(8.5).font('Helvetica-Bold').fillColor(mediumGray);
-
       doc.text('NOMBRE COMPLETO', margin, infoStartY);
       doc.text('EMAIL', margin, infoStartY + 16);
       doc.text('TELÉFONO', margin, infoStartY + 32);
-
       doc.fontSize(9).font('Helvetica').fillColor(charcoal);
       doc.text(`${booking.guestInfo.firstName} ${booking.guestInfo.lastName}`, margin + 120, infoStartY, { width: contentWidth - 140 });
       doc.text(booking.guestInfo.email, margin + 120, infoStartY + 16, { width: contentWidth - 140 });
       doc.text(booking.guestInfo.phone || 'No registrado', margin + 120, infoStartY + 32, { width: contentWidth - 140 });
-
       doc.y = infoStartY + 50;
       doc.moveDown(1.5);
 
@@ -196,39 +157,29 @@ function generateFullPaymentVoucherPDF(booking) {
       doc.fontSize(11).font('Helvetica-Bold').fillColor(charcoal);
       doc.text('DETALLES DE LA ESTANCIA', margin, stayDetailsY);
       doc.rect(margin, stayDetailsY + 14, 70, 1.5).fill(gold);
-
       doc.moveDown(1);
 
       const cardY = doc.y;
       doc.roundedRect(margin, cardY, contentWidth, 75, 5).fill(lightGray);
 
       const checkInDate = new Date(booking.checkIn).toLocaleDateString('es-MX', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
       });
       const checkOutDate = new Date(booking.checkOut).toLocaleDateString('es-MX', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
       });
 
       const detailsStartY = cardY + 12;
       doc.fontSize(8.5).font('Helvetica-Bold').fillColor(mediumGray);
-
       doc.text('HABITACIÓN', margin + 15, detailsStartY);
       doc.text('CHECK-IN', margin + 15, detailsStartY + 18);
       doc.text('CHECK-OUT', margin + 15, detailsStartY + 36);
       doc.text('NOCHES', margin + 15, detailsStartY + 54);
-
       doc.fontSize(9).font('Helvetica').fillColor(charcoal);
       doc.text(booking.roomName, margin + 110, detailsStartY, { width: contentWidth - 130 });
       doc.text(checkInDate, margin + 110, detailsStartY + 18, { width: contentWidth - 130 });
       doc.text(checkOutDate, margin + 110, detailsStartY + 36, { width: contentWidth - 130 });
       doc.text(`${booking.nights} ${booking.nights === 1 ? 'noche' : 'noches'}`, margin + 110, detailsStartY + 54);
-
       doc.y = cardY + 75;
       doc.moveDown(1.5);
 
@@ -237,7 +188,6 @@ function generateFullPaymentVoucherPDF(booking) {
       doc.fontSize(11).font('Helvetica-Bold').fillColor(charcoal);
       doc.text('DESGLOSE DEL PAGO', margin, paymentBreakdownY);
       doc.rect(margin, paymentBreakdownY + 14, 70, 1.5).fill(gold);
-
       doc.moveDown(1);
 
       const tableY = doc.y;
@@ -250,48 +200,33 @@ function generateFullPaymentVoucherPDF(booking) {
       const rowCount = 2 + (showTax ? 1 : 0) + (showMunicipal ? 1 : 0) + 1;
 
       doc.roundedRect(margin, tableY, contentWidth, lineHeight * rowCount + 8, 5).fill(lightGray);
-
       doc.fontSize(9).font('Helvetica').fillColor(charcoal);
 
       let currentRow = 0;
       doc.text('Subtotal', labelX, tableY + 8);
-      doc.text(`${(booking.subtotal || 0).toFixed(2)} MXN`, valueX, tableY + 8, {
-        width: 90,
-        align: 'right'
-      });
+      doc.text(`${(booking.subtotal || 0).toFixed(2)} MXN`, valueX, tableY + 8, { width: 90, align: 'right' });
       currentRow++;
 
       if (showTax) {
         doc.text('IVA (16%)', labelX, tableY + lineHeight * currentRow + 8);
-        doc.text(`${(booking.tax || 0).toFixed(2)} MXN`, valueX, tableY + lineHeight * currentRow + 8, {
-          width: 90,
-          align: 'right'
-        });
+        doc.text(`${(booking.tax || 0).toFixed(2)} MXN`, valueX, tableY + lineHeight * currentRow + 8, { width: 90, align: 'right' });
         currentRow++;
       }
 
       if (showMunicipal) {
         doc.text('Impuesto Municipal (4%)', labelX, tableY + lineHeight * currentRow + 8);
-        doc.text(`${municipalTax.toFixed(2)} MXN`, valueX, tableY + lineHeight * currentRow + 8, {
-          width: 90,
-          align: 'right'
-        });
+        doc.text(`${municipalTax.toFixed(2)} MXN`, valueX, tableY + lineHeight * currentRow + 8, { width: 90, align: 'right' });
         currentRow++;
       }
 
       const dividerY = tableY + lineHeight * currentRow + 4;
-      doc.moveTo(margin + 15, dividerY).lineTo(margin + contentWidth - 15, dividerY)
-        .lineWidth(1.5).stroke(gold);
+      doc.moveTo(margin + 15, dividerY).lineTo(margin + contentWidth - 15, dividerY).lineWidth(1.5).stroke(gold);
 
       doc.fontSize(11).font('Helvetica-Bold').fillColor(charcoal);
       doc.text('TOTAL PAGADO', labelX, tableY + lineHeight * currentRow + 12);
       doc.fontSize(13).fillColor(gold);
-      doc.text(`${totalWithTaxes.toFixed(2)} MXN`, valueX, tableY + lineHeight * currentRow + 10, {
-        width: 90,
-        align: 'right'
-      });
+      doc.text(`${totalWithTaxes.toFixed(2)} MXN`, valueX, tableY + lineHeight * currentRow + 10, { width: 90, align: 'right' });
 
-      // ✅ FIX: Actualizar doc.y después de la tabla dibujada con coordenadas absolutas
       doc.y = tableY + lineHeight * rowCount + 8;
       doc.moveDown(1.5);
 
@@ -300,22 +235,17 @@ function generateFullPaymentVoucherPDF(booking) {
       doc.fontSize(11).font('Helvetica-Bold').fillColor(charcoal);
       doc.text('ESTADO DE PAGO', margin, paymentStatusY);
       doc.rect(margin, paymentStatusY + 14, 70, 1.5).fill(gold);
-
       doc.moveDown(1);
 
-            const cardPaymentY = doc.y;
-      doc.roundedRect(margin, cardPaymentY, contentWidth, 95, 8)  // 85 → 95
+      const cardPaymentY = doc.y;
+      doc.roundedRect(margin, cardPaymentY, contentWidth, 95, 8)
         .lineWidth(2).strokeColor(successGreen).fillAndStroke(successBg, successGreen);
-
       doc.fontSize(10).font('Helvetica-Bold').fillColor(successGreen);
       doc.text('PAGO COMPLETO REALIZADO', margin + 15, cardPaymentY + 14);
-
       doc.fontSize(8.5).font('Helvetica').fillColor(mediumGray);
       doc.text(`Monto total: $${totalWithTaxes.toFixed(2)} MXN`, margin + 15, cardPaymentY + 32);
-      doc.text(`Método de pago: Stripe (Tarjeta)`, margin + 15, cardPaymentY + 48); // 62 → 48
-
-      // ✅ FIX actualizado
-      doc.y = cardPaymentY + 95;  // 85 → 95
+      doc.text(`Método de pago: Stripe (Tarjeta)`, margin + 15, cardPaymentY + 48);
+      doc.y = cardPaymentY + 95;
       doc.moveDown(1.5);
 
       // INFORMACIÓN IMPORTANTE
@@ -323,17 +253,14 @@ function generateFullPaymentVoucherPDF(booking) {
       doc.fontSize(11).font('Helvetica-Bold').fillColor(charcoal);
       doc.text('INFORMACIÓN IMPORTANTE', margin, instructionsY);
       doc.rect(margin, instructionsY + 14, 70, 1.5).fill(gold);
-
       doc.moveDown(0.8);
 
       const boxY = doc.y;
       const boxHeight = 60;
       doc.roundedRect(margin, boxY, contentWidth, boxHeight, 5).fill(lightGray);
 
-      doc.fontSize(8.5).font('Helvetica').fillColor(charcoal);
       const instructionsStartY = boxY + 10;
       const lineSpacing = 12;
-
       const instructions = [
         'Presenta este voucher en recepción al momento del check-in',
         'Tu reserva está completamente pagada, no requiere pagos adicionales',
@@ -343,19 +270,12 @@ function generateFullPaymentVoucherPDF(booking) {
 
       instructions.forEach((instruction, index) => {
         doc.fontSize(7.5).fillColor(gold).text('•', margin + 12, instructionsStartY + (index * lineSpacing));
-        doc.fontSize(8.5).fillColor(charcoal).text(
-          instruction,
-          margin + 20,
-          instructionsStartY + (index * lineSpacing),
-          { width: contentWidth - 35 }
-        );
+        doc.fontSize(8.5).fillColor(charcoal).text(instruction, margin + 20, instructionsStartY + (index * lineSpacing), { width: contentWidth - 35 });
       });
 
-      // ✅ FIX: Actualizar doc.y después del box de instrucciones
       doc.y = boxY + boxHeight;
       doc.moveDown(1.5);
 
-      // Verificar si hay espacio para políticas EN LA MISMA PÁGINA
       if (doc.y + 280 > 842) {
         doc.addPage();
         doc.y = margin;
@@ -366,20 +286,15 @@ function generateFullPaymentVoucherPDF(booking) {
       doc.fontSize(11).font('Helvetica-Bold').fillColor(charcoal);
       doc.text('POLÍTICAS DEL HOTEL', margin, policiesY);
       doc.rect(margin, policiesY + 14, 70, 1.5).fill(gold);
-
       doc.moveDown(0.8);
 
       const policiesBoxY = doc.y;
       const policiesBoxHeight = 230;
       doc.roundedRect(margin, policiesBoxY, contentWidth, policiesBoxHeight, 5).fill(lightGray);
 
-      doc.fontSize(7.5).font('Helvetica').fillColor(charcoal);
-      const policiesStartY = policiesBoxY + 12;
-      const policiesLineSpacing = 9;
-
       const policies = [
         { number: '1.', text: 'EL CHECK IN DEBERÁ REALIZARSE A PARTIR DE LAS 15 HRS. (SI DESEA INGRESAR ANTES PREGUNTAR POR DISPONIBILIDAD).' },
-        { number: '2.', text: 'EL CHECK OUT ES A LAS 12 HRS CON UN MÁXIMO DE TOLERANCIA DE 30 MIN. A PARTIR DE LAS 12:30 PM SE COBRARÁ UNA NOCHE EXTRA. (PREGUNTAR POR COSTO DE LATE CHECK OUT).' },
+        { number: '2.', text: 'EL CHECK OUT ES A LAS 12 HRS CON UN MÁXIMO DE TOLERANCIA DE 30 MIN. A PARTIR DE LAS 12:30 PM SE COBRARÁ UNA NOCHE EXTRA.' },
         { number: '3.', text: 'SE DEBERÁ CUBRIR EL RESTANTE DEL TOTAL DE LA RESERVACIÓN AL MOMENTO DE REALIZAR CHECK IN.' },
         { number: '4.', text: 'EL HORARIO DE USO DE LA ALBERCA ES DE 9:00 A 19:00 HRS.' },
         { number: '5.', text: 'NO SE PERMITEN INGRESAR BEBIDAS NI ALIMENTOS AL ESTABLECIMIENTO.' },
@@ -387,40 +302,35 @@ function generateFullPaymentVoucherPDF(booking) {
         { number: '7.', text: 'EL HORARIO DEL RESTAURANTE:' },
         { number: '', text: '   DESAYUNO - 9 AM – 11:30 AM' },
         { number: '', text: '   COMIDA - CENA - 12:00 - 6:00 PM' },
-        { number: '8.', text: 'NO RUIDO A PARTIR DE LAS 10:00 PM DENTRO LA CAPILLA HOTEL. (PASILLOS, APARATOS ELECTRÓNICOS, ÁREAS COMUNES DEL HOTEL).' },
+        { number: '8.', text: 'NO RUIDO A PARTIR DE LAS 10:00 PM DENTRO LA CAPILLA HOTEL.' },
         { number: '9.', text: 'SI HAY DAÑOS A LAS HABITACIONES Y/O INSTALACIONES SERÁ PENALIZADO DEPENDIENDO DEL DAÑO.' },
         { number: '10.', text: 'EN DADO CASO DE CANCELACIÓN DEBERÁ NOTIFICARSE CON 72 HRS DE ANTICIPACIÓN. (REEMBOLSO DEL 100% DE 5 A 7 DÍAS HÁBILES).' },
-        { number: '11.', text: 'CANCELACIONES EN TEMPORADA ALTA, SE DEBERÁ REALIZAR CON UNA ANTICIPACIÓN DEL MÍNIMO DE 15 DÍAS HÁBILES ANTES DE SU FECHA DE LLEGADA.' },
-        { number: '12.', text: 'CANCELACIONES MENORES A 72 HRS (15 DÍAS TEMPORADA ALTA) DE ANTICIPACIÓN SE COBRARÁ UNA PENALIZACIÓN DEL 50% O LA PRIMER NOCHE DE LA RESERVA CONFIRMADA.' },
+        { number: '11.', text: 'CANCELACIONES EN TEMPORADA ALTA, SE DEBERÁ REALIZAR CON UNA ANTICIPACIÓN DEL MÍNIMO DE 15 DÍAS HÁBILES.' },
+        { number: '12.', text: 'CANCELACIONES MENORES A 72 HRS SE COBRARÁ UNA PENALIZACIÓN DEL 50% O LA PRIMER NOCHE DE LA RESERVA.' },
         { number: '13.', text: 'NO SE ACEPTAN MASCOTAS EN LA CAPILLA HOTEL.' },
         { number: '14.', text: 'FAVOR DE SOLICITAR FACTURA AL MOMENTO DE REALIZAR SU RESERVACIÓN.' },
-        { number: '15.', text: 'NO SE PERMITEN EL CONSUMO DE SUSTANCIAS ILEGALES O FUMAR DENTRO DE LAS HABITACIONES (PENALIZACIÓN DE $6,000.00 PESOS MEXICANOS A QUIEN SEA SORPRENDIDO), ADEMÁS QUE SE REMITIRÁ A LAS AUTORIDADES FEDERALES.' }
+        { number: '15.', text: 'NO SE PERMITEN EL CONSUMO DE SUSTANCIAS ILEGALES O FUMAR DENTRO DE LAS HABITACIONES (PENALIZACIÓN DE $6,000.00 MXN).' }
       ];
 
-      let currentY = policiesStartY;
+      let currentY = policiesBoxY + 12;
+      const policiesLineSpacing = 9;
+
       policies.forEach((policy) => {
         const bulletX = margin + 10;
         const textX = margin + 20;
         const textWidth = contentWidth - 30;
 
         if (policy.number === '') {
-          doc.fontSize(7).fillColor(mediumGray).text(policy.text, textX, currentY, {
-            width: textWidth,
-            indent: 10
-          });
+          doc.fontSize(7).fillColor(mediumGray).text(policy.text, textX, currentY, { width: textWidth, indent: 10 });
           currentY += policiesLineSpacing - 2;
         } else {
           doc.fontSize(7).fillColor(gold).font('Helvetica-Bold').text(policy.number, bulletX, currentY);
-          doc.fontSize(7).fillColor(charcoal).font('Helvetica').text(policy.text, textX, currentY, {
-            width: textWidth
-          });
-
+          doc.fontSize(7).fillColor(charcoal).font('Helvetica').text(policy.text, textX, currentY, { width: textWidth });
           const lines = Math.ceil(doc.widthOfString(policy.text, { width: textWidth }) / textWidth);
           currentY += (lines * policiesLineSpacing);
         }
       });
 
-      // ✅ FIX: Actualizar doc.y después del box de políticas
       doc.y = policiesBoxY + policiesBoxHeight;
       doc.moveDown(1.5);
 
@@ -429,51 +339,28 @@ function generateFullPaymentVoucherPDF(booking) {
       doc.fontSize(11).font('Helvetica-Bold').fillColor(charcoal);
       doc.text('INFORMACIÓN DE CONTACTO', margin, contactY);
       doc.rect(margin, contactY + 14, 70, 1.5).fill(gold);
-
       doc.moveDown(0.8);
 
       const contactBoxY = doc.y;
       doc.roundedRect(margin, contactBoxY, contentWidth, 60, 8)
         .lineWidth(1).strokeColor(gold).fillAndStroke(lightGray, gold);
-
       doc.fontSize(10).font('Helvetica-Bold').fillColor(charcoal);
       doc.text('La Capilla Hotel ', margin + 15, contactBoxY + 12);
-
       doc.fontSize(8.5).font('Helvetica').fillColor(mediumGray);
       const contactInfoY = contactBoxY + 28;
-
       doc.text('Teléfono:', margin + 15, contactInfoY);
       doc.text('+52 4777 347474', margin + 70, contactInfoY);
-
       doc.text('WhatsApp:', margin + 220, contactInfoY);
       doc.text('+52 4777 347474', margin + 280, contactInfoY);
-
       doc.text('Email:', margin + 15, contactInfoY + 14);
       doc.text('lacapillasl@gmail.com', margin + 70, contactInfoY + 14);
-
-      // ✅ FIX: Actualizar doc.y después del contact box
       doc.y = contactBoxY + 60;
       doc.moveDown(1.5);
 
       // FOOTER
       const footerY = doc.y + 15;
-      doc.moveTo(margin, footerY).lineTo(margin + contentWidth, footerY)
-        .lineWidth(1).stroke(gold);
-
-      doc.fontSize(8.5).font('Helvetica-Bold').fillColor(charcoal);
-      
-
-      doc.fontSize(7).font('Helvetica').fillColor(mediumGray);
-      const timestamp = new Date().toLocaleString('es-MX', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-
-      doc.moveTo(margin, footerY + 42).lineTo(margin + contentWidth, footerY + 42)
-        .lineWidth(1.5).stroke(gold);
+      doc.moveTo(margin, footerY).lineTo(margin + contentWidth, footerY).lineWidth(1).stroke(gold);
+      doc.moveTo(margin, footerY + 42).lineTo(margin + contentWidth, footerY + 42).lineWidth(1.5).stroke(gold);
 
       doc.end();
     } catch (error) {
@@ -482,15 +369,14 @@ function generateFullPaymentVoucherPDF(booking) {
   });
 }
 
+// ─────────────────────────────────────────────
+// PDF VOUCHER — PAGO PARCIAL
+// ─────────────────────────────────────────────
+
 function generatePartialPaymentVoucherPDF(booking) {
   return new Promise((resolve, reject) => {
     try {
-      const doc = new PDFDocument({
-        size: 'A4',
-        margin: 50,
-        bufferPages: true,
-      });
-
+      const doc = new PDFDocument({ size: 'A4', margin: 50, bufferPages: true });
       const chunks = [];
       doc.on('data', chunk => chunks.push(chunk));
       doc.on('error', reject);
@@ -514,8 +400,6 @@ function generatePartialPaymentVoucherPDF(booking) {
       const initialPayment = booking.initialPayment || (totalWithTaxes * 0.5);
       const pendingPayment = totalWithTaxes - initialPayment;
 
-      // PRIMERA PÁGINA
-
       // ENCABEZADO
       doc.rect(0, 0, pageWidth, 120).fill('white');
       doc.rect(0, 0, pageWidth, 3).fill(gold);
@@ -528,51 +412,21 @@ function generatePartialPaymentVoucherPDF(booking) {
           const logoX = (pageWidth - logoWidth) / 2;
           const logoY = 20;
 
-          doc.image(logoPath, logoX, logoY, {
-            width: logoWidth,
-            height: logoHeight
-          });
-
+          doc.image(logoPath, logoX, logoY, { width: logoWidth, height: logoHeight });
           doc.fontSize(13).fillColor(gold).font('Helvetica-Bold');
-          doc.text('CONFIRMACIÓN DE RESERVA', margin, logoY + logoHeight + 12, {
-            align: 'center',
-            width: contentWidth
-          });
-
+          doc.text('CONFIRMACIÓN DE RESERVA', margin, logoY + logoHeight + 12, { align: 'center', width: contentWidth });
           doc.fontSize(11).fillColor(mediumGray).font('Helvetica');
-          doc.text('PAGO PARCIAL - 50% BALANCE PENDIENTE', margin, logoY + logoHeight + 32, {
-            align: 'center',
-            width: contentWidth
-          });
-
-          // ✅ FIX: Actualizar doc.y manualmente después de image() con coordenadas absolutas
+          doc.text('PAGO PARCIAL - 50% BALANCE PENDIENTE', margin, logoY + logoHeight + 32, { align: 'center', width: contentWidth });
           doc.y = logoY + logoHeight + 60;
-
         } else {
           doc.fontSize(13).fillColor(gold).font('Helvetica');
-          doc.text('CONFIRMACIÓN DE RESERVA', margin, 35, {
-            align: 'center',
-            width: contentWidth
-          });
-
+          doc.text('CONFIRMACIÓN DE RESERVA', margin, 35, { align: 'center', width: contentWidth });
           doc.fontSize(11).fillColor(mediumGray).font('Helvetica');
-          doc.text('PAGO PARCIAL - 50% BALANCE PENDIENTE', margin, 55, {
-            align: 'center',
-            width: contentWidth
-          });
+          doc.text('PAGO PARCIAL - 50% BALANCE PENDIENTE', margin, 55, { align: 'center', width: contentWidth });
         }
       } catch (logoError) {
         doc.fontSize(13).fillColor(gold).font('Helvetica');
-        doc.text('CONFIRMACIÓN DE RESERVA', margin, 35, {
-          align: 'center',
-          width: contentWidth
-        });
-
-        doc.fontSize(11).fillColor(mediumGray).font('Helvetica');
-        doc.text('PAGO PARCIAL - 50% BALANCE PENDIENTE', margin, 55, {
-          align: 'center',
-          width: contentWidth
-        });
+        doc.text('CONFIRMACIÓN DE RESERVA', margin, 35, { align: 'center', width: contentWidth });
       }
 
       doc.moveDown(1);
@@ -582,16 +436,10 @@ function generatePartialPaymentVoucherPDF(booking) {
       doc.rect(margin - 5, bookingIdY, contentWidth + 10, 55).fill(lightGray);
       doc.rect(margin, bookingIdY + 5, contentWidth, 45).fill('white');
       doc.rect(margin, bookingIdY + 5, contentWidth, 45).lineWidth(2).stroke(gold);
-
       doc.fontSize(9).font('Helvetica').fillColor(mediumGray);
-      doc.text('NÚMERO DE RESERVA', margin + 15, bookingIdY + 12, {
-        characterSpacing: 1
-      });
-
+      doc.text('NÚMERO DE RESERVA', margin + 15, bookingIdY + 12, { characterSpacing: 1 });
       doc.fontSize(18).font('Helvetica-Bold').fillColor(gold);
       doc.text(booking.bookingId, margin + 15, bookingIdY + 25);
-
-      // ✅ FIX: Actualizar doc.y después del bloque de reserva
       doc.y = bookingIdY + 55;
       doc.moveDown(1.5);
 
@@ -609,13 +457,11 @@ function generatePartialPaymentVoucherPDF(booking) {
       doc.text('TAMAÑO', margin, roomStartY + 16);
       doc.text('CAPACIDAD', margin, roomStartY + 32);
       doc.text('TIPO DE CAMA', margin, roomStartY + 48);
-
       doc.fontSize(9).font('Helvetica').fillColor(charcoal);
       doc.text(booking.roomName || roomInfo.name || '—', margin + 110, roomStartY, { width: contentWidth - 130 });
       doc.text(roomInfo.size || '—', margin + 110, roomStartY + 16);
       doc.text(roomInfo.capacity ? `${roomInfo.capacity} huésped(es)` : '—', margin + 110, roomStartY + 32);
       doc.text(roomInfo.bedType || '—', margin + 110, roomStartY + 48);
-
       doc.y = roomStartY + 65;
       doc.moveDown(1);
 
@@ -631,21 +477,17 @@ function generatePartialPaymentVoucherPDF(booking) {
       doc.fontSize(11).font('Helvetica-Bold').fillColor(charcoal);
       doc.text('INFORMACIÓN DEL HUÉSPED', margin, guestInfoY);
       doc.rect(margin, guestInfoY + 14, 70, 1.5).fill(gold);
-
       doc.moveDown(1);
 
       const infoStartY = doc.y;
       doc.fontSize(8.5).font('Helvetica-Bold').fillColor(mediumGray);
-
       doc.text('NOMBRE COMPLETO', margin, infoStartY);
       doc.text('EMAIL', margin, infoStartY + 16);
       doc.text('TELÉFONO', margin, infoStartY + 32);
-
       doc.fontSize(9).font('Helvetica').fillColor(charcoal);
       doc.text(`${booking.guestInfo.firstName} ${booking.guestInfo.lastName}`, margin + 120, infoStartY, { width: contentWidth - 140 });
       doc.text(booking.guestInfo.email, margin + 120, infoStartY + 16, { width: contentWidth - 140 });
       doc.text(booking.guestInfo.phone || 'No registrado', margin + 120, infoStartY + 32, { width: contentWidth - 140 });
-
       doc.y = infoStartY + 50;
       doc.moveDown(1.5);
 
@@ -654,54 +496,39 @@ function generatePartialPaymentVoucherPDF(booking) {
       doc.fontSize(11).font('Helvetica-Bold').fillColor(charcoal);
       doc.text('DETALLES DE LA ESTANCIA', margin, stayDetailsY);
       doc.rect(margin, stayDetailsY + 14, 70, 1.5).fill(gold);
-
       doc.moveDown(1);
 
       const cardY = doc.y;
       doc.roundedRect(margin, cardY, contentWidth, 75, 5).fill(lightGray);
 
       const checkInDate = new Date(booking.checkIn).toLocaleDateString('es-MX', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
       });
       const checkOutDate = new Date(booking.checkOut).toLocaleDateString('es-MX', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
       });
 
       const detailsStartY = cardY + 12;
       doc.fontSize(8.5).font('Helvetica-Bold').fillColor(mediumGray);
-
       doc.text('HABITACIÓN', margin + 15, detailsStartY);
       doc.text('CHECK-IN', margin + 15, detailsStartY + 18);
       doc.text('CHECK-OUT', margin + 15, detailsStartY + 36);
       doc.text('NOCHES', margin + 15, detailsStartY + 54);
-
       doc.fontSize(9).font('Helvetica').fillColor(charcoal);
       doc.text(booking.roomName, margin + 110, detailsStartY, { width: contentWidth - 130 });
       doc.text(checkInDate, margin + 110, detailsStartY + 18, { width: contentWidth - 130 });
       doc.text(checkOutDate, margin + 110, detailsStartY + 36, { width: contentWidth - 130 });
       doc.text(`${booking.nights} ${booking.nights === 1 ? 'noche' : 'noches'}`, margin + 110, detailsStartY + 54);
-
-      // ✅ FIX: Actualizar doc.y después del card de estancia
       doc.y = cardY + 75;
       doc.moveDown(1.5);
 
       // DESGLOSE DEL PAGO
-      if (doc.y + 250 > 842) {
-        doc.addPage();
-        doc.y = margin;
-      }
+      if (doc.y + 250 > 842) { doc.addPage(); doc.y = margin; }
 
       const paymentBreakdownY = doc.y;
       doc.fontSize(11).font('Helvetica-Bold').fillColor(charcoal);
       doc.text('DESGLOSE DEL PAGO', margin, paymentBreakdownY);
       doc.rect(margin, paymentBreakdownY + 14, 70, 1.5).fill(gold);
-
       doc.moveDown(1);
 
       const tableY = doc.y;
@@ -715,98 +542,65 @@ function generatePartialPaymentVoucherPDF(booking) {
       const rowCount = baseRows + 2;
 
       doc.roundedRect(margin, tableY, contentWidth, lineHeight * rowCount + 8, 5).fill(lightGray);
-
       doc.fontSize(9).font('Helvetica').fillColor(charcoal);
 
       let currentRow = 0;
       doc.text('Subtotal', labelX, tableY + 8);
-      doc.text(`${(booking.subtotal || 0).toFixed(2)} MXN`, valueX, tableY + 8, {
-        width: 90,
-        align: 'right'
-      });
+      doc.text(`${(booking.subtotal || 0).toFixed(2)} MXN`, valueX, tableY + 8, { width: 90, align: 'right' });
       currentRow++;
 
       if (showTax) {
         doc.text('IVA (16%)', labelX, tableY + lineHeight * currentRow + 8);
-        doc.text(`${(booking.tax || 0).toFixed(2)} MXN`, valueX, tableY + lineHeight * currentRow + 8, {
-          width: 90,
-          align: 'right'
-        });
+        doc.text(`${(booking.tax || 0).toFixed(2)} MXN`, valueX, tableY + lineHeight * currentRow + 8, { width: 90, align: 'right' });
         currentRow++;
       }
 
       if (showMunicipal) {
         doc.text('Impuesto Municipal (4%)', labelX, tableY + lineHeight * currentRow + 8);
-        doc.text(`${municipalTax.toFixed(2)} MXN`, valueX, tableY + lineHeight * currentRow + 8, {
-          width: 90,
-          align: 'right'
-        });
+        doc.text(`${municipalTax.toFixed(2)} MXN`, valueX, tableY + lineHeight * currentRow + 8, { width: 90, align: 'right' });
         currentRow++;
       }
 
       const dividerY = tableY + lineHeight * currentRow + 4;
-      doc.moveTo(margin + 15, dividerY).lineTo(margin + contentWidth - 15, dividerY)
-        .lineWidth(1.5).stroke(gold);
+      doc.moveTo(margin + 15, dividerY).lineTo(margin + contentWidth - 15, dividerY).lineWidth(1.5).stroke(gold);
 
       doc.fontSize(11).font('Helvetica-Bold').fillColor(charcoal);
       doc.text('TOTAL DE RESERVA', labelX, tableY + lineHeight * currentRow + 12);
       doc.fontSize(13).fillColor(gold);
-      doc.text(`${totalWithTaxes.toFixed(2)} MXN`, valueX, tableY + lineHeight * currentRow + 10, {
-        width: 90,
-        align: 'right'
-      });
+      doc.text(`${totalWithTaxes.toFixed(2)} MXN`, valueX, tableY + lineHeight * currentRow + 10, { width: 90, align: 'right' });
       currentRow++;
 
       doc.fontSize(9).font('Helvetica').fillColor(charcoal);
       doc.text('Pago Inicial (50%)', labelX, tableY + lineHeight * currentRow + 8);
-      doc.text(`${initialPayment.toFixed(2)} MXN`, valueX, tableY + lineHeight * currentRow + 8, {
-        width: 90,
-        align: 'right'
-      });
+      doc.text(`${initialPayment.toFixed(2)} MXN`, valueX, tableY + lineHeight * currentRow + 8, { width: 90, align: 'right' });
       currentRow++;
 
       doc.fontSize(10).font('Helvetica-Bold').fillColor(warningOrange);
       doc.text('Balance Pendiente', labelX, tableY + lineHeight * currentRow + 8);
-      doc.text(`${pendingPayment.toFixed(2)} MXN`, valueX, tableY + lineHeight * currentRow + 8, {
-        width: 90,
-        align: 'right'
-      });
+      doc.text(`${pendingPayment.toFixed(2)} MXN`, valueX, tableY + lineHeight * currentRow + 8, { width: 90, align: 'right' });
 
-      // ✅ FIX: Actualizar doc.y después de la tabla
       doc.y = tableY + lineHeight * rowCount + 8;
       doc.moveDown(1.5);
 
       // ESTADO DE PAGOS
-      if (doc.y + 250 > 842) {
-        doc.addPage();
-        doc.y = margin;
-      }
+      if (doc.y + 250 > 842) { doc.addPage(); doc.y = margin; }
 
       const paymentStatusY = doc.y;
       doc.fontSize(11).font('Helvetica-Bold').fillColor(charcoal);
       doc.text('ESTADO DE PAGOS', margin, paymentStatusY);
       doc.rect(margin, paymentStatusY + 14, 70, 1.5).fill(gold);
-
       doc.moveDown(1);
 
       const card1Y = doc.y;
       const cardHeight1 = 60;
       doc.roundedRect(margin, card1Y, contentWidth, cardHeight1, 8)
         .lineWidth(2).strokeColor(successGreen).fillAndStroke(successBg, successGreen);
-
       doc.fontSize(10).font('Helvetica-Bold').fillColor(successGreen);
       doc.text('PAGO INICIAL REALIZADO (50%)', margin + 15, card1Y + 14);
-
       doc.fontSize(8.5).font('Helvetica').fillColor(mediumGray);
       doc.text(`Cantidad: $${initialPayment.toFixed(2)} MXN`, margin + 15, card1Y + 28);
-      doc.text(`Fecha: ${new Date(booking.createdAt).toLocaleDateString('es-MX', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric'
-      })}`, margin + 15, card1Y + 40);
+      doc.text(`Fecha: ${new Date(booking.createdAt).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}`, margin + 15, card1Y + 40);
       doc.text(`Método: Stripe (Tarjeta)`, margin + 250, card1Y + 40);
-
-      // ✅ FIX: Actualizar doc.y después del card 1
       doc.y = card1Y + cardHeight1;
       doc.moveDown(1.5);
 
@@ -814,43 +608,32 @@ function generatePartialPaymentVoucherPDF(booking) {
       const cardHeight2 = 75;
       doc.roundedRect(margin, card2Y, contentWidth, cardHeight2, 8)
         .lineWidth(2).strokeColor(warningOrange).fillAndStroke(warningBg, warningOrange);
-
       doc.fontSize(10).font('Helvetica-Bold').fillColor(warningOrange);
       doc.text('PENDIENTE: PAGO EN RECEPCIÓN (50%)', margin + 15, card2Y + 18);
-
       doc.fontSize(16).font('Helvetica-Bold').fillColor(warningOrange);
       doc.text(`$${pendingPayment.toFixed(2)} MXN`, margin + 15, card2Y + 38);
-
       doc.fontSize(8.5).font('Helvetica').fillColor(mediumGray);
       doc.text(`Fecha límite: ${checkOutDate}`, margin + 15, card2Y + 58);
       doc.text(`Métodos: Efectivo, Tarjeta`, margin + 250, card2Y + 58);
-
-      // ✅ FIX: Actualizar doc.y después del card 2
       doc.y = card2Y + cardHeight2;
       doc.moveDown(1.5);
 
-      // INSTRUCCIONES IMPORTANTES
-      if (doc.y + 200 > 842) {
-        doc.addPage();
-        doc.y = margin;
-      }
+      // INSTRUCCIONES
+      if (doc.y + 200 > 842) { doc.addPage(); doc.y = margin; }
 
       const instructionsY = doc.y;
       doc.fontSize(11).font('Helvetica-Bold').fillColor(charcoal);
       doc.text('INSTRUCCIONES IMPORTANTES', margin, instructionsY);
       doc.rect(margin, instructionsY + 14, 70, 1.5).fill(gold);
-
       doc.moveDown(0.8);
 
       const boxY = doc.y;
       const boxHeight = 70;
       doc.roundedRect(margin, boxY, contentWidth, boxHeight, 5).fill(lightGray);
 
-      doc.fontSize(8.5).font('Helvetica').fillColor(charcoal);
       const instructionsStartY = boxY + 10;
-      const lineSpacing = 11;
-
-      const instructions = [
+      const lineSpacing2 = 11;
+      const instructions2 = [
         'Presenta este voucher digital en recepción al momento del check-in',
         'El pago del 50% restante debe realizarse al momento del check-in',
         'Métodos aceptados: Efectivo, tarjetas de crédito y débito',
@@ -858,39 +641,28 @@ function generatePartialPaymentVoucherPDF(booking) {
         'Para cualquier duda o cambio, contáctanos directamente'
       ];
 
-      instructions.forEach((instruction, index) => {
-        doc.fontSize(7.5).fillColor(gold).text('•', margin + 12, instructionsStartY + (index * lineSpacing));
-        doc.fontSize(8.5).fillColor(charcoal).text(
-          instruction,
-          margin + 20,
-          instructionsStartY + (index * lineSpacing),
-          { width: contentWidth - 35 }
-        );
+      instructions2.forEach((instruction, index) => {
+        doc.fontSize(7.5).fillColor(gold).text('•', margin + 12, instructionsStartY + (index * lineSpacing2));
+        doc.fontSize(8.5).fillColor(charcoal).text(instruction, margin + 20, instructionsStartY + (index * lineSpacing2), { width: contentWidth - 35 });
       });
 
-      // SEGUNDA PÁGINA PARA POLÍTICAS
+      // SEGUNDA PÁGINA — POLÍTICAS
       doc.addPage();
       doc.y = margin;
 
-      // POLÍTICAS DEL HOTEL
       const policiesY = doc.y;
       doc.fontSize(11).font('Helvetica-Bold').fillColor(charcoal);
       doc.text('POLÍTICAS DEL HOTEL', margin, policiesY);
       doc.rect(margin, policiesY + 14, 70, 1.5).fill(gold);
-
       doc.moveDown(0.8);
 
       const policiesBoxY = doc.y;
       const policiesBoxHeight = 600;
       doc.roundedRect(margin, policiesBoxY, contentWidth, policiesBoxHeight, 5).fill(lightGray);
 
-      doc.fontSize(7.5).font('Helvetica').fillColor(charcoal);
-      const policiesStartY = policiesBoxY + 12;
-      const policiesLineSpacing = 9;
-
       const policies = [
-        { number: '1.', text: 'EL CHECK IN DEBERÁ REALIZARSE A PARTIR DE LAS 15 HRS. (SI DESEA INGRESAR ANTES PREGUNTAR POR DISPONIBILIDAD).' },
-        { number: '2.', text: 'EL CHECK OUT ES A LAS 12 HRS CON UN MÁXIMO DE TOLERANCIA DE 30 MIN. A PARTIR DE LAS 12:30 PM SE COBRARÁ UNA NOCHE EXTRA. (PREGUNTAR POR COSTO DE LATE CHECK OUT).' },
+        { number: '1.', text: 'EL CHECK IN DEBERÁ REALIZARSE A PARTIR DE LAS 15 HRS.' },
+        { number: '2.', text: 'EL CHECK OUT ES A LAS 12 HRS CON UN MÁXIMO DE TOLERANCIA DE 30 MIN. A PARTIR DE LAS 12:30 PM SE COBRARÁ UNA NOCHE EXTRA.' },
         { number: '3.', text: 'SE DEBERÁ CUBRIR EL RESTANTE DEL TOTAL DE LA RESERVACIÓN AL MOMENTO DE REALIZAR CHECK IN.' },
         { number: '4.', text: 'EL HORARIO DE USO DE LA ALBERCA ES DE 9:00 A 19:00 HRS.' },
         { number: '5.', text: 'NO SE PERMITEN INGRESAR BEBIDAS NI ALIMENTOS AL ESTABLECIMIENTO.' },
@@ -898,94 +670,64 @@ function generatePartialPaymentVoucherPDF(booking) {
         { number: '7.', text: 'EL HORARIO DEL RESTAURANTE:' },
         { number: '', text: '   DESAYUNO - 9 AM – 11:30 AM' },
         { number: '', text: '   COMIDA - CENA - 12:00 - 6:00 PM' },
-        { number: '8.', text: 'NO RUIDO A PARTIR DE LAS 10:00 PM DENTRO LA CAPILLA HOTEL. (PASILLOS, APARATOS ELECTRÓNICOS, ÁREAS COMUNES DEL HOTEL).' },
+        { number: '8.', text: 'NO RUIDO A PARTIR DE LAS 10:00 PM DENTRO LA CAPILLA HOTEL.' },
         { number: '9.', text: 'SI HAY DAÑOS A LAS HABITACIONES Y/O INSTALACIONES SERÁ PENALIZADO DEPENDIENDO DEL DAÑO.' },
         { number: '10.', text: 'EN DADO CASO DE CANCELACIÓN DEBERÁ NOTIFICARSE CON 72 HRS DE ANTICIPACIÓN. (REEMBOLSO DEL 100% DE 5 A 7 DÍAS HÁBILES).' },
-        { number: '11.', text: 'CANCELACIONES EN TEMPORADA ALTA, SE DEBERÁ REALIZAR CON UNA ANTICIPACIÓN DEL MÍNIMO DE 15 DÍAS HÁBILES ANTES DE SU FECHA DE LLEGADA.' },
-        { number: '12.', text: 'CANCELACIONES MENORES A 72 HRS (15 DÍAS TEMPORADA ALTA) DE ANTICIPACIÓN SE COBRARÁ UNA PENALIZACIÓN DEL 50% O LA PRIMER NOCHE DE LA RESERVA CONFIRMADA.' },
+        { number: '11.', text: 'CANCELACIONES EN TEMPORADA ALTA, SE DEBERÁ REALIZAR CON UNA ANTICIPACIÓN DEL MÍNIMO DE 15 DÍAS HÁBILES.' },
+        { number: '12.', text: 'CANCELACIONES MENORES A 72 HRS SE COBRARÁ UNA PENALIZACIÓN DEL 50% O LA PRIMER NOCHE.' },
         { number: '13.', text: 'NO SE ACEPTAN MASCOTAS EN LA CAPILLA HOTEL.' },
         { number: '14.', text: 'FAVOR DE SOLICITAR FACTURA AL MOMENTO DE REALIZAR SU RESERVACIÓN.' },
-        { number: '15.', text: 'NO SE PERMITEN EL CONSUMO DE SUSTANCIAS ILEGALES O FUMAR DENTRO DE LAS HABITACIONES (PENALIZACIÓN DE $6,000.00 PESOS MEXICANOS A QUIEN SEA SORPRENDIDO), ADEMÁS QUE SE REMITIRÁ A LAS AUTORIDADES FEDERALES.' }
+        { number: '15.', text: 'NO SE PERMITEN EL CONSUMO DE SUSTANCIAS ILEGALES O FUMAR DENTRO DE LAS HABITACIONES (PENALIZACIÓN DE $6,000.00 MXN).' }
       ];
 
-      let currentY = policiesStartY;
+      let currentYPolicies = policiesBoxY + 12;
+      const policiesLineSpacing = 9;
+
       policies.forEach((policy) => {
         const bulletX = margin + 10;
         const textX = margin + 20;
         const textWidth = contentWidth - 30;
 
         if (policy.number === '') {
-          doc.fontSize(7).fillColor(mediumGray).text(policy.text, textX, currentY, {
-            width: textWidth,
-            indent: 10
-          });
-          currentY += policiesLineSpacing - 2;
+          doc.fontSize(7).fillColor(mediumGray).text(policy.text, textX, currentYPolicies, { width: textWidth, indent: 10 });
+          currentYPolicies += policiesLineSpacing - 2;
         } else {
-          doc.fontSize(7).fillColor(gold).font('Helvetica-Bold').text(policy.number, bulletX, currentY);
-          doc.fontSize(7).fillColor(charcoal).font('Helvetica').text(policy.text, textX, currentY, {
-            width: textWidth
-          });
-
+          doc.fontSize(7).fillColor(gold).font('Helvetica-Bold').text(policy.number, bulletX, currentYPolicies);
+          doc.fontSize(7).fillColor(charcoal).font('Helvetica').text(policy.text, textX, currentYPolicies, { width: textWidth });
           const lines = Math.ceil(doc.widthOfString(policy.text, { width: textWidth }) / textWidth);
-          currentY += (lines * policiesLineSpacing);
+          currentYPolicies += (lines * policiesLineSpacing);
         }
       });
 
-      // ✅ FIX: Actualizar doc.y después del box de políticas
       doc.y = policiesBoxY + policiesBoxHeight;
       doc.moveDown(1.5);
 
-      // INFORMACIÓN DE CONTACTO EN SEGUNDA PÁGINA
+      // CONTACTO EN PÁGINA 2
       const contactY = doc.y;
       doc.fontSize(11).font('Helvetica-Bold').fillColor(charcoal);
       doc.text('INFORMACIÓN DE CONTACTO', margin, contactY);
       doc.rect(margin, contactY + 14, 70, 1.5).fill(gold);
-
       doc.moveDown(0.8);
 
       const contactBoxY = doc.y;
       doc.roundedRect(margin, contactBoxY, contentWidth, 60, 8)
         .lineWidth(1).strokeColor(gold).fillAndStroke(lightGray, gold);
-
       doc.fontSize(10).font('Helvetica-Bold').fillColor(charcoal);
       doc.text('La Capilla Hotel ', margin + 15, contactBoxY + 12);
-
       doc.fontSize(8.5).font('Helvetica').fillColor(mediumGray);
-      const contactInfoY = contactBoxY + 28;
-
-      doc.text('Teléfono:', margin + 15, contactInfoY);
-      doc.text('+52 4777 347474', margin + 70, contactInfoY);
-
-      doc.text('WhatsApp:', margin + 220, contactInfoY);
-      doc.text('+52 4777 347474', margin + 280, contactInfoY);
-
-      doc.text('Email:', margin + 15, contactInfoY + 14);
-      doc.text('lacapillasl@gmail.com', margin + 70, contactInfoY + 14);
-
-      // ✅ FIX: Actualizar doc.y después del contact box
+      const contactInfoY2 = contactBoxY + 28;
+      doc.text('Teléfono:', margin + 15, contactInfoY2);
+      doc.text('+52 4777 347474', margin + 70, contactInfoY2);
+      doc.text('WhatsApp:', margin + 220, contactInfoY2);
+      doc.text('+52 4777 347474', margin + 280, contactInfoY2);
+      doc.text('Email:', margin + 15, contactInfoY2 + 14);
+      doc.text('lacapillasl@gmail.com', margin + 70, contactInfoY2 + 14);
       doc.y = contactBoxY + 60;
       doc.moveDown(1.5);
 
-      // FOOTER EN SEGUNDA PÁGINA
       const footerY = doc.y + 15;
-      doc.moveTo(margin, footerY).lineTo(margin + contentWidth, footerY)
-        .lineWidth(1).stroke(gold);
-
-      doc.fontSize(8.5).font('Helvetica-Bold').fillColor(charcoal);
-     
-
-      doc.fontSize(7).font('Helvetica').fillColor(mediumGray);
-      const timestamp = new Date().toLocaleString('es-MX', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-      
-
-      doc.moveTo(margin, footerY + 42).lineTo(margin + contentWidth, footerY + 42)
-        .lineWidth(1.5).stroke(gold);
+      doc.moveTo(margin, footerY).lineTo(margin + contentWidth, footerY).lineWidth(1).stroke(gold);
+      doc.moveTo(margin, footerY + 42).lineTo(margin + contentWidth, footerY + 42).lineWidth(1.5).stroke(gold);
 
       doc.end();
     } catch (error) {
@@ -994,35 +736,33 @@ function generatePartialPaymentVoucherPDF(booking) {
   });
 }
 
+// ─────────────────────────────────────────────
+// PDF VOUCHER — SELECTOR
+// ─────────────────────────────────────────────
+
 function generateVoucherPDF(booking) {
-  if (booking.nights === 1 || booking.initialPayment >= booking.totalPrice) {
+  // Reserva gratuita o pago completo → voucher simple
+  if (booking.isFree || booking.nights === 1 || booking.initialPayment >= booking.totalPrice) {
     return generateFullPaymentVoucherPDF(booking);
   }
   return generatePartialPaymentVoucherPDF(booking);
 }
 
+// ─────────────────────────────────────────────
+// EMAIL — PAGO COMPLETO
+// ─────────────────────────────────────────────
+
 async function sendFullPaymentEmail(booking, pdfBuffer) {
   try {
-    console.log(`📧 Preparando email para ${booking.guestInfo.email}...`);
-
     const municipalTax = booking.municipalTax !== undefined ? booking.municipalTax : (booking.subtotal * 0.04);
     const totalWithTaxes = (booking.subtotal || 0) + (booking.tax || 0) + municipalTax;
 
     const attachments = [
-      {
-        filename: `Voucher_${booking.bookingId}.pdf`,
-        content: pdfBuffer,
-        contentType: 'application/pdf',
-      }
+      { filename: `Voucher_${booking.bookingId}.pdf`, content: pdfBuffer, contentType: 'application/pdf' }
     ];
 
     if (logoBuffer) {
-      attachments.push({
-        filename: 'logo.png',
-        content: logoBuffer,
-        contentType: 'image/png',
-        cid: LOGO_CID
-      });
+      attachments.push({ filename: 'logo.png', content: logoBuffer, contentType: 'image/png', cid: LOGO_CID });
     }
 
     const mailOptions = {
@@ -1040,192 +780,64 @@ async function sendFullPaymentEmail(booking, pdfBuffer) {
             * { margin: 0; padding: 0; }
             body { font-family: 'Arial', sans-serif; line-height: 1.6; color: #333; }
             .container { max-width: 600px; margin: 0 auto; background: #ffffff; }
-            .header { 
-              background: #ffffff;
-              padding: 30px 30px 20px 30px; 
-              text-align: center; 
-              border-bottom: 3px solid #C9A961;
-            }
-            .logo-container {
-              text-align: center;
-              margin: 0 auto 15px auto;
-            }
-            .logo-img {
-              max-width: 324px;
-              height: auto;
-              display: block;
-              margin: 0 auto 10px auto;
-            }
-            .header-text {
-              text-align: center;
-              margin-top: 10px;
-            }
-            .header-text h1 {
-              font-size: 28px;
-              margin: 0 0 5px 0;
-              padding: 0;
-              color: #C9A961;
-              font-weight: bold;
-            }
-            .header-text h2 {
-              font-size: 18px;
-              margin: 0;
-              padding: 0;
-              color: #333;
-              font-weight: normal;
-            }
-            .header-text .confirmation {
-              font-size: 14px;
-              color: #2E7D32;
-              margin-top: 10px;
-              font-weight: bold;
-            }
+            .header { background: #ffffff; padding: 30px 30px 20px 30px; text-align: center; border-bottom: 3px solid #C9A961; }
+            .logo-img { max-width: 324px; height: auto; display: block; margin: 0 auto 10px auto; }
+            .header-text .confirmation { font-size: 14px; color: #2E7D32; margin-top: 10px; font-weight: bold; }
             .content { padding: 30px; background: white; }
             .section { margin-bottom: 25px; }
-            .section-title { 
-              color: #C9A961; 
-              font-size: 14px; 
-              font-weight: bold; 
-              text-transform: uppercase; 
-              border-bottom: 2px solid #C9A961; 
-              padding-bottom: 10px; 
-              margin-bottom: 15px; 
-            }
-            .info-row { 
-              display: flex; 
-              justify-content: space-between; 
-              padding: 8px 0; 
-              border-bottom: 1px solid #eee; 
-            }
-            .booking-id { 
-              background: #f0f0f0; 
-              padding: 15px; 
-              border-left: 4px solid #C9A961; 
-              margin: 20px 0; 
-              font-size: 16px; 
-              font-weight: bold; 
-              border-radius: 5px;
-              text-align: center;
-            }
-            .payment-status { 
-              background: #E8F5E9; 
-              padding: 15px; 
-              border-radius: 5px; 
-              margin: 15px 0; 
-              border-left: 4px solid #2E7D32;
-            }
-            .status-badge { 
-              display: inline-block; 
-              padding: 5px 12px; 
-              border-radius: 20px; 
-              font-size: 12px; 
-              font-weight: bold; 
-              background: #4CAF50; 
-              color: white; 
-            }
-            .footer { 
-              background: #f9f9f9; 
-              padding: 20px; 
-              text-align: center; 
-              font-size: 12px; 
-              color: #666; 
-              border-top: 1px solid #ddd; 
-            }
-            .divider { 
-              height: 1px; 
-              background: #C9A961; 
-              margin: 20px 0; 
-            }
-            .contact-info { 
-              background: #F8F8F8; 
-              padding: 15px; 
-              border-radius: 5px; 
-              margin-top: 20px; 
-              border: 1px solid #E0E0E0;
-            }
-            .contact-item {
-              margin-bottom: 15px;
-              line-height: 1.8;
-            }
-            .contact-item:last-child {
-              margin-bottom: 0;
-            }
-            .contact-label {
-              font-weight: bold;
-              display: block;
-              margin-bottom: 2px;
-              color: #333;
-            }
-            .contact-value {
-              color: #666;
-            }
+            .section-title { color: #C9A961; font-size: 14px; font-weight: bold; text-transform: uppercase; border-bottom: 2px solid #C9A961; padding-bottom: 10px; margin-bottom: 15px; }
+            .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+            .booking-id { background: #f0f0f0; padding: 15px; border-left: 4px solid #C9A961; margin: 20px 0; font-size: 16px; font-weight: bold; border-radius: 5px; text-align: center; }
+            .payment-status { background: #E8F5E9; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #2E7D32; }
+            .status-badge { display: inline-block; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; background: #4CAF50; color: white; }
+            .footer { background: #f9f9f9; padding: 20px; text-align: center; font-size: 12px; color: #666; border-top: 1px solid #ddd; }
+            .divider { height: 1px; background: #C9A961; margin: 20px 0; }
+            .contact-info { background: #F8F8F8; padding: 15px; border-radius: 5px; margin-top: 20px; border: 1px solid #E0E0E0; }
+            .contact-item { margin-bottom: 15px; line-height: 1.8; }
+            .contact-item:last-child { margin-bottom: 0; }
+            .contact-label { font-weight: bold; display: block; margin-bottom: 2px; color: #333; }
+            .contact-value { color: #666; }
           </style>
         </head>
         <body>
           <div class="container">
             <div class="header">
-              <div class="logo-container">
-                ${logoBuffer ?
-                  `<img src="cid:${LOGO_CID}" alt="La Capilla Hotel" class="logo-img">` :
-                  `<div class="header-text">
-                    <h1>LA CAPILLA</h1>
-                    <h2>HOTEL</h2>
-                  </div>`
-                }
-              </div>
+              ${logoBuffer ? `<img src="cid:${LOGO_CID}" alt="La Capilla Hotel" class="logo-img">` : `<h1 style="color:#C9A961;font-size:28px;">LA CAPILLA HOTEL</h1>`}
               <div class="header-text">
                 <div class="confirmation">Tu reservación ha sido confirmada</div>
               </div>
             </div>
 
             <div class="content">
-              <p style="font-size: 14px; margin-bottom: 20px;">
+              <p style="font-size:14px;margin-bottom:20px;">
                 Hola <strong>${booking.guestInfo.firstName}</strong>,
               </p>
-              
-              <p style="margin-bottom: 15px;">
+              <p style="margin-bottom:15px;">
                 ¡Gracias por tu reserva en <strong>La Capilla Hotel</strong>! Tu pago ha sido procesado correctamente y tu reserva está confirmada.
               </p>
 
-              <div class="booking-id">
-                NÚMERO DE RESERVA: ${booking.bookingId}
-              </div>
+              <div class="booking-id">NÚMERO DE RESERVA: ${booking.bookingId}</div>
 
               <div class="section">
                 <div class="section-title">Información de tu Estancia</div>
-                <div class="info-row">
-                  <span>Habitación:</span>
-                  <strong>${booking.roomName}</strong>
-                </div>
-                <div class="info-row">
-                  <span>Check-in:</span>
-                  <strong>${new Date(booking.checkIn).toLocaleDateString('es-MX', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</strong>
-                </div>
-                <div class="info-row">
-                  <span>Check-out:</span>
-                  <strong>${new Date(booking.checkOut).toLocaleDateString('es-MX', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</strong>
-                </div>
-                <div class="info-row">
-                  <span>Noches:</span>
-                  <strong>${booking.nights}</strong>
-                </div>
+                <div class="info-row"><span>Habitación:</span><strong>${booking.roomName}</strong></div>
+                <div class="info-row"><span>Check-in:</span><strong>${new Date(booking.checkIn).toLocaleDateString('es-MX', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</strong></div>
+                <div class="info-row"><span>Check-out:</span><strong>${new Date(booking.checkOut).toLocaleDateString('es-MX', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</strong></div>
+                <div class="info-row"><span>Noches:</span><strong>${booking.nights}</strong></div>
               </div>
 
               <div class="divider"></div>
 
               <div class="section">
                 <div class="section-title">Estado de Pago</div>
-                
                 <div class="payment-status">
-                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <span style="font-weight: bold;">Pago Completo</span>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                    <span style="font-weight:bold;">Pago Completo</span>
                     <span class="status-badge">COMPLETADO</span>
                   </div>
-                  <div style="font-size: 13px; color: #666;">
+                  <div style="font-size:13px;color:#666;">
                     Monto total: <strong>${totalWithTaxes.toFixed(2)} MXN</strong>
-                    <div style="font-size: 11px; color: #888; margin-top: 5px;">
-                      Incluye IVA (16%) e Impuesto Municipal (4%)
-                    </div>
+                    <div style="font-size:11px;color:#888;margin-top:5px;">Incluye IVA (16%) e Impuesto Municipal (4%)</div>
                   </div>
                 </div>
               </div>
@@ -1240,20 +852,10 @@ async function sendFullPaymentEmail(booking, pdfBuffer) {
 
               <div class="section">
                 <div class="section-title">¿Preguntas?</div>
-                <p>Estamos aquí para ayudarte:</p>
                 <div class="contact-info">
-                  <div class="contact-item">
-                    <span class="contact-label">Teléfono:</span>
-                    <span class="contact-value">+52 4777 347474</span>
-                  </div>
-                  <div class="contact-item">
-                    <span class="contact-label">WhatsApp:</span>
-                    <span class="contact-value">+52 4777 347474</span>
-                  </div>
-                  <div class="contact-item">
-                    <span class="contact-label">Email:</span>
-                    <span class="contact-value">lacapillasl@gmail.com</span>
-                  </div>
+                  <div class="contact-item"><span class="contact-label">Teléfono:</span><span class="contact-value">+52 4777 347474</span></div>
+                  <div class="contact-item"><span class="contact-label">WhatsApp:</span><span class="contact-value">+52 4777 347474</span></div>
+                  <div class="contact-item"><span class="contact-label">Email:</span><span class="contact-value">lacapillasl@gmail.com</span></div>
                 </div>
               </div>
             </div>
@@ -1261,21 +863,17 @@ async function sendFullPaymentEmail(booking, pdfBuffer) {
             <div class="footer">
               <p><strong>La Capilla Hotel</strong></p>
               <p>Nos vemos pronto. ¡Esperamos tu llegada!</p>
-              <p style="margin-top: 15px; color: #999; font-size: 11px;">
-                Este es un email automatizado. No responda directamente a este mensaje.
-              </p>
+              <p style="margin-top:15px;color:#999;font-size:11px;">Este es un email automatizado. No responda directamente a este mensaje.</p>
             </div>
           </div>
         </body>
         </html>
       `,
-      attachments: attachments
+      attachments
     };
 
-    console.log('📤 Enviando email...');
     const result = await transporter.sendMail(mailOptions);
-
-    console.log('✅ Email enviado exitosamente');
+    console.log('✅ Email de pago completo enviado exitosamente');
     return result;
   } catch (error) {
     console.error('❌ Error enviando email:', error);
@@ -1283,30 +881,23 @@ async function sendFullPaymentEmail(booking, pdfBuffer) {
   }
 }
 
+// ─────────────────────────────────────────────
+// EMAIL — PAGO PARCIAL
+// ─────────────────────────────────────────────
+
 async function sendPartialPaymentEmail(booking, pdfBuffer) {
   try {
-    console.log(`📧 Preparando email de pago parcial para ${booking.guestInfo.email}...`);
-
     const municipalTax = booking.municipalTax !== undefined ? booking.municipalTax : (booking.subtotal * 0.04);
     const totalWithTaxes = (booking.subtotal || 0) + (booking.tax || 0) + municipalTax;
     const initialPayment = booking.initialPayment || (totalWithTaxes * 0.5);
     const pendingPayment = totalWithTaxes - initialPayment;
 
     const attachments = [
-      {
-        filename: `Voucher_${booking.bookingId}.pdf`,
-        content: pdfBuffer,
-        contentType: 'application/pdf',
-      }
+      { filename: `Voucher_${booking.bookingId}.pdf`, content: pdfBuffer, contentType: 'application/pdf' }
     ];
 
     if (logoBuffer) {
-      attachments.push({
-        filename: 'logo.png',
-        content: logoBuffer,
-        contentType: 'image/png',
-        cid: LOGO_CID
-      });
+      attachments.push({ filename: 'logo.png', content: logoBuffer, contentType: 'image/png', cid: LOGO_CID });
     }
 
     const mailOptions = {
@@ -1324,222 +915,77 @@ async function sendPartialPaymentEmail(booking, pdfBuffer) {
             * { margin: 0; padding: 0; }
             body { font-family: 'Arial', sans-serif; line-height: 1.6; color: #333; }
             .container { max-width: 600px; margin: 0 auto; background: #ffffff; }
-            .header { 
-              background: #ffffff;
-              padding: 30px 30px 20px 30px; 
-              text-align: center; 
-              border-bottom: 3px solid #C9A961;
-            }
-            .logo-container {
-              text-align: center;
-              margin: 0 auto 15px auto;
-            }
-            .logo-img {
-              max-width: 324px;
-              height: auto;
-              display: block;
-              margin: 0 auto 10px auto;
-            }
-            .header-text {
-              text-align: center;
-              margin-top: 10px;
-            }
-            .header-text h1 {
-              font-size: 28px;
-              margin: 0 0 5px 0;
-              padding: 0;
-              color: #C9A961;
-              font-weight: bold;
-            }
-            .header-text h2 {
-              font-size: 18px;
-              margin: 0;
-              padding: 0;
-              color: #333;
-              font-weight: normal;
-            }
-            .header-text .confirmation {
-              font-size: 14px;
-              color: #2E7D32;
-              margin-top: 10px;
-              font-weight: bold;
-            }
+            .header { background: #ffffff; padding: 30px 30px 20px 30px; text-align: center; border-bottom: 3px solid #C9A961; }
+            .logo-img { max-width: 324px; height: auto; display: block; margin: 0 auto 10px auto; }
+            .header-text .confirmation { font-size: 14px; color: #2E7D32; margin-top: 10px; font-weight: bold; }
             .content { padding: 30px; background: white; }
             .section { margin-bottom: 25px; }
-            .section-title { 
-              color: #C9A961; 
-              font-size: 14px; 
-              font-weight: bold; 
-              text-transform: uppercase; 
-              border-bottom: 2px solid #C9A961; 
-              padding-bottom: 10px; 
-              margin-bottom: 15px; 
-            }
-            .info-row { 
-              display: flex; 
-              justify-content: space-between; 
-              padding: 8px 0; 
-              border-bottom: 1px solid #eee; 
-            }
-            .booking-id { 
-              background: #f0f0f0; 
-              padding: 15px; 
-              border-left: 4px solid #C9A961; 
-              margin: 20px 0; 
-              font-size: 16px; 
-              font-weight: bold; 
-              border-radius: 5px;
-              text-align: center;
-            }
-            .payment-status { 
-              padding: 15px; 
-              border-radius: 5px; 
-              margin: 15px 0; 
-            }
-            .payment-status.completed { 
-              background: #E8F5E9; 
-              border-left: 4px solid #2E7D32;
-            }
-            .payment-status.pending { 
-              background: #FFF3E0; 
-              border-left: 4px solid #FF6F00;
-            }
-            .status-badge { 
-              display: inline-block; 
-              padding: 5px 12px; 
-              border-radius: 20px; 
-              font-size: 12px; 
-              font-weight: bold; 
-            }
+            .section-title { color: #C9A961; font-size: 14px; font-weight: bold; text-transform: uppercase; border-bottom: 2px solid #C9A961; padding-bottom: 10px; margin-bottom: 15px; }
+            .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+            .booking-id { background: #f0f0f0; padding: 15px; border-left: 4px solid #C9A961; margin: 20px 0; font-size: 16px; font-weight: bold; border-radius: 5px; text-align: center; }
+            .payment-status { padding: 15px; border-radius: 5px; margin: 15px 0; }
+            .payment-status.completed { background: #E8F5E9; border-left: 4px solid #2E7D32; }
+            .payment-status.pending { background: #FFF3E0; border-left: 4px solid #FF6F00; }
+            .status-badge { display: inline-block; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; }
             .status-badge.completed { background: #4CAF50; color: white; }
             .status-badge.pending { background: #FF9800; color: white; }
-            .footer { 
-              background: #f9f9f9; 
-              padding: 20px; 
-              text-align: center; 
-              font-size: 12px; 
-              color: #666; 
-              border-top: 1px solid #ddd; 
-            }
-            .divider { 
-              height: 1px; 
-              background: #C9A961; 
-              margin: 20px 0; 
-            }
-            .alert { 
-              background: #FFF3E0; 
-              border-left: 4px solid #FF6F00; 
-              padding: 15px; 
-              margin: 15px 0; 
-              border-radius: 5px;
-            }
-            .alert-title { 
-              font-weight: bold; 
-              color: #FF6F00; 
-              margin-bottom: 8px; 
-            }
-            .contact-info { 
-              background: #F8F8F8; 
-              padding: 15px; 
-              border-radius: 5px; 
-              margin-top: 20px; 
-              border: 1px solid #E0E0E0;
-            }
-            .contact-item {
-              margin-bottom: 15px;
-              line-height: 1.8;
-            }
-            .contact-item:last-child {
-              margin-bottom: 0;
-            }
-            .contact-label {
-              font-weight: bold;
-              display: block;
-              margin-bottom: 2px;
-              color: #333;
-            }
-            .contact-value {
-              color: #666;
-            }
-            ol { margin-left: 20px; }
+            .footer { background: #f9f9f9; padding: 20px; text-align: center; font-size: 12px; color: #666; border-top: 1px solid #ddd; }
+            .divider { height: 1px; background: #C9A961; margin: 20px 0; }
+            .alert { background: #FFF3E0; border-left: 4px solid #FF6F00; padding: 15px; margin: 15px 0; border-radius: 5px; }
+            .alert-title { font-weight: bold; color: #FF6F00; margin-bottom: 8px; }
+            .contact-info { background: #F8F8F8; padding: 15px; border-radius: 5px; margin-top: 20px; border: 1px solid #E0E0E0; }
+            .contact-item { margin-bottom: 15px; line-height: 1.8; }
+            .contact-item:last-child { margin-bottom: 0; }
+            .contact-label { font-weight: bold; display: block; margin-bottom: 2px; color: #333; }
+            .contact-value { color: #666; }
           </style>
         </head>
         <body>
           <div class="container">
             <div class="header">
-              <div class="logo-container">
-                ${logoBuffer ?
-                  `<img src="cid:${LOGO_CID}" alt="La Capilla Hotel" class="logo-img">` :
-                  `<div class="header-text">
-                    <h1>LA CAPILLA</h1>
-                    <h2>HOTEL</h2>
-                  </div>`
-                }
-              </div>
+              ${logoBuffer ? `<img src="cid:${LOGO_CID}" alt="La Capilla Hotel" class="logo-img">` : `<h1 style="color:#C9A961;font-size:28px;">LA CAPILLA HOTEL</h1>`}
               <div class="header-text">
                 <div class="confirmation">Tu reservación ha sido confirmada</div>
               </div>
             </div>
 
             <div class="content">
-              <p style="font-size: 14px; margin-bottom: 20px;">
+              <p style="font-size:14px;margin-bottom:20px;">
                 Hola <strong>${booking.guestInfo.firstName}</strong>,
               </p>
-              
-              <p style="margin-bottom: 15px;">
+              <p style="margin-bottom:15px;">
                 ¡Gracias por tu reserva en <strong>La Capilla Hotel</strong>! Tu pago del 50% inicial ha sido procesado correctamente.
               </p>
 
-              <div class="booking-id">
-                NÚMERO DE RESERVA: ${booking.bookingId}
-              </div>
+              <div class="booking-id">NÚMERO DE RESERVA: ${booking.bookingId}</div>
 
               <div class="section">
                 <div class="section-title">Información de tu Estancia</div>
-                <div class="info-row">
-                  <span>Habitación:</span>
-                  <strong>${booking.roomName}</strong>
-                </div>
-                <div class="info-row">
-                  <span>Check-in:</span>
-                  <strong>${new Date(booking.checkIn).toLocaleDateString('es-MX', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</strong>
-                </div>
-                <div class="info-row">
-                  <span>Check-out:</span>
-                  <strong>${new Date(booking.checkOut).toLocaleDateString('es-MX', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</strong>
-                </div>
-                <div class="info-row">
-                  <span>Noches:</span>
-                  <strong>${booking.nights}</strong>
-                </div>
+                <div class="info-row"><span>Habitación:</span><strong>${booking.roomName}</strong></div>
+                <div class="info-row"><span>Check-in:</span><strong>${new Date(booking.checkIn).toLocaleDateString('es-MX', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</strong></div>
+                <div class="info-row"><span>Check-out:</span><strong>${new Date(booking.checkOut).toLocaleDateString('es-MX', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</strong></div>
+                <div class="info-row"><span>Noches:</span><strong>${booking.nights}</strong></div>
               </div>
 
               <div class="divider"></div>
 
               <div class="section">
                 <div class="section-title">Estado de Pagos</div>
-                
                 <div class="payment-status completed">
-                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <span style="font-weight: bold;">Pago Inicial (50%)</span>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                    <span style="font-weight:bold;">Pago Inicial (50%)</span>
                     <span class="status-badge completed">COMPLETADO</span>
                   </div>
-                  <div style="font-size: 13px; color: #666;">
-                    Cantidad: <strong>${initialPayment.toFixed(2)} MXN</strong>
-                  </div>
+                  <div style="font-size:13px;color:#666;">Cantidad: <strong>${initialPayment.toFixed(2)} MXN</strong></div>
                 </div>
-
                 <div class="payment-status pending">
-                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <span style="font-weight: bold;">Balance Pendiente (50%)</span>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                    <span style="font-weight:bold;">Balance Pendiente (50%)</span>
                     <span class="status-badge pending">PENDIENTE</span>
                   </div>
-                  <div style="font-size: 13px; color: #FF6F00;">
-                    <strong>${pendingPayment.toFixed(2)} MXN</strong> a pagar en recepción
-                  </div>
+                  <div style="font-size:13px;color:#FF6F00;"><strong>${pendingPayment.toFixed(2)} MXN</strong> a pagar en recepción</div>
                 </div>
-                
-                <div style="font-size: 11px; color: #888; margin-top: 10px; padding: 10px; background: #f9f9f9; border-radius: 5px;">
+                <div style="font-size:11px;color:#888;margin-top:10px;padding:10px;background:#f9f9f9;border-radius:5px;">
                   <strong>Nota:</strong> Todos los pagos incluyen IVA (16%) e Impuesto Municipal (4%)
                 </div>
               </div>
@@ -1552,7 +998,7 @@ async function sendPartialPaymentEmail(booking, pdfBuffer) {
 
               <div class="section">
                 <div class="section-title">Cómo Completar tu Pago</div>
-                <ol style="margin-left: 20px;">
+                <ol style="margin-left:20px;">
                   <li>Presenta este correo electrónico de forma digital en recepción</li>
                   <li>El día del check-in, realiza el pago del 50% restante</li>
                   <li>Aceptamos: efectivo, tarjeta de crédito y débito</li>
@@ -1564,20 +1010,10 @@ async function sendPartialPaymentEmail(booking, pdfBuffer) {
 
               <div class="section">
                 <div class="section-title">¿Preguntas?</div>
-                <p>Estamos aquí para ayudarte:</p>
                 <div class="contact-info">
-                  <div class="contact-item">
-                    <span class="contact-label">Teléfono:</span>
-                    <span class="contact-value">+52 4777 347474</span>
-                  </div>
-                  <div class="contact-item">
-                    <span class="contact-label">WhatsApp:</span>
-                    <span class="contact-value">+52 4777 347474</span>
-                  </div>
-                  <div class="contact-item">
-                    <span class="contact-label">Email:</span>
-                    <span class="contact-value">lacapillasl@gmail.com</span>
-                  </div>
+                  <div class="contact-item"><span class="contact-label">Teléfono:</span><span class="contact-value">+52 4777 347474</span></div>
+                  <div class="contact-item"><span class="contact-label">WhatsApp:</span><span class="contact-value">+52 4777 347474</span></div>
+                  <div class="contact-item"><span class="contact-label">Email:</span><span class="contact-value">lacapillasl@gmail.com</span></div>
                 </div>
               </div>
             </div>
@@ -1585,21 +1021,17 @@ async function sendPartialPaymentEmail(booking, pdfBuffer) {
             <div class="footer">
               <p><strong>La Capilla Hotel</strong></p>
               <p>Nos vemos pronto. ¡Esperamos tu llegada!</p>
-              <p style="margin-top: 15px; color: #999; font-size: 11px;">
-                Este es un email automatizado. No responda directamente a este mensaje.
-              </p>
+              <p style="margin-top:15px;color:#999;font-size:11px;">Este es un email automatizado. No responda directamente a este mensaje.</p>
             </div>
           </div>
         </body>
         </html>
       `,
-      attachments: attachments
+      attachments
     };
 
-    console.log('📤 Enviando email de pago parcial...');
     const result = await transporter.sendMail(mailOptions);
-
-    console.log('✅ Email enviado exitosamente');
+    console.log('✅ Email de pago parcial enviado exitosamente');
     return result;
   } catch (error) {
     console.error('❌ Error enviando email de pago parcial:', error);
@@ -1607,28 +1039,243 @@ async function sendPartialPaymentEmail(booking, pdfBuffer) {
   }
 }
 
+// ─────────────────────────────────────────────
+// EMAIL — CONFIRMACIÓN PURA (SIN MENCIÓN DE PAGO)
+// Para reservas gratuitas o reservas internas sin cobro
+// ─────────────────────────────────────────────
+
+async function sendConfirmationOnlyEmail(booking, pdfBuffer) {
+  try {
+    console.log(`📧 Preparando email de confirmación (sin pago) para ${booking.guestInfo.email}...`);
+
+    const attachments = [
+      { filename: `Voucher_${booking.bookingId}.pdf`, content: pdfBuffer, contentType: 'application/pdf' }
+    ];
+
+    if (logoBuffer) {
+      attachments.push({ filename: 'logo.png', content: logoBuffer, contentType: 'image/png', cid: LOGO_CID });
+    }
+
+    const checkInFormatted = new Date(booking.checkIn).toLocaleDateString('es-MX', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+    const checkOutFormatted = new Date(booking.checkOut).toLocaleDateString('es-MX', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+
+    const mailOptions = {
+      from: `"La Capilla Hotel" <${process.env.EMAIL_USERNAME}>`,
+      to: booking.guestInfo.email,
+      cc: 'fredyesparza08@gmail.com, lacapillasl@gmail.com',
+      subject: `Confirmación de Reserva - La Capilla Hotel | ${booking.bookingId}`,
+      html: `
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>
+            * { margin: 0; padding: 0; }
+            body { font-family: 'Arial', sans-serif; line-height: 1.6; color: #333; background-color: #f5f5f5; }
+            .wrapper { padding: 30px 0; }
+            .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+            .header { background: #ffffff; padding: 32px 30px 24px 30px; text-align: center; border-bottom: 3px solid #C9A961; }
+            .logo-img { max-width: 300px; height: auto; display: block; margin: 0 auto 16px auto; }
+            .header-badge { display: inline-block; background: #1a1a1a; color: #C9A961; font-size: 12px; font-weight: bold; letter-spacing: 2px; padding: 6px 18px; border-radius: 20px; margin-top: 12px; }
+            .content { padding: 36px 30px; }
+            .greeting { font-size: 16px; color: #1a1a1a; margin-bottom: 12px; }
+            .intro-text { font-size: 14px; color: #555; line-height: 1.7; margin-bottom: 28px; }
+            .booking-id-box { background: #fafafa; border: 2px solid #C9A961; border-radius: 6px; padding: 16px 20px; margin-bottom: 28px; text-align: center; }
+            .booking-id-label { font-size: 11px; color: #888; letter-spacing: 2px; text-transform: uppercase; display: block; margin-bottom: 6px; }
+            .booking-id-value { font-size: 22px; font-weight: bold; color: #C9A961; letter-spacing: 1px; }
+            .section { margin-bottom: 28px; }
+            .section-title { font-size: 13px; font-weight: bold; color: #C9A961; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1.5px solid #C9A961; padding-bottom: 8px; margin-bottom: 14px; }
+            .detail-row { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+            .detail-label { color: #777; }
+            .detail-value { font-weight: 600; color: #1a1a1a; }
+            .highlight-box { background: #fffbf0; border-left: 4px solid #C9A961; border-radius: 0 6px 6px 0; padding: 16px 20px; margin: 20px 0; }
+            .highlight-box p { font-size: 14px; color: #555; margin: 0; line-height: 1.6; }
+            .highlight-box strong { color: #1a1a1a; }
+            .contact-block { background: #fafafa; border: 1px solid #e8e8e8; border-radius: 6px; padding: 18px 20px; }
+            .contact-row { display: flex; align-items: center; padding: 6px 0; font-size: 14px; color: #555; }
+            .contact-icon { width: 20px; font-size: 16px; margin-right: 10px; }
+            .contact-text { color: #333; }
+            .divider { height: 1px; background: linear-gradient(to right, transparent, #C9A961, transparent); margin: 24px 0; }
+            .footer { background: #1a1a1a; padding: 24px 30px; text-align: center; }
+            .footer-name { font-size: 14px; font-weight: bold; color: #C9A961; letter-spacing: 1px; margin-bottom: 6px; }
+            .footer-tagline { font-size: 12px; color: #888; margin-bottom: 14px; }
+            .footer-legal { font-size: 11px; color: #555; }
+          </style>
+        </head>
+        <body>
+          <div class="wrapper">
+            <div class="container">
+
+              <!-- HEADER -->
+              <div class="header">
+                ${logoBuffer
+                  ? `<img src="cid:${LOGO_CID}" alt="La Capilla Hotel" class="logo-img">`
+                  : `<h1 style="color:#C9A961;font-size:26px;font-weight:bold;letter-spacing:2px;">LA CAPILLA HOTEL</h1>`
+                }
+                <div class="header-badge">RESERVA CONFIRMADA</div>
+              </div>
+
+              <!-- CONTENIDO -->
+              <div class="content">
+
+                <p class="greeting">
+                  Hola, <strong>${booking.guestInfo.firstName} ${booking.guestInfo.lastName}</strong>
+                </p>
+
+                <p class="intro-text">
+                  Es un placer recibirte en <strong>La Capilla Hotel</strong>. Tu reserva ha sido registrada y confirmada. 
+                  Te esperamos con los brazos abiertos para brindarte una estancia memorable.
+                </p>
+
+                <!-- NÚMERO DE RESERVA -->
+                <div class="booking-id-box">
+                  <span class="booking-id-label">Número de Reserva</span>
+                  <span class="booking-id-value">${booking.bookingId}</span>
+                </div>
+
+                <!-- DETALLES DE LA ESTANCIA -->
+                <div class="section">
+                  <div class="section-title">Detalles de tu Estancia</div>
+                  <div class="detail-row">
+                    <span class="detail-label">Habitación</span>
+                    <span class="detail-value">${booking.roomName}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-label">Check-in</span>
+                    <span class="detail-value">${checkInFormatted}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-label">Check-out</span>
+                    <span class="detail-value">${checkOutFormatted}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-label">Duración</span>
+                    <span class="detail-value">${booking.nights} ${booking.nights === 1 ? 'noche' : 'noches'}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-label">Huésped</span>
+                    <span class="detail-value">${booking.guestInfo.firstName} ${booking.guestInfo.lastName}</span>
+                  </div>
+                </div>
+
+                <div class="divider"></div>
+
+                <!-- INFORMACIÓN VOUCHER -->
+                <div class="section">
+                  <div class="section-title">Tu Documento de Reserva</div>
+                  <div class="highlight-box">
+                    <p>
+                      Encontrarás adjunto tu <strong>voucher de confirmación</strong> en formato PDF. 
+                      Preséntalo en recepción al momento de tu llegada. Este documento contiene 
+                      toda la información de tu estancia y las políticas del hotel.
+                    </p>
+                  </div>
+                </div>
+
+                <!-- DATOS DE CHECK-IN -->
+                <div class="section">
+                  <div class="section-title">Información para tu Llegada</div>
+                  <div class="detail-row">
+                    <span class="detail-label">Hora de check-in</span>
+                    <span class="detail-value">A partir de las 15:00 hrs</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-label">Hora de check-out</span>
+                    <span class="detail-value">Antes de las 12:00 hrs</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-label">Dirección</span>
+                    <span class="detail-value">San Luis de la Paz, Guanajuato</span>
+                  </div>
+                </div>
+
+                <div class="divider"></div>
+
+                <!-- CONTACTO -->
+                <div class="section">
+                  <div class="section-title">¿Necesitas Ayuda?</div>
+                  <p style="font-size:14px;color:#555;margin-bottom:14px;">
+                    Estamos a tu disposición para cualquier duda o solicitud especial antes de tu llegada.
+                  </p>
+                  <div class="contact-block">
+                    <div class="contact-row">
+                      <span class="contact-icon">📞</span>
+                      <span class="contact-text">+52 4777 347474</span>
+                    </div>
+                    <div class="contact-row">
+                      <span class="contact-icon">💬</span>
+                      <span class="contact-text">+52 4777 347474 (WhatsApp)</span>
+                    </div>
+                    <div class="contact-row">
+                      <span class="contact-icon">✉️</span>
+                      <span class="contact-text">lacapillasl@gmail.com</span>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- FOOTER -->
+              <div class="footer">
+                <div class="footer-name">LA CAPILLA HOTEL</div>
+                <div class="footer-tagline">Nos vemos pronto. ¡Te esperamos!</div>
+                <div class="footer-legal">
+                  © ${new Date().getFullYear()} Hotel La Capilla · Todos los derechos reservados<br>
+                  Este es un mensaje automático, por favor no respondas directamente a este correo.
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      attachments
+    };
+
+    const result = await transporter.sendMail(mailOptions);
+    console.log('✅ Email de confirmación (sin pago) enviado exitosamente');
+    return result;
+  } catch (error) {
+    console.error('❌ Error enviando email de confirmación:', error);
+    throw error;
+  }
+}
+
+// ─────────────────────────────────────────────
+// SELECTOR DE EMAIL — incluye el nuevo tipo
+// ─────────────────────────────────────────────
+
 function sendVoucherEmail(booking, pdfBuffer) {
+  // Reserva gratuita → email de confirmación pura sin mención de pagos
+  if (booking.isFree === true) {
+    return sendConfirmationOnlyEmail(booking, pdfBuffer);
+  }
+  // Pago completo (1 noche o pago total)
   if (booking.nights === 1 || booking.initialPayment >= booking.totalPrice) {
     return sendFullPaymentEmail(booking, pdfBuffer);
   }
+  // Pago parcial
   return sendPartialPaymentEmail(booking, pdfBuffer);
 }
+
+// ─────────────────────────────────────────────
+// GENERAR Y ENVIAR VOUCHER
+// ─────────────────────────────────────────────
 
 async function generateAndSendVoucher(booking) {
   try {
     console.log('🎫 Generando voucher PDF...');
-    console.log('📋 Detalles de la reserva:', {
-      bookingId: booking.bookingId,
-      email: booking.guestInfo.email,
-      nights: booking.nights,
-      roomName: booking.roomName
-    });
 
     let roomDetails = null;
     try {
       if (booking.roomId) {
         roomDetails = await Room.findById(booking.roomId).lean();
-        console.log('✅ Info de Room obtenida:', roomDetails?.name);
       }
     } catch (roomErr) {
       console.warn('⚠️ No se pudo obtener info de Room para el voucher:', roomErr.message);
@@ -1638,55 +1285,38 @@ async function generateAndSendVoucher(booking) {
     if (roomDetails) bookingPayload.room = roomDetails;
 
     const pdfBuffer = await generateVoucherPDF(bookingPayload);
-
     console.log('✅ PDF generado, tamaño:', pdfBuffer.length, 'bytes');
 
-    console.log('📧 Enviando email con voucher...');
     await sendVoucherEmail(bookingPayload, pdfBuffer);
 
     console.log('✅ Voucher generado y enviado exitosamente');
     return { success: true, pdfBuffer };
   } catch (error) {
     console.error('❌ Error en generateAndSendVoucher:', error);
-    console.error('❌ Error stack:', error.stack);
     throw error;
   }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// EMAIL DE RECORDATORIO DE SEGUNDO PAGO (30 días antes)
-// ═══════════════════════════════════════════════════════════════
+// ─────────────────────────────────────────────
+// EMAIL DE RECORDATORIO DE SEGUNDO PAGO
+// ─────────────────────────────────────────────
 
 async function sendSecondPaymentReminderEmail(booking, paymentLink) {
   try {
     console.log(`\n📧 ===== ENVIANDO EMAIL DE SEGUNDO PAGO =====`);
     console.log(`📧 Para: ${booking.guestInfo.email}`);
     console.log(`📧 Booking ID: ${booking.bookingId}`);
-    console.log(`📧 Link de pago: ${paymentLink}`);
 
     const attachments = [];
-
     if (logoBuffer) {
-      attachments.push({
-        filename: 'logo.png',
-        content: logoBuffer,
-        contentType: 'image/png',
-        cid: LOGO_CID
-      });
+      attachments.push({ filename: 'logo.png', content: logoBuffer, contentType: 'image/png', cid: LOGO_CID });
     }
 
     const checkInDate = new Date(booking.checkIn).toLocaleDateString('es-MX', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
     });
-
     const checkOutDate = new Date(booking.checkOut).toLocaleDateString('es-MX', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
     });
 
     const guestName = `${booking.guestInfo.firstName} ${booking.guestInfo.lastName}`.trim();
@@ -1704,128 +1334,79 @@ async function sendSecondPaymentReminderEmail(booking, paymentLink) {
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>Recordatorio de Pago - Hotel La Capilla</title>
         </head>
-        <body style="margin: 0; padding: 0; font-family: Georgia, 'Times New Roman', serif; background-color: #ffffff;">
-          
-          <div style="background-color: #ffffff; padding: 30px 20px; text-align: center; border-bottom: 3px solid #d4af37;">
-            ${logoBuffer ?
-              `<img src="cid:${LOGO_CID}" alt="Hotel La Capilla" style="max-width: 200px; height: auto; display: block; margin: 0 auto;">` :
-              `<h1 style="color: #1a1a1a; margin: 0; font-size: 24px; font-family: Georgia, serif;">HOTEL LA CAPILLA</h1>`
+        <body style="margin:0;padding:0;font-family:Georgia,'Times New Roman',serif;background-color:#ffffff;">
+
+          <div style="background-color:#ffffff;padding:30px 20px;text-align:center;border-bottom:3px solid #d4af37;">
+            ${logoBuffer
+              ? `<img src="cid:${LOGO_CID}" alt="Hotel La Capilla" style="max-width:200px;height:auto;display:block;margin:0 auto;">`
+              : `<h1 style="color:#1a1a1a;margin:0;font-size:24px;font-family:Georgia,serif;">HOTEL LA CAPILLA</h1>`
             }
           </div>
-          
-          <div style="max-width: 600px; margin: 0 auto; background: #ffffff; padding: 40px 50px;">
-            
-            <p style="font-size: 16px; color: #1a1a1a; margin-bottom: 20px; font-family: Georgia, serif;">
+
+          <div style="max-width:600px;margin:0 auto;background:#ffffff;padding:40px 50px;">
+
+            <p style="font-size:16px;color:#1a1a1a;margin-bottom:20px;font-family:Georgia,serif;">
               Estimado/a ${guestName || 'Huésped'},
             </p>
-            
-            <h2 style="color: #1a1a1a; font-size: 20px; margin: 30px 0 20px 0; font-family: Georgia, serif; text-align: center;">
+
+            <h2 style="color:#1a1a1a;font-size:20px;margin:30px 0 20px 0;font-family:Georgia,serif;text-align:center;">
               Recordatorio de Pago Pendiente
             </h2>
-            
-            <div style="background-color: #f8f8f8; border-left: 4px solid #d4af37; padding: 20px; margin: 25px 0;">
-              <p style="margin: 0 0 10px 0; font-size: 14px; color: #1a1a1a;">
-                <strong>Reserva:</strong> ${booking.bookingId}
-              </p>
-              <p style="margin: 0 0 10px 0; font-size: 14px; color: #1a1a1a;">
-                <strong>Habitación:</strong> ${booking.roomName}
-              </p>
-              <p style="margin: 0 0 10px 0; font-size: 14px; color: #1a1a1a;">
-                <strong>Check-in:</strong> ${checkInDate}
-              </p>
-              <p style="margin: 0 0 10px 0; font-size: 14px; color: #1a1a1a;">
-                <strong>Check-out:</strong> ${checkOutDate}
-              </p>
-              <p style="margin: 0; font-size: 14px; color: #1a1a1a;">
-                <strong>Noches:</strong> ${booking.nights}
-              </p>
+
+            <div style="background-color:#f8f8f8;border-left:4px solid #d4af37;padding:20px;margin:25px 0;">
+              <p style="margin:0 0 10px 0;font-size:14px;color:#1a1a1a;"><strong>Reserva:</strong> ${booking.bookingId}</p>
+              <p style="margin:0 0 10px 0;font-size:14px;color:#1a1a1a;"><strong>Habitación:</strong> ${booking.roomName}</p>
+              <p style="margin:0 0 10px 0;font-size:14px;color:#1a1a1a;"><strong>Check-in:</strong> ${checkInDate}</p>
+              <p style="margin:0 0 10px 0;font-size:14px;color:#1a1a1a;"><strong>Check-out:</strong> ${checkOutDate}</p>
+              <p style="margin:0;font-size:14px;color:#1a1a1a;"><strong>Noches:</strong> ${booking.nights}</p>
             </div>
-            
-            <div style="background-color: #fff8e1; border: 1px solid #d4af37; padding: 20px; margin: 25px 0; text-align: center;">
-              <p style="margin: 0 0 10px 0; font-size: 14px; color: #666666;">
-                Monto pendiente por pagar:
-              </p>
-              <p style="margin: 0; font-size: 32px; color: #1a1a1a; font-weight: bold; font-family: Georgia, serif;">
+
+            <div style="background-color:#fff8e1;border:1px solid #d4af37;padding:20px;margin:25px 0;text-align:center;">
+              <p style="margin:0 0 10px 0;font-size:14px;color:#666666;">Monto pendiente por pagar:</p>
+              <p style="margin:0;font-size:32px;color:#1a1a1a;font-weight:bold;font-family:Georgia,serif;">
                 ${amountDue.toFixed(2)} MXN
               </p>
-              <p style="margin: 10px 0 0 0; font-size: 12px; color: #666666;">
+              <p style="margin:10px 0 0 0;font-size:12px;color:#666666;">
                 (Primera noche ya pagada: ${(booking.initialPayment || 0).toFixed(2)} MXN)
               </p>
             </div>
-            
-            <p style="font-size: 14px; color: #1a1a1a; line-height: 1.6; margin: 30px 0;">
+
+            <p style="font-size:14px;color:#1a1a1a;line-height:1.6;margin:30px 0;">
               Te recordamos que el pago del monto restante debe realizarse <strong>30 días antes</strong> de tu fecha de llegada para confirmar tu reservación.
             </p>
-            
-            <div style="text-align: center; margin: 35px 0;">
-              <a href="${paymentLink}" style="display: inline-block; background-color: #1a1a1a; color: #ffffff; padding: 16px 40px; text-decoration: none; font-size: 14px; font-weight: bold; border-radius: 4px;">
+
+            <div style="text-align:center;margin:35px 0;">
+              <a href="${paymentLink}" style="display:inline-block;background-color:#1a1a1a;color:#ffffff;padding:16px 40px;text-decoration:none;font-size:14px;font-weight:bold;border-radius:4px;">
                 PAGAR AHORA
               </a>
             </div>
-            
-            <div style="background-color: #f5f5f5; padding: 15px; margin: 25px 0;">
-              <p style="margin: 0 0 8px 0; font-size: 12px; color: #666666;">
-                O copie y pegue este enlace en su navegador:
-              </p>
-              <p style="margin: 0; font-size: 12px; color: #1a1a1a; word-break: break-all; font-family: monospace;">
-                ${paymentLink}
-              </p>
+
+            <div style="background-color:#f5f5f5;padding:15px;margin:25px 0;">
+              <p style="margin:0 0 8px 0;font-size:12px;color:#666666;">O copie y pegue este enlace en su navegador:</p>
+              <p style="margin:0;font-size:12px;color:#1a1a1a;word-break:break-all;font-family:monospace;">${paymentLink}</p>
             </div>
-            
-            <div style="margin-top: 35px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
-              <p style="margin: 0 0 8px 0; font-size: 14px; color: #1a1a1a; font-weight: bold; font-family: Georgia, serif;">
-                ¿Necesitas ayuda?
-              </p>
-              <p style="margin: 0; font-size: 13px; color: #666666; line-height: 1.6;">
-                Contáctanos directamente para cualquier duda o cambio en tu reservación.
-              </p>
-              <p style="margin: 15px 0 0 0; font-size: 13px; color: #666666;">
+
+            <div style="margin-top:35px;padding-top:20px;border-top:1px solid #e0e0e0;">
+              <p style="margin:0 0 8px 0;font-size:14px;color:#1a1a1a;font-weight:bold;font-family:Georgia,serif;">¿Necesitas ayuda?</p>
+              <p style="margin:15px 0 0 0;font-size:13px;color:#666666;">
                 📞 +52 4777 347474 | ✉️ lacapillasl@gmail.com
               </p>
             </div>
-            
+
           </div>
-          
-          <div style="background-color: #f5f5f5; padding: 30px 20px; text-align: center; border-top: 1px solid #cccccc;">
-            <p style="margin: 0 0 8px 0; font-size: 14px; color: #1a1a1a; font-weight: bold; font-family: Georgia, serif;">
-              HOTEL LA CAPILLA
-            </p>
-            <p style="margin: 0; font-size: 12px; color: #666666;">
-              lacapillasl@gmail.com | +52 4777 347474
-            </p>
-            <p style="margin: 15px 0 0 0; font-size: 11px; color: #999999;">
+
+          <div style="background-color:#f5f5f5;padding:30px 20px;text-align:center;border-top:1px solid #cccccc;">
+            <p style="margin:0 0 8px 0;font-size:14px;color:#1a1a1a;font-weight:bold;font-family:Georgia,serif;">HOTEL LA CAPILLA</p>
+            <p style="margin:0 0 8px 0;font-size:12px;color:#666666;">lacapillasl@gmail.com | +52 4777 347474</p>
+            <p style="margin:15px 0 0 0;font-size:11px;color:#999999;">
               © ${new Date().getFullYear()} Hotel La Capilla - Todos los derechos reservados
             </p>
           </div>
-          
+
         </body>
         </html>
       `,
-      text: `HOTEL LA CAPILLA - Recordatorio de Pago
-
-Estimado/a ${guestName || 'Huésped'},
-
-Te contactamos respecto a tu reservación ${booking.bookingId}.
-
-DETALLES DE LA RESERVA:
-- Habitación: ${booking.roomName}
-- Check-in: ${checkInDate}
-- Check-out: ${checkOutDate}
-- Noches: ${booking.nights}
-
-MONTO PENDIENTE: ${amountDue.toFixed(2)} MXN
-(Primera noche ya pagada: ${(booking.initialPayment || 0).toFixed(2)} MXN)
-
-Por favor, completa tu pago 30 días antes de tu llegada:
-${paymentLink}
-
-¿Necesitas ayuda?
-Contáctanos: +52 4777 347474 | lacapillasl@gmail.com
-
---
-HOTEL LA CAPILLA
-© ${new Date().getFullYear()}`,
-      attachments: attachments
+      attachments
     };
 
     const result = await transporter.sendMail(mailOptions);
@@ -1845,5 +1426,6 @@ module.exports = {
   generatePartialPaymentVoucherPDF,
   sendFullPaymentEmail,
   sendPartialPaymentEmail,
+  sendConfirmationOnlyEmail,
   sendSecondPaymentReminderEmail
 };
