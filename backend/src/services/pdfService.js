@@ -1042,6 +1042,7 @@ async function sendPartialPaymentEmail(booking, pdfBuffer) {
 // ─────────────────────────────────────────────
 // EMAIL — CONFIRMACIÓN PURA (SIN MENCIÓN DE PAGO)
 // Para reservas gratuitas o reservas internas sin cobro
+// Misma estructura visual que los otros emails, sin secciones de pago
 // ─────────────────────────────────────────────
 
 async function sendConfirmationOnlyEmail(booking, pdfBuffer) {
@@ -1056,18 +1057,11 @@ async function sendConfirmationOnlyEmail(booking, pdfBuffer) {
       attachments.push({ filename: 'logo.png', content: logoBuffer, contentType: 'image/png', cid: LOGO_CID });
     }
 
-    const checkInFormatted = new Date(booking.checkIn).toLocaleDateString('es-MX', {
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-    });
-    const checkOutFormatted = new Date(booking.checkOut).toLocaleDateString('es-MX', {
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-    });
-
     const mailOptions = {
       from: `"La Capilla Hotel" <${process.env.EMAIL_USERNAME}>`,
       to: booking.guestInfo.email,
       cc: 'fredyesparza08@gmail.com, lacapillasl@gmail.com',
-      subject: `Confirmación de Reserva - La Capilla Hotel | ${booking.bookingId}`,
+      subject: `Reserva Confirmada - La Capilla Hotel | ${booking.bookingId}`,
       html: `
         <!DOCTYPE html>
         <html lang="es">
@@ -1076,160 +1070,76 @@ async function sendConfirmationOnlyEmail(booking, pdfBuffer) {
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>
             * { margin: 0; padding: 0; }
-            body { font-family: 'Arial', sans-serif; line-height: 1.6; color: #333; background-color: #f5f5f5; }
-            .wrapper { padding: 30px 0; }
-            .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-            .header { background: #ffffff; padding: 32px 30px 24px 30px; text-align: center; border-bottom: 3px solid #C9A961; }
-            .logo-img { max-width: 300px; height: auto; display: block; margin: 0 auto 16px auto; }
-            .header-badge { display: inline-block; background: #1a1a1a; color: #C9A961; font-size: 12px; font-weight: bold; letter-spacing: 2px; padding: 6px 18px; border-radius: 20px; margin-top: 12px; }
-            .content { padding: 36px 30px; }
-            .greeting { font-size: 16px; color: #1a1a1a; margin-bottom: 12px; }
-            .intro-text { font-size: 14px; color: #555; line-height: 1.7; margin-bottom: 28px; }
-            .booking-id-box { background: #fafafa; border: 2px solid #C9A961; border-radius: 6px; padding: 16px 20px; margin-bottom: 28px; text-align: center; }
-            .booking-id-label { font-size: 11px; color: #888; letter-spacing: 2px; text-transform: uppercase; display: block; margin-bottom: 6px; }
-            .booking-id-value { font-size: 22px; font-weight: bold; color: #C9A961; letter-spacing: 1px; }
-            .section { margin-bottom: 28px; }
-            .section-title { font-size: 13px; font-weight: bold; color: #C9A961; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1.5px solid #C9A961; padding-bottom: 8px; margin-bottom: 14px; }
-            .detail-row { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
-            .detail-label { color: #777; }
-            .detail-value { font-weight: 600; color: #1a1a1a; }
-            .highlight-box { background: #fffbf0; border-left: 4px solid #C9A961; border-radius: 0 6px 6px 0; padding: 16px 20px; margin: 20px 0; }
-            .highlight-box p { font-size: 14px; color: #555; margin: 0; line-height: 1.6; }
-            .highlight-box strong { color: #1a1a1a; }
-            .contact-block { background: #fafafa; border: 1px solid #e8e8e8; border-radius: 6px; padding: 18px 20px; }
-            .contact-row { display: flex; align-items: center; padding: 6px 0; font-size: 14px; color: #555; }
-            .contact-icon { width: 20px; font-size: 16px; margin-right: 10px; }
-            .contact-text { color: #333; }
-            .divider { height: 1px; background: linear-gradient(to right, transparent, #C9A961, transparent); margin: 24px 0; }
-            .footer { background: #1a1a1a; padding: 24px 30px; text-align: center; }
-            .footer-name { font-size: 14px; font-weight: bold; color: #C9A961; letter-spacing: 1px; margin-bottom: 6px; }
-            .footer-tagline { font-size: 12px; color: #888; margin-bottom: 14px; }
-            .footer-legal { font-size: 11px; color: #555; }
+            body { font-family: 'Arial', sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; background: #ffffff; }
+            .header { background: #ffffff; padding: 30px 30px 20px 30px; text-align: center; border-bottom: 3px solid #C9A961; }
+            .logo-img { max-width: 324px; height: auto; display: block; margin: 0 auto 10px auto; }
+            .header-text .confirmation { font-size: 14px; color: #2E7D32; margin-top: 10px; font-weight: bold; }
+            .content { padding: 30px; background: white; }
+            .section { margin-bottom: 25px; }
+            .section-title { color: #C9A961; font-size: 14px; font-weight: bold; text-transform: uppercase; border-bottom: 2px solid #C9A961; padding-bottom: 10px; margin-bottom: 15px; }
+            .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+            .booking-id { background: #f0f0f0; padding: 15px; border-left: 4px solid #C9A961; margin: 20px 0; font-size: 16px; font-weight: bold; border-radius: 5px; text-align: center; }
+            .footer { background: #f9f9f9; padding: 20px; text-align: center; font-size: 12px; color: #666; border-top: 1px solid #ddd; }
+            .divider { height: 1px; background: #C9A961; margin: 20px 0; }
+            .contact-info { background: #F8F8F8; padding: 15px; border-radius: 5px; margin-top: 20px; border: 1px solid #E0E0E0; }
+            .contact-item { margin-bottom: 15px; line-height: 1.8; }
+            .contact-item:last-child { margin-bottom: 0; }
+            .contact-label { font-weight: bold; display: block; margin-bottom: 2px; color: #333; }
+            .contact-value { color: #666; }
           </style>
         </head>
         <body>
-          <div class="wrapper">
-            <div class="container">
+          <div class="container">
+            <div class="header">
+              ${logoBuffer ? `<img src="cid:${LOGO_CID}" alt="La Capilla Hotel" class="logo-img">` : `<h1 style="color:#C9A961;font-size:28px;">LA CAPILLA HOTEL</h1>`}
+              <div class="header-text">
+                <div class="confirmation">Tu reservación ha sido confirmada</div>
+              </div>
+            </div>
 
-              <!-- HEADER -->
-              <div class="header">
-                ${logoBuffer
-                  ? `<img src="cid:${LOGO_CID}" alt="La Capilla Hotel" class="logo-img">`
-                  : `<h1 style="color:#C9A961;font-size:26px;font-weight:bold;letter-spacing:2px;">LA CAPILLA HOTEL</h1>`
-                }
-                <div class="header-badge">RESERVA CONFIRMADA</div>
+            <div class="content">
+              <p style="font-size:14px;margin-bottom:20px;">
+                Hola <strong>${booking.guestInfo.firstName}</strong>,
+              </p>
+              <p style="margin-bottom:15px;">
+                ¡Gracias por tu reserva en <strong>La Capilla Hotel</strong>! Tu reserva está confirmada y te esperamos con gusto.
+              </p>
+
+              <div class="booking-id">NÚMERO DE RESERVA: ${booking.bookingId}</div>
+
+              <div class="section">
+                <div class="section-title">Información de tu Estancia</div>
+                <div class="info-row"><span>Habitación:</span><strong>${booking.roomName}</strong></div>
+                <div class="info-row"><span>Check-in:</span><strong>${new Date(booking.checkIn).toLocaleDateString('es-MX', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</strong></div>
+                <div class="info-row"><span>Check-out:</span><strong>${new Date(booking.checkOut).toLocaleDateString('es-MX', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</strong></div>
+                <div class="info-row"><span>Noches:</span><strong>${booking.nights}</strong></div>
               </div>
 
-              <!-- CONTENIDO -->
-              <div class="content">
+              <div class="divider"></div>
 
-                <p class="greeting">
-                  Hola, <strong>${booking.guestInfo.firstName} ${booking.guestInfo.lastName}</strong>
-                </p>
-
-                <p class="intro-text">
-                  Es un placer recibirte en <strong>La Capilla Hotel</strong>. Tu reserva ha sido registrada y confirmada. 
-                  Te esperamos con los brazos abiertos para brindarte una estancia memorable.
-                </p>
-
-                <!-- NÚMERO DE RESERVA -->
-                <div class="booking-id-box">
-                  <span class="booking-id-label">Número de Reserva</span>
-                  <span class="booking-id-value">${booking.bookingId}</span>
-                </div>
-
-                <!-- DETALLES DE LA ESTANCIA -->
-                <div class="section">
-                  <div class="section-title">Detalles de tu Estancia</div>
-                  <div class="detail-row">
-                    <span class="detail-label">Habitación</span>
-                    <span class="detail-value">${booking.roomName}</span>
-                  </div>
-                  <div class="detail-row">
-                    <span class="detail-label">Check-in</span>
-                    <span class="detail-value">${checkInFormatted}</span>
-                  </div>
-                  <div class="detail-row">
-                    <span class="detail-label">Check-out</span>
-                    <span class="detail-value">${checkOutFormatted}</span>
-                  </div>
-                  <div class="detail-row">
-                    <span class="detail-label">Duración</span>
-                    <span class="detail-value">${booking.nights} ${booking.nights === 1 ? 'noche' : 'noches'}</span>
-                  </div>
-                  <div class="detail-row">
-                    <span class="detail-label">Huésped</span>
-                    <span class="detail-value">${booking.guestInfo.firstName} ${booking.guestInfo.lastName}</span>
-                  </div>
-                </div>
-
-                <div class="divider"></div>
-
-                <!-- INFORMACIÓN VOUCHER -->
-                <div class="section">
-                  <div class="section-title">Tu Documento de Reserva</div>
-                  <div class="highlight-box">
-                    <p>
-                      Encontrarás adjunto tu <strong>voucher de confirmación</strong> en formato PDF. 
-                      Preséntalo en recepción al momento de tu llegada. Este documento contiene 
-                      toda la información de tu estancia y las políticas del hotel.
-                    </p>
-                  </div>
-                </div>
-
-                <!-- DATOS DE CHECK-IN -->
-                <div class="section">
-                  <div class="section-title">Información para tu Llegada</div>
-                  <div class="detail-row">
-                    <span class="detail-label">Hora de check-in</span>
-                    <span class="detail-value">A partir de las 15:00 hrs</span>
-                  </div>
-                  <div class="detail-row">
-                    <span class="detail-label">Hora de check-out</span>
-                    <span class="detail-value">Antes de las 12:00 hrs</span>
-                  </div>
-                  <div class="detail-row">
-                    <span class="detail-label">Dirección</span>
-                    <span class="detail-value">San Luis de la Paz, Guanajuato</span>
-                  </div>
-                </div>
-
-                <div class="divider"></div>
-
-                <!-- CONTACTO -->
-                <div class="section">
-                  <div class="section-title">¿Necesitas Ayuda?</div>
-                  <p style="font-size:14px;color:#555;margin-bottom:14px;">
-                    Estamos a tu disposición para cualquier duda o solicitud especial antes de tu llegada.
-                  </p>
-                  <div class="contact-block">
-                    <div class="contact-row">
-                      <span class="contact-icon">📞</span>
-                      <span class="contact-text">+52 4777 347474</span>
-                    </div>
-                    <div class="contact-row">
-                      <span class="contact-icon">💬</span>
-                      <span class="contact-text">+52 4777 347474 (WhatsApp)</span>
-                    </div>
-                    <div class="contact-row">
-                      <span class="contact-icon">✉️</span>
-                      <span class="contact-text">lacapillasl@gmail.com</span>
-                    </div>
-                  </div>
-                </div>
-
+              <div class="section">
+                <div class="section-title">Tu Voucher</div>
+                <p>Se adjunta tu voucher de confirmación. Presenta este documento en recepción al momento del check-in.</p>
+                <p><em>**Todas las políticas del hotel están detalladas en el PDF adjunto**</em></p>
               </div>
 
-              <!-- FOOTER -->
-              <div class="footer">
-                <div class="footer-name">LA CAPILLA HOTEL</div>
-                <div class="footer-tagline">Nos vemos pronto. ¡Te esperamos!</div>
-                <div class="footer-legal">
-                  © ${new Date().getFullYear()} Hotel La Capilla · Todos los derechos reservados<br>
-                  Este es un mensaje automático, por favor no respondas directamente a este correo.
+              <div class="divider"></div>
+
+              <div class="section">
+                <div class="section-title">¿Preguntas?</div>
+                <div class="contact-info">
+                  <div class="contact-item"><span class="contact-label">Teléfono:</span><span class="contact-value">+52 4777 347474</span></div>
+                  <div class="contact-item"><span class="contact-label">WhatsApp:</span><span class="contact-value">+52 4777 347474</span></div>
+                  <div class="contact-item"><span class="contact-label">Email:</span><span class="contact-value">lacapillasl@gmail.com</span></div>
                 </div>
               </div>
+            </div>
 
+            <div class="footer">
+              <p><strong>La Capilla Hotel</strong></p>
+              <p>Nos vemos pronto. ¡Esperamos tu llegada!</p>
+              <p style="margin-top:15px;color:#999;font-size:11px;">Este es un email automatizado. No responda directamente a este mensaje.</p>
             </div>
           </div>
         </body>
