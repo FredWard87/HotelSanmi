@@ -972,10 +972,7 @@ function generatePartialPaymentVoucherPDF(booking) {
         .lineWidth(1).stroke(gold);
 
       doc.fontSize(8.5).font('Helvetica-Bold').fillColor(charcoal);
-      doc.text('Este documento es tu comprobante oficial de reserva', margin, footerY + 12, {
-        align: 'center',
-        width: contentWidth
-      });
+     
 
       doc.fontSize(7).font('Helvetica').fillColor(mediumGray);
       const timestamp = new Date().toLocaleString('es-MX', {
@@ -985,12 +982,7 @@ function generatePartialPaymentVoucherPDF(booking) {
         hour: '2-digit',
         minute: '2-digit'
       });
-      doc.text(
-        `Documento generado: ${timestamp} | Reserva: ${booking.bookingId}`,
-        margin,
-        footerY + 25,
-        { align: 'center', width: contentWidth }
-      );
+      
 
       doc.moveTo(margin, footerY + 42).lineTo(margin + contentWidth, footerY + 42)
         .lineWidth(1.5).stroke(gold);
