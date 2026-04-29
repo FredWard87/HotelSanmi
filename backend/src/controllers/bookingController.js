@@ -11,7 +11,6 @@ const { generateCheckinPDF } = require('../services/checkinPdfService');
 // FUNCIONES AUXILIARES
 // ─────────────────────────────────────────────
 
-// Generar ID único para reserva
 const generateBookingId = () => {
   const year = new Date().getFullYear();
   const random = Math.random().toString(36).substr(2, 9).toUpperCase();
@@ -19,7 +18,6 @@ const generateBookingId = () => {
   return `LC-${year}-${timestamp}${random.substr(0, 3)}`;
 };
 
-// Formatear fecha SIN conversión de zona horaria
 const formatDateWithTimezone = (value) => {
   if (!value) return null;
 
@@ -34,7 +32,6 @@ const formatDateWithTimezone = (value) => {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
 };
 
-// Sanitizar valores undefined/null/string "undefined"
 const sanitizeValue = (value) => {
   if (value === undefined || value === null) return null;
   if (typeof value === 'string') {
@@ -47,7 +44,6 @@ const sanitizeValue = (value) => {
   return value;
 };
 
-// Convertir a booleano seguro
 const toBoolean = (value) => {
   if (typeof value === 'boolean') return value;
   if (typeof value === 'string') {
@@ -58,7 +54,6 @@ const toBoolean = (value) => {
   return Boolean(value);
 };
 
-// Formatear moneda MXN
 function formatMXN(amount) {
   return new Intl.NumberFormat('es-MX', {
     style: 'currency',
@@ -88,7 +83,6 @@ async function checkRoomAvailabilityInternal(roomId, startDate, endDate, options
   const start = formatDateWithTimezone(startDate);
   const end = formatDateWithTimezone(endDate);
 
-  // 1. Contar reservas activas que se solapan
   const overlappingBookings = await Booking.countDocuments({
     roomId: room._id,
     status: 'active',
@@ -97,7 +91,6 @@ async function checkRoomAvailabilityInternal(roomId, startDate, endDate, options
     ]
   });
 
-  // 2. Contar unidades bloqueadas considerando SCOPE
   let overlappingBlocks = [];
   let maxBlockedByBlocks = 0;
 
@@ -122,7 +115,6 @@ async function checkRoomAvailabilityInternal(roomId, startDate, endDate, options
     });
   }
 
-  // 3. Calcular disponibilidad
   const totalUnits = room.totalUnits || 1;
   const totalBlocked = overlappingBookings + maxBlockedByBlocks;
   const unavailableUnits = Math.min(totalBlocked, totalUnits);
@@ -148,14 +140,11 @@ async function sendBookingConfirmationEmail(booking) {
     console.log(`\n📧 ===== INICIANDO ENVÍO DE EMAIL =====`);
     console.log(`📧 Para: ${booking.guestInfo.email}`);
     console.log(`📧 Booking ID: ${booking.bookingId}`);
-    console.log(`📧 Habitación: ${booking.roomName}`);
-    console.log(`📧 Huésped: ${booking.guestInfo.firstName} ${booking.guestInfo.lastName}`);
 
     const result = await generateAndSendVoucher(booking);
 
     if (result && result.success) {
       console.log(`✅ EMAIL ENVIADO EXITOSAMENTE a ${booking.guestInfo.email}`);
-      console.log(`✅ MessageId: ${result.messageId || 'N/A'}`);
     } else {
       console.log(`⚠️ Email enviado pero sin confirmación de éxito`);
     }
@@ -165,12 +154,7 @@ async function sendBookingConfirmationEmail(booking) {
   } catch (error) {
     console.error(`\n❌ ===== ERROR ENVIANDO EMAIL =====`);
     console.error(`❌ Para: ${booking.guestInfo.email}`);
-    console.error(`❌ Booking: ${booking.bookingId}`);
     console.error(`❌ Error:`, error.message);
-    console.error(`❌ Stack:`, error.stack);
-    if (error.code) console.error(`❌ Code:`, error.code);
-    if (error.command) console.error(`❌ Command:`, error.command);
-    if (error.response) console.error(`❌ Response:`, error.response);
     console.error(`❌ ===== FIN ERROR EMAIL =====\n`);
 
     return {
@@ -245,8 +229,6 @@ async function sendCancellationEmail(booking, refundResult = null) {
     });
 
     const guestName = booking.guestInfo.firstName + ' ' + booking.guestInfo.lastName;
-    const refundAmount = refundResult ? (refundResult.amount / 100).toFixed(2) : '0.00';
-    const refundStatus = refundResult ? refundResult.status : 'no procesado';
 
     const mailOptions = {
       from: `"Hotel La Capilla" <${process.env.EMAIL_FROM || 'lacapillasl@gmail.com'}>`,
@@ -284,7 +266,7 @@ async function sendCancellationEmail(booking, refundResult = null) {
             </p>
 
             <p style="font-size: 14px; color: #1a1a1a; line-height: 1.8; margin: 25px 0; font-family: Georgia, serif;">
-              Le ofrecemos una sincera disculpa por este inconveniente. Entendemos que esta situación puede afectar su planificación y realmente lamentamos lo sucedido.
+              Le ofrecemos una sincera disculpa por este inconveniente.
             </p>
 
             <div style="background-color: #e8f5e9; border: 1px solid #2e7d32; padding: 20px; margin: 25px 0; text-align: center;">
@@ -292,23 +274,15 @@ async function sendCancellationEmail(booking, refundResult = null) {
                 Reembolso Procesado
               </p>
               <p style="margin: 0 0 10px 0; font-size: 13px; color: #1a1a1a;">
-                Queremos informarle que hemos procedido con el reembolso total del importe pagado a través de Stripe.
+                Hemos procedido con el reembolso total del importe pagado a través de Stripe.
               </p>
               <p style="margin: 0; font-size: 12px; color: #666666;">
-                Dependiendo de su entidad bancaria, el monto podría verse reflejado en su cuenta en un plazo de 5 a 10 días hábiles.
+                El monto podría verse reflejado en su cuenta en un plazo de 5 a 10 días hábiles.
               </p>
             </div>
 
             <p style="font-size: 14px; color: #1a1a1a; line-height: 1.8; margin: 25px 0; font-family: Georgia, serif;">
-              Si lo desea, estaremos encantados de ayudarle a encontrar disponibilidad en fechas alternativas o asistirle con cualquier otra gestión que necesite.
-            </p>
-
-            <p style="font-size: 14px; color: #1a1a1a; line-height: 1.8; margin: 25px 0; font-family: Georgia, serif;">
-              Agradecemos su comprensión y esperamos poder recibirle en una próxima oportunidad para brindarle la experiencia que merece.
-            </p>
-
-            <p style="font-size: 14px; color: #1a1a1a; line-height: 1.8; margin: 30px 0; font-family: Georgia, serif;">
-              Quedamos atentos a cualquier consulta.
+              Agradecemos su comprensión y esperamos poder recibirle en una próxima oportunidad.
             </p>
 
             <div style="margin-top: 35px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
@@ -346,21 +320,6 @@ async function sendCancellationEmail(booking, refundResult = null) {
         </body>
         </html>
       `,
-      text: 'HOTEL LA CAPILLA - Confirmacion de Cancelacion\n\n' +
-        'Estimado/a ' + (guestName || 'Huesped') + ',\n\n' +
-        'Reciba un cordial saludo de parte de La Capilla Hotel.\n\n' +
-        'Nos comunicamos con usted en relacion con su reciente reserva realizada para las fechas ' + checkInDate + ' al ' + checkOutDate + '. Lamentablemente, debido a un error en nuestro sistema de verificacion de disponibilidad, su reservacion fue confirmada cuando ya no contabamos con habitaciones disponibles (sold out) para esas fechas.\n\n' +
-        'Le ofrecemos una sincera disculpa por este inconvenience. Entendemos que esta situacion puede afectar su planificacion y realmente lamentamos lo sucedido.\n\n' +
-        ' queremos informarle que hemos procedido con el reembolso total del importe pagado a traves de Stripe. Dependiendo de su entidad bancaria, el monto podria verse reflejado en su cuenta en un plazo de 5 a 10 dias habiles.\n\n' +
-        'Si lo desea, estaremos encantados de ayudarle a encontrar disponibilidad en fechas alternativas o asistirle con cualquier otra gestion que necesite.\n\n' +
-        'Agradecemos su compresion y esperamos poder recibirle en una proxima oportunidad para brindarle la experiencia que merece.\n\n' +
-        'Quedamos atentos a cualquier consulta.\n\n' +
-        'Atentamente,\n\n' +
-        'Alejandro Lopez Lizarraga\n' +
-        'Dueno del Hotel\n' +
-        'La Capilla Hotel\n\n' +
-        '+52 4777 347474\n' +
-        'lacapillasl@gmail.com',
       attachments: attachments
     };
 
@@ -377,7 +336,6 @@ async function sendCancellationEmail(booking, refundResult = null) {
 // CONTROLADORES
 // ─────────────────────────────────────────────
 
-// Obtener todas las reservas
 exports.getAllBookings = async (req, res, next) => {
   try {
     const { status, startDate, endDate, limit = 100 } = req.query;
@@ -408,7 +366,6 @@ exports.getAllBookings = async (req, res, next) => {
   }
 };
 
-// Obtener estadísticas de reservas
 exports.getBookingStats = async (req, res, next) => {
   try {
     const { startDate, endDate } = req.query;
@@ -484,7 +441,6 @@ exports.getBookingStats = async (req, res, next) => {
   }
 };
 
-// Estadísticas de uso de códigos de descuento
 exports.getDiscountCodeUsageStats = async (req, res, next) => {
   try {
     const { startDate, endDate } = req.query;
@@ -595,7 +551,6 @@ exports.getDiscountCodeUsageStats = async (req, res, next) => {
   }
 };
 
-// Verificar disponibilidad de una habitación
 exports.checkAvailability = async (req, res, next) => {
   try {
     const { roomId, checkIn, checkOut, discountCode } = req.query;
@@ -619,7 +574,6 @@ exports.checkAvailability = async (req, res, next) => {
       });
       if (discountCodeCheck) {
         ignoreBlocksForAvailability = true;
-        console.log('🎟️ Código de descuento válido en verificación de disponibilidad - ignorando bloqueos');
       }
     }
 
@@ -657,7 +611,6 @@ exports.checkAvailability = async (req, res, next) => {
   }
 };
 
-// Verificar disponibilidad para múltiples habitaciones por SCOPE
 exports.checkMultipleAvailability = async (req, res, next) => {
   try {
     const { checkIn, checkOut, scope } = req.query;
@@ -727,7 +680,6 @@ exports.checkMultipleAvailability = async (req, res, next) => {
   }
 };
 
-// Crear Payment Intent con Stripe
 exports.createPaymentIntent = async (req, res, next) => {
   try {
     const { amount, currency = 'mxn' } = req.body;
@@ -753,7 +705,10 @@ exports.createPaymentIntent = async (req, res, next) => {
   }
 };
 
-// Crear reserva
+// ─────────────────────────────────────────────
+// CREAR RESERVA — con fix de isFree
+// ─────────────────────────────────────────────
+
 exports.createBooking = async (req, res, next) => {
   try {
     const {
@@ -773,7 +728,8 @@ exports.createBooking = async (req, res, next) => {
       paymentMethodId,
       specialRequests,
       discountCode,
-      chargeFullPrice
+      chargeFullPrice,
+      isFree,           // ✅ FIX: leer isFree del body
     } = req.body;
 
     console.log('=== CREANDO RESERVA ===');
@@ -781,10 +737,11 @@ exports.createBooking = async (req, res, next) => {
     console.log('Check-out recibido:', checkOut);
     console.log('Código de descuento recibido:', discountCode);
     console.log('Charge full price:', chargeFullPrice);
+    console.log('isFree:', isFree);
     console.log('Email del huésped:', guestInfo?.email);
     console.log('Usuario que crea la reserva:', req.user?.email, '| Rol:', req.user?.role);
 
-    if (!roomId || !guestInfo || !checkIn || !checkOut || !nights || !pricePerNight) {
+    if (!roomId || !guestInfo || !checkIn || !checkOut || !nights || !pricePerNight && !isFree) {
       return res.status(400).json({
         message: 'Faltan datos requeridos',
         error: 'Missing required fields'
@@ -819,39 +776,19 @@ exports.createBooking = async (req, res, next) => {
       });
       if (preCheckDiscountCode) {
         hasValidDiscountCode = true;
-        console.log('🎟️ Código de descuento válido detectado - se ignorarán bloqueos de habitación');
       }
     }
 
     const shouldIgnoreBlocks = isAdmin || hasValidDiscountCode;
 
     if (isAdmin) console.log('🔓 ADMIN DETECTADO - IGNORANDO BLOQUEOS DE HABITACIÓN');
-    if (hasValidDiscountCode) console.log('🔓 CÓDIGO DE DESCUENTO VÁLIDO - IGNORANDO BLOQUEOS DE HABITACIÓN');
+    if (hasValidDiscountCode) console.log('🔓 CÓDIGO DE DESCUENTO VÁLIDO - IGNORANDO BLOQUEOS');
 
     const availability = await checkRoomAvailabilityInternal(roomId, startDate, endDate, { ignoreBlocks: shouldIgnoreBlocks });
 
     if (!availability.available) {
-      let message = `❌ Lo sentimos, esta habitación no está disponible para las fechas seleccionadas.\n\n`;
-
-      if (availability.error) {
-        message = availability.error;
-      } else {
-        message += `📊 Estado de disponibilidad:\n`;
-        message += `• Total de unidades: ${availability.totalUnits}\n`;
-        message += `• Reservadas: ${availability.bookedUnits}\n`;
-        message += `• Bloqueadas: ${availability.blockedUnits}\n`;
-        message += `• Disponibles: ${availability.availableUnits}\n\n`;
-
-        if (availability.blocks && availability.blocks.length > 0) {
-          message += `🚫 Motivo del bloqueo:\n`;
-          availability.blocks.forEach(block => {
-            const reason = block.reason || block.blockType;
-            message += `• ${reason} (${new Date(block.startDate).toLocaleDateString('es-MX')} - ${new Date(block.endDate).toLocaleDateString('es-MX')})\n`;
-          });
-        }
-
-        message += `\n💡 Por favor, intenta con otras fechas o selecciona otra habitación.`;
-      }
+      let message = `No disponible para estas fechas`;
+      if (availability.error) message = availability.error;
 
       return res.status(409).json({
         message,
@@ -877,7 +814,7 @@ exports.createBooking = async (req, res, next) => {
 
     let discountAmount = 0;
     let discountCodeDoc = null;
-    const originalSubtotal = pricePerNight * nights;
+    const originalSubtotal = (pricePerNight || 0) * nights;
     const originalTotal = originalSubtotal * 1.20;
 
     let finalTotal;
@@ -886,18 +823,26 @@ exports.createBooking = async (req, res, next) => {
     let finalTax;
     let finalMunicipalTax;
 
-    if (isAdmin && totalPrice && typeof totalPrice === 'number' && totalPrice > 0) {
-      // PRECIO MANUAL - el precio ingresado es el total, sin impuestos adicionales
+    // ✅ FIX: manejar isFree y totalPrice === 0 correctamente
+    if (isFree === true) {
+      // Reserva gratuita — precio cero, sin impuestos
+      finalTotal = 0;
+      isPrecioManual = true;
+      finalSubtotal = 0;
+      finalTax = 0;
+      finalMunicipalTax = 0;
+      console.log('🎁 Reserva GRATUITA detectada — precio: $0.00');
+    } else if (isAdmin && typeof totalPrice === 'number' && totalPrice > 0) {
+      // Precio manual ingresado por admin
       finalTotal = totalPrice;
       isPrecioManual = true;
       finalSubtotal = totalPrice;
       finalTax = 0;
       finalMunicipalTax = 0;
-
       console.log('💰 Usando PRECIO MANUAL (sin impuestos):');
       console.log('  - Total recibido:', finalTotal);
     } else {
-      // PRECIO AUTOMÁTICO
+      // Precio automático
       finalTotal = originalTotal;
 
       if (discountCode && discountCode.trim()) {
@@ -909,14 +854,11 @@ exports.createBooking = async (req, res, next) => {
         });
 
         if (!discountCodeDoc) {
-          console.log('❌ Código no encontrado o inactivo');
           return res.status(404).json({
             error: 'Discount code not found',
             message: 'Código de descuento no encontrado o inactivo'
           });
         }
-
-        console.log('✅ Código encontrado:', discountCodeDoc.code);
 
         const validation = discountCodeDoc.isValidForBooking({
           nights: Number(nights),
@@ -924,31 +866,20 @@ exports.createBooking = async (req, res, next) => {
         });
 
         if (!validation.valid) {
-          console.log('❌ Código no válido:', validation.reason);
           return res.status(400).json({
             error: 'Invalid discount code',
             message: validation.reason
           });
         }
 
-        // FIX: usar availability.room.price en lugar de variable `room` no definida
         const roomPricePerNight = availability.room.price || 0;
         finalTotal = discountCodeDoc.calculateFinalPrice(originalTotal, Number(nights), roomPricePerNight);
         discountAmount = originalTotal - finalTotal;
-
-        console.log('💰 Descuento aplicado:');
-        console.log('  - Precio original (con impuestos):', originalTotal);
-        console.log('  - Precio por noche:', roomPricePerNight);
-        console.log('  - Noches:', nights);
-        console.log('  - Cobrar precio completo:', discountCodeDoc.chargeFullPrice || false);
-        console.log('  - Precio final (código):', finalTotal);
-        console.log('  - Descuento total:', discountAmount);
 
         finalSubtotal = finalTotal;
         finalTax = 0;
         finalMunicipalTax = 0;
       } else {
-        // Sin código de descuento - calcular impuestos normalmente
         finalSubtotal = originalSubtotal;
         finalTax = finalSubtotal * (16 / 100);
         finalMunicipalTax = finalSubtotal * (4 / 100);
@@ -957,24 +888,25 @@ exports.createBooking = async (req, res, next) => {
     }
 
     console.log('📊 Cálculo final:');
-    console.log('  - Subtotal:', finalSubtotal.toFixed(2));
-    console.log('  - IVA 16%:', finalTax.toFixed(2));
-    console.log('  - Impuesto Municipal 4%:', finalMunicipalTax.toFixed(2));
+    console.log('  - Subtotal:', (finalSubtotal || 0).toFixed(2));
+    console.log('  - IVA 16%:', (finalTax || 0).toFixed(2));
+    console.log('  - Impuesto Municipal 4%:', (finalMunicipalTax || 0).toFixed(2));
     console.log('  - Total:', finalTotal.toFixed(2));
 
     let initialPayment, secondNightPayment;
     const adminAdvancePayment = advancePayment && advancePayment > 0 ? advancePayment : null;
 
-    if (Number(nights) === 1 || chargeFullPrice === true || (adminAdvancePayment && adminAdvancePayment >= finalTotal)) {
+    // ✅ FIX: reserva gratuita → pagos en cero, marcada como completa
+    if (isFree === true) {
+      initialPayment = 0;
+      secondNightPayment = 0;
+      console.log('🎁 Reserva gratuita — initialPayment y secondNightPayment = 0');
+    } else if (Number(nights) === 1 || chargeFullPrice === true || (adminAdvancePayment && adminAdvancePayment >= finalTotal)) {
       initialPayment = adminAdvancePayment ? Math.min(adminAdvancePayment, finalTotal) : finalTotal;
       secondNightPayment = 0;
-      if (adminAdvancePayment && adminAdvancePayment >= finalTotal) {
-        console.log('💰 PAGO COMPLETO detectado por anticipo del admin:', adminAdvancePayment, '>=', finalTotal);
-      }
     } else if (adminAdvancePayment && adminAdvancePayment > 0) {
       initialPayment = adminAdvancePayment;
       secondNightPayment = Math.max(0, finalTotal - adminAdvancePayment);
-      console.log('💰 ANTICIPO PARCIAL del admin:', adminAdvancePayment, '| Resta:', secondNightPayment);
     } else {
       initialPayment = finalTotal * 0.5;
       secondNightPayment = finalTotal * 0.5;
@@ -986,7 +918,6 @@ exports.createBooking = async (req, res, next) => {
     if (paymentIntentId) {
       try {
         if (paymentIntentId.startsWith('pi_TEST_')) {
-          console.log('⚠️ Usando Payment Intent de prueba:', paymentIntentId);
           stripeChargeId = `ch_TEST_${paymentIntentId.slice(8)}`;
           paymentStatus = initialPayment === finalTotal ? 'completed' : 'partial';
         } else {
@@ -1009,11 +940,14 @@ exports.createBooking = async (req, res, next) => {
         });
       }
     } else {
-      if (adminAdvancePayment && adminAdvancePayment > 0) {
+      // ✅ FIX: reserva gratuita → completed automáticamente
+      if (isFree === true) {
+        paymentStatus = 'completed';
+        console.log('🎁 Reserva gratuita — paymentStatus: completed');
+      } else if (adminAdvancePayment && adminAdvancePayment > 0) {
         paymentStatus = adminAdvancePayment >= finalTotal ? 'completed' : 'partial';
         console.log('💰 Reserva admin con anticipo - paymentStatus:', paymentStatus);
       } else {
-        console.log('⚠️ Creando reserva sin Payment Intent - estado: pending');
         paymentStatus = 'pending';
       }
     }
@@ -1028,14 +962,14 @@ exports.createBooking = async (req, res, next) => {
       checkIn: startDate,
       checkOut: endDate,
       nights,
-      pricePerNight,
+      pricePerNight: pricePerNight || 0,
       subtotalBeforeDiscount: originalSubtotal,
       discountCode: discountCodeDoc ? discountCodeDoc.code : null,
       discountCodeId: discountCodeDoc ? discountCodeDoc._id : null,
       discountAmount,
-      subtotal: finalSubtotal,
-      tax: finalTax,
-      municipalTax: finalMunicipalTax,
+      subtotal: finalSubtotal || 0,
+      tax: finalTax || 0,
+      municipalTax: finalMunicipalTax || 0,
       totalPrice: finalTotal,
       initialPayment,
       secondNightPayment,
@@ -1050,17 +984,18 @@ exports.createBooking = async (req, res, next) => {
       createdBy: req.user ? req.user._id : null,
       createdByRole: req.user ? req.user.role : 'guest',
       adminOverride: shouldIgnoreBlocks && availability.blockedUnits > 0,
-      isPrecioManual: isPrecioManual
+      isPrecioManual: isPrecioManual,
+      isFree: isFree === true,
     });
 
     await newBooking.save();
 
     console.log(`✅ Reserva creada: ${newBooking.bookingId} para ${guestInfo.email}`);
-    if (newBooking.adminOverride) console.log(`🔓 Reserva creada con ADMIN OVERRIDE (ignoró bloqueos)`);
-    if (isPrecioManual) console.log(`💰 Reserva creada con PRECIO MANUAL: ${formatMXN(finalTotal)}`);
+    if (newBooking.adminOverride) console.log(`🔓 Reserva creada con ADMIN OVERRIDE`);
+    if (isFree) console.log(`🎁 Reserva GRATUITA creada`);
+    if (isPrecioManual && !isFree) console.log(`💰 Reserva con PRECIO MANUAL: ${formatMXN(finalTotal)}`);
 
     if (discountCodeDoc) {
-      console.log('📈 Incrementando uso del código:', discountCodeDoc.code);
       discountCodeDoc.currentUses = (discountCodeDoc.currentUses || 0) + 1;
       await discountCodeDoc.save();
     }
@@ -1069,16 +1004,17 @@ exports.createBooking = async (req, res, next) => {
     let emailResult = null;
     try {
       emailResult = await generateAndSendVoucher(newBooking);
-      console.log(`✅ Email procesado, resultado:`, emailResult ? 'Éxito' : 'Completado');
     } catch (emailError) {
       console.error(`❌ Error crítico enviando email:`, emailError);
     }
 
     let successMessage = '✅ Reserva creada exitosamente. Revisa tu email para el voucher.';
-    if (discountAmount > 0) {
-      successMessage = `✅ Reserva confirmada con descuento de ${formatMXN(discountAmount)} aplicado. Revisa tu email para el voucher.`;
+    if (isFree) {
+      successMessage = `✅ Reserva GRATUITA creada para ${guestInfo.firstName} ${guestInfo.lastName}.`;
+    } else if (discountAmount > 0) {
+      successMessage = `✅ Reserva confirmada con descuento de ${formatMXN(discountAmount)} aplicado.`;
     } else if (isPrecioManual) {
-      successMessage = `✅ Reserva creada con precio personalizado de ${formatMXN(finalTotal)}. Revisa tu email para el voucher.`;
+      successMessage = `✅ Reserva creada con precio personalizado de ${formatMXN(finalTotal)}.`;
     }
 
     res.status(201).json({
@@ -1092,6 +1028,7 @@ exports.createBooking = async (req, res, next) => {
       emailSent: emailResult ? true : false,
       adminOverride: newBooking.adminOverride || false,
       isPrecioManual: isPrecioManual,
+      isFree: isFree === true,
       secondNightNote: secondNightPayment > 0 ? {
         id: newBooking.secondNightNoteId,
         amount: secondNightPayment,
@@ -1106,7 +1043,6 @@ exports.createBooking = async (req, res, next) => {
   }
 };
 
-// Obtener reserva por bookingId
 exports.getBooking = async (req, res, next) => {
   try {
     const { bookingId } = req.params;
@@ -1124,7 +1060,6 @@ exports.getBooking = async (req, res, next) => {
   }
 };
 
-// Obtener reserva por ID de MongoDB o bookingId
 exports.getBookingById = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -1147,7 +1082,6 @@ exports.getBookingById = async (req, res, next) => {
   }
 };
 
-// Actualizar reserva
 exports.updateBooking = async (req, res, next) => {
   try {
     const { bookingId } = req.params;
@@ -1171,7 +1105,7 @@ exports.updateBooking = async (req, res, next) => {
       if (!availability.available) {
         return res.status(409).json({
           error: 'Room not available',
-          message: `No hay disponibilidad para las nuevas fechas. Solo hay ${availability.availableUnits} unidades disponibles.`,
+          message: `No disponible para estas fechas`,
           details: {
             totalUnits: availability.totalUnits,
             bookedUnits: availability.bookedUnits,
@@ -1291,7 +1225,6 @@ exports.updateBooking = async (req, res, next) => {
   }
 };
 
-// Cancelar reserva
 exports.cancelBooking = async (req, res, next) => {
   try {
     const { bookingId } = req.params;
@@ -1309,11 +1242,6 @@ exports.cancelBooking = async (req, res, next) => {
     let refundResult = null;
     if (processRefund && (booking.stripeChargeId || booking.paymentIntentId) && booking.initialPayment > 0) {
       try {
-        console.log(`💰 Procesando reembolso para reserva ${booking.bookingId}...`);
-        console.log(`💰 Monto a reembolsar: ${booking.initialPayment}`);
-        console.log(`💰 Stripe Charge ID: ${booking.stripeChargeId}`);
-        console.log(`💰 Payment Intent ID: ${booking.paymentIntentId}`);
-
         const chargeIdToRefund = booking.stripeChargeId ||
           (booking.paymentIntentId ? `ch_${booking.paymentIntentId.slice(3)}` : null);
 
@@ -1324,13 +1252,9 @@ exports.cancelBooking = async (req, res, next) => {
           });
           booking.refundId = refundResult.id;
           booking.refundStatus = refundResult.status;
-          console.log(`✅ Reembolso procesado: ${refundResult.id} - Estado: ${refundResult.status}`);
         } else if (chargeIdToRefund && chargeIdToRefund.startsWith('ch_TEST')) {
-          console.log('⚠️ Modo prueba - simulando reembolso');
           booking.refundId = `refund_test_${Date.now()}`;
           booking.refundStatus = 'succeeded';
-        } else {
-          console.log('⚠️ No se encontró ID de cargo para reembolsar');
         }
       } catch (stripeError) {
         console.error('❌ Error procesando reembolso:', stripeError);
@@ -1369,7 +1293,6 @@ exports.cancelBooking = async (req, res, next) => {
   }
 };
 
-// Marcar segunda noche como pagada
 exports.markSecondNightPaid = async (req, res, next) => {
   try {
     const { bookingId } = req.params;
@@ -1407,7 +1330,6 @@ exports.markSecondNightPaid = async (req, res, next) => {
   }
 };
 
-// Generar documento de check-in con firma
 exports.generateCheckin = async (req, res, next) => {
   try {
     const { bookingId } = req.params;
@@ -1434,9 +1356,6 @@ exports.generateCheckin = async (req, res, next) => {
       res.setHeader('Content-Disposition', `attachment; filename="Checkin_${bookingId}.pdf"`);
       res.setHeader('Content-Length', pdfBuffer.length);
       res.send(pdfBuffer);
-
-      console.log('=== PDF CHECK-IN ENVIADO CON ÉXITO ===');
-      console.log(`Tamaño del PDF: ${pdfBuffer.length} bytes`);
     } catch (pdfError) {
       console.error('Error al generar el PDF de check-in:', pdfError);
       return res.status(500).json({
@@ -1450,7 +1369,6 @@ exports.generateCheckin = async (req, res, next) => {
   }
 };
 
-// Descargar voucher
 exports.downloadVoucher = async (req, res, next) => {
   try {
     const { bookingId } = req.params;
@@ -1472,7 +1390,6 @@ exports.downloadVoucher = async (req, res, next) => {
   }
 };
 
-// Reenviar email de confirmación
 exports.resendBookingEmail = async (req, res, next) => {
   try {
     const { bookingId } = req.params;
@@ -1481,8 +1398,6 @@ exports.resendBookingEmail = async (req, res, next) => {
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found', message: 'Reserva no encontrada' });
     }
-
-    console.log(`\n📧 Reenviando email para reserva: ${booking.bookingId}`);
 
     const emailResult = await sendBookingConfirmationEmail(booking);
 
@@ -1505,7 +1420,6 @@ exports.resendBookingEmail = async (req, res, next) => {
   }
 };
 
-// Enviar email de prueba a reserva existente
 exports.sendTestEmailToExistingBooking = async (req, res, next) => {
   try {
     const { bookingId } = req.params;
@@ -1514,9 +1428,6 @@ exports.sendTestEmailToExistingBooking = async (req, res, next) => {
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found', message: 'Reserva no encontrada' });
     }
-
-    console.log(`\n🧪 Enviando email de PRUEBA para reserva: ${booking.bookingId}`);
-    console.log(`📧 Email destino: ${booking.guestInfo.email}`);
 
     const emailResult = await sendBookingConfirmationEmail(booking);
 
@@ -1539,7 +1450,6 @@ exports.sendTestEmailToExistingBooking = async (req, res, next) => {
   }
 };
 
-// Test de email básico
 exports.testEmail = async (req, res, next) => {
   try {
     const { email } = req.body;
@@ -1592,7 +1502,7 @@ exports.testEmail = async (req, res, next) => {
 };
 
 // ─────────────────────────────────────────────
-// EXPORTAR TODAS LAS FUNCIONES
+// EXPORTAR
 // ─────────────────────────────────────────────
 
 module.exports = {
