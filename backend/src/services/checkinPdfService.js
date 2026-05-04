@@ -571,7 +571,7 @@ function _drawPoliciesPage1(doc, booking, signatureBase64, hasLogo, logoPath, fo
   currentY += 8;
 
   // ===== FIRMA EN PÁGINA 2 =====
-  _drawPoliciesSignatureBlock(doc, booking, signatureBase64, guestFirstName, guestLastName, currentY, hasLogo, logoPath, 1);
+  _drawPoliciesSignatureBlock(doc, booking, null, guestFirstName, guestLastName, currentY, hasLogo, logoPath, 1);
 }
 
 // =====================================================================
@@ -657,7 +657,7 @@ function _drawPoliciesPage2(doc, booking, signatureBase64, hasLogo, logoPath, fo
   currentY += 20;
 
   // ===== FIRMA EN PÁGINA 3 =====
-  _drawPoliciesSignatureBlock(doc, booking, signatureBase64, guestFirstName, guestLastName, currentY, hasLogo, logoPath, 2);
+  _drawPoliciesSignatureBlock(doc, booking, signaturePolicies2Base64, guestFirstName, guestLastName, currentY, hasLogo, logoPath, 2);
 }
 
 // =====================================================================
