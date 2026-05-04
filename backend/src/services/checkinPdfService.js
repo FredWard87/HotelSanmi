@@ -5,20 +5,18 @@ const path = require('path');
 
 /**
  * Genera un PDF de check-in de 3 páginas:
- * Página 1: Formato de reservación (check-in)
- * Página 2: Políticas del hotel parte 1 + firma del huésped
- * Página 3: Políticas del hotel parte 2 + firma del huésped
+ * Página 1: Formato de reservación (check-in) CON firma del huésped
+ * Página 2: Políticas del hotel parte 1 (SIN firma)
+ * Página 3: Políticas del hotel parte 2 (SIN firma)
  *
  * @param {Object} booking - Datos de la reserva desde MongoDB
- * @param {String} signatureBase64 - Firma del check-in (página 1) en base64
- * @param {String} signaturePolicies1Base64 - Firma de políticas página 1 en base64
- * @param {String} signaturePolicies2Base64 - Firma de políticas página 2 en base64
+ * @param {String} signatureBase64 - Firma del check-in (solo página 1) en base64
  * @param {String} ciudad - Ciudad del huésped
  * @param {String} estado - Estado del huésped
  * @param {Boolean} includeBreakfast - Si incluye desayuno
  * @returns {Promise<Buffer>} - Buffer del PDF generado
  */
-async function generateCheckinPDF(booking, signatureBase64, signaturePolicies1Base64, signaturePolicies2Base64, ciudad, estado, includeBreakfast) {
+async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, includeBreakfast) {
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({
@@ -371,7 +369,7 @@ async function generateCheckinPDF(booking, signatureBase64, signaturePolicies1Ba
            });
       }
 
-      // ===== FIRMA DEL HUÉSPED (Check-in) =====
+      // ===== FIRMA DEL HUÉSPED (SOLO EN PÁGINA 1 - CHECK-IN) =====
       const signatureY = importTableY + importTableH + 25;
       const signatureBoxH = 130;
       const signatureBoxW = 394;
@@ -393,12 +391,19 @@ async function generateCheckinPDF(booking, signatureBase64, signaturePolicies1Ba
             align: 'center'
           });
         } catch (err) {
+          console.error('Error al cargar firma:', err);
           doc.fontSize(9).font('Helvetica-Oblique')
              .text('(Firma no disponible)', 60, signatureY + 50, {
                align: 'center',
                width: 354
              });
         }
+      } else {
+        doc.fontSize(9).font('Helvetica-Oblique')
+           .text('(Sin firma)', 60, signatureY + 50, {
+             align: 'center',
+             width: 354
+           });
       }
 
       doc.moveTo(60, signatureY + 88).lineTo(414, signatureY + 88).stroke();
@@ -453,14 +458,14 @@ async function generateCheckinPDF(booking, signatureBase64, signaturePolicies1Ba
       // =====================================================================
       doc.addPage();
 
-      _drawPoliciesPage1(doc, booking, signaturePolicies1Base64, hasLogo, logoPath, formatDateFull, guestFirstName, guestLastName);
+      _drawPoliciesPage1(doc, booking, hasLogo, logoPath, formatDateFull, guestFirstName, guestLastName);
 
       // =====================================================================
       // ================== PÁGINA 3: POLÍTICAS PARTE 2 =====================
       // =====================================================================
       doc.addPage();
 
-      _drawPoliciesPage2(doc, booking, signaturePolicies2Base64, hasLogo, logoPath, formatDateFull, guestFirstName, guestLastName);
+      _drawPoliciesPage2(doc, booking, hasLogo, logoPath, formatDateFull, guestFirstName, guestLastName);
 
       doc.end();
     } catch (error) {
@@ -472,7 +477,7 @@ async function generateCheckinPDF(booking, signatureBase64, signaturePolicies1Ba
 // =====================================================================
 // ========== FUNCIÓN: POLÍTICAS PÁGINA 1 (puntos 1 al 7) =============
 // =====================================================================
-function _drawPoliciesPage1(doc, booking, signatureBase64, hasLogo, logoPath, formatDateFull, guestFirstName, guestLastName) {
+function _drawPoliciesPage1(doc, booking, hasLogo, logoPath, formatDateFull, guestFirstName, guestLastName) {
   const pageWidth = 532;
   const leftMargin = 40;
 
@@ -570,14 +575,52 @@ function _drawPoliciesPage1(doc, booking, signatureBase64, hasLogo, logoPath, fo
 
   currentY += 8;
 
-  // ===== FIRMA EN PÁGINA 2 =====
-  _drawPoliciesSignatureBlock(doc, booking, signatureBase64, guestFirstName, guestLastName, currentY, hasLogo, logoPath, 1);
+  // Declaración final (SIN FIRMA)
+  doc.fontSize(8).font('Helvetica')
+     .text(
+       'Declaro haber leído y aceptado las políticas de estancia de La Capilla Hotel, así como mi responsabilidad sobre el cumplimiento de las mismas.',
+       leftMargin, currentY,
+       { width: pageWidth, align: 'justify' }
+     );
+
+  // ===== PIE DE PÁGINA PÁGINA 2 =====
+  const footerY = currentY + 25;
+  const footerH = 65;
+  const remainingSpace = 792 - 40 - footerY;
+
+  if (remainingSpace >= footerH) {
+    doc.rect(leftMargin, footerY, pageWidth, footerH).stroke();
+
+    if (hasLogo) {
+      doc.image(logoPath, leftMargin + 10, footerY + 8, { width: 60 });
+    }
+
+    doc.fontSize(9).font('Helvetica-Bold')
+       .text('LA CAPILLA HOTEL', leftMargin + 75, footerY + 8, {
+         align: 'center',
+         width: pageWidth - 75
+       });
+
+    doc.fontSize(7).font('Helvetica')
+       .text('Dolores Hidalgo – San Miguel de Allende 378/4, El Durazno Gto. Ciudad de', leftMargin + 75, footerY + 22, {
+         align: 'center',
+         width: pageWidth - 75
+       })
+       .text('los 80, a 2 horas de la Ciudad de México y 45 minutos de San Miguel de Allende.', leftMargin + 75, footerY + 32, {
+         align: 'center',
+         width: pageWidth - 75
+       })
+       .text('Cel. 413 117 00 99 | Email: reservaciones@hotelacapilla.com | www.hotelacapilla.com', leftMargin + 75, footerY + 44, {
+         align: 'center',
+         width: pageWidth - 75
+       });
+  }
 }
 
 // =====================================================================
 // ========== FUNCIÓN: POLÍTICAS PÁGINA 2 (puntos 8 al 13) ============
 // =====================================================================
-function _drawPoliciesPage2(doc, booking, signatureBase64, hasLogo, logoPath, formatDateFull, guestFirstName, guestLastName) {
+function _drawPoliciesPage2(doc, booking, hasLogo, logoPath, formatDateFull, guestFirstName, guestLastName) {
   const pageWidth = 532;
   const leftMargin = 40;
 
@@ -646,7 +689,7 @@ function _drawPoliciesPage2(doc, booking, signatureBase64, hasLogo, logoPath, fo
 
   currentY += 8;
 
-  // Declaración final
+  // Declaración final (SIN FIRMA)
   doc.fontSize(8).font('Helvetica')
      .text(
        'Declaro haber leído y aceptado las políticas de estancia de La Capilla Hotel, así como mi responsabilidad sobre el cumplimiento de las mismas.',
@@ -654,75 +697,10 @@ function _drawPoliciesPage2(doc, booking, signatureBase64, hasLogo, logoPath, fo
        { width: pageWidth, align: 'justify' }
      );
 
-  currentY += 20;
-
-  // ===== FIRMA EN PÁGINA 3 =====
-  _drawPoliciesSignatureBlock(doc, booking, signatureBase64, guestFirstName, guestLastName, currentY, hasLogo, logoPath, 2);
-}
-
-// =====================================================================
-// ========== FUNCIÓN: BLOQUE DE FIRMA PARA PÁGINAS DE POLÍTICAS =======
-// =====================================================================
-function _drawPoliciesSignatureBlock(doc, booking, signatureBase64, guestFirstName, guestLastName, startY, hasLogo, logoPath, pageNum) {
-  const pageWidth = 532;
-  const leftMargin = 40;
-
-  const signBoxH = 110;
-  const signBoxW = 394;
-
-  doc.rect(leftMargin, startY, signBoxW, signBoxH).stroke();
-
-  doc.fontSize(10).font('Helvetica-Bold')
-     .text('NOMBRE Y FIRMA DEL HUÉSPED', leftMargin, startY + 8, {
-       align: 'center',
-       width: signBoxW
-     });
-
-  // Nombre del huésped
-  doc.fontSize(8).font('Helvetica')
-     .text(`${guestFirstName} ${guestLastName}`, leftMargin, startY + 22, {
-       align: 'center',
-       width: signBoxW
-     });
-
-  // Imagen de firma si existe
-  if (signatureBase64) {
-    try {
-      const base64Data = signatureBase64.replace(/^data:image\/\w+;base64,/, '');
-      const signatureBuffer = Buffer.from(base64Data, 'base64');
-      doc.image(signatureBuffer, leftMargin + 20, startY + 30, {
-        width: signBoxW - 40,
-        height: 40,
-        align: 'center'
-      });
-    } catch (err) {
-      doc.fontSize(8).font('Helvetica-Oblique')
-         .text('(Firma no disponible)', leftMargin, startY + 50, {
-           align: 'center',
-           width: signBoxW
-         });
-    }
-  }
-
-  // Línea de firma
-  doc.moveTo(leftMargin + 20, startY + 78).lineTo(leftMargin + signBoxW - 20, startY + 78).stroke();
-
-  doc.fontSize(7).font('Helvetica-Bold')
-     .text('Acepto y he leído las políticas de estancia de La Capilla Hotel.', leftMargin, startY + 83, {
-       width: signBoxW,
-       align: 'center'
-     });
-
-  doc.fontSize(7).font('Helvetica')
-     .text(`Reservación: ${booking.bookingId || ''}`, leftMargin, startY + 93, {
-       width: signBoxW,
-       align: 'center'
-     });
-
-  // Pie de página
-  const footerY = startY + signBoxH + 15;
+  // ===== PIE DE PÁGINA PÁGINA 3 =====
+  const footerY = currentY + 25;
   const footerH = 65;
-  const remainingSpace = 792 - 40 - footerY; // LETTER height = 792
+  const remainingSpace = 792 - 40 - footerY;
 
   if (remainingSpace >= footerH) {
     doc.rect(leftMargin, footerY, pageWidth, footerH).stroke();
@@ -750,13 +728,6 @@ function _drawPoliciesSignatureBlock(doc, booking, signatureBase64, guestFirstNa
          align: 'center',
          width: pageWidth - 75
        });
-  } else {
-    // Si no hay espacio suficiente, poner el pie más arriba
-    doc.fontSize(7).font('Helvetica')
-       .text('LA CAPILLA HOTEL | Cel. 413 117 00 99 | reservaciones@hotelacapilla.com | www.hotelacapilla.com',
-         leftMargin, footerY,
-         { align: 'center', width: pageWidth }
-       );
   }
 }
 
