@@ -1348,16 +1348,21 @@ exports.generateCheckin = async (req, res, next) => {
     const { bookingId } = req.params;
     const rawBody = req.body || {};
 
+    // SOLO una firma ahora
     const signature = sanitizeValue(rawBody.signature);
-    const signaturePolicies1 = sanitizeValue(rawBody.signaturePolicies1);
-    const signaturePolicies2 = sanitizeValue(rawBody.signaturePolicies2);
     const ciudad = sanitizeValue(rawBody.ciudad);
     const estado = sanitizeValue(rawBody.estado);
     const breakfastBoolean = toBoolean(rawBody.includeBreakfast);
 
-    if (!signature) return res.status(400).json({ message: 'Se requiere la firma del huésped' });
-    if (!ciudad) return res.status(400).json({ message: 'Se requiere la ciudad' });
-    if (!estado) return res.status(400).json({ message: 'Se requiere el estado' });
+    if (!signature) {
+      return res.status(400).json({ message: 'Se requiere la firma del huésped' });
+    }
+    if (!ciudad) {
+      return res.status(400).json({ message: 'Se requiere la ciudad' });
+    }
+    if (!estado) {
+      return res.status(400).json({ message: 'Se requiere el estado' });
+    }
 
     const booking = await Booking.findOne({ bookingId });
     if (!booking) {
@@ -1365,7 +1370,13 @@ exports.generateCheckin = async (req, res, next) => {
     }
 
     try {
-      const pdfBuffer = await generateCheckinPDF(booking, signature, signaturePolicies1, signaturePolicies2, ciudad, estado, breakfastBoolean);
+      const pdfBuffer = await generateCheckinPDF(
+        booking,
+        signature,
+        ciudad,
+        estado,
+        breakfastBoolean
+      );
 
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="Checkin_${bookingId}.pdf"`);
