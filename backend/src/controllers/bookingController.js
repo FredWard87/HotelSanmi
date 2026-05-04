@@ -66,8 +66,7 @@ function formatMXN(amount) {
 // ─────────────────────────────────────────────
 
 async function checkRoomAvailabilityInternal(roomId, startDate, endDate, options = {}) {
-  // ✅ FIX: aceptar excludeBookingId para no contar la reserva que se está editando
-  const { ignoreBlocks = false, excludeBookingId = null } = options;
+  const { ignoreBlocks = false } = options;
 
   const room = await Room.findById(roomId);
   if (!room) {
@@ -84,20 +83,13 @@ async function checkRoomAvailabilityInternal(roomId, startDate, endDate, options
   const start = formatDateWithTimezone(startDate);
   const end = formatDateWithTimezone(endDate);
 
-  // ✅ FIX: excluir la reserva actual del conteo para que no se bloquee a sí misma
-  const bookingFilter = {
+  const overlappingBookings = await Booking.countDocuments({
     roomId: room._id,
     status: 'active',
     $or: [
       { checkIn: { $lt: end }, checkOut: { $gt: start } }
     ]
-  };
-
-  if (excludeBookingId) {
-    bookingFilter.bookingId = { $ne: excludeBookingId };
-  }
-
-  const overlappingBookings = await Booking.countDocuments(bookingFilter);
+  });
 
   let overlappingBlocks = [];
   let maxBlockedByBlocks = 0;
@@ -737,7 +729,7 @@ exports.createBooking = async (req, res, next) => {
       specialRequests,
       discountCode,
       chargeFullPrice,
-      isFree,
+      isFree,           // ✅ FIX: leer isFree del body
     } = req.body;
 
     console.log('=== CREANDO RESERVA ===');
@@ -831,7 +823,9 @@ exports.createBooking = async (req, res, next) => {
     let finalTax;
     let finalMunicipalTax;
 
+    // ✅ FIX: manejar isFree y totalPrice === 0 correctamente
     if (isFree === true) {
+      // Reserva gratuita — precio cero, sin impuestos
       finalTotal = 0;
       isPrecioManual = true;
       finalSubtotal = 0;
@@ -839,6 +833,7 @@ exports.createBooking = async (req, res, next) => {
       finalMunicipalTax = 0;
       console.log('🎁 Reserva GRATUITA detectada — precio: $0.00');
     } else if (isAdmin && typeof totalPrice === 'number' && totalPrice > 0) {
+      // Precio manual ingresado por admin
       finalTotal = totalPrice;
       isPrecioManual = true;
       finalSubtotal = totalPrice;
@@ -847,6 +842,7 @@ exports.createBooking = async (req, res, next) => {
       console.log('💰 Usando PRECIO MANUAL (sin impuestos):');
       console.log('  - Total recibido:', finalTotal);
     } else {
+      // Precio automático
       finalTotal = originalTotal;
 
       if (discountCode && discountCode.trim()) {
@@ -900,6 +896,7 @@ exports.createBooking = async (req, res, next) => {
     let initialPayment, secondNightPayment;
     const adminAdvancePayment = advancePayment && advancePayment > 0 ? advancePayment : null;
 
+    // ✅ FIX: reserva gratuita → pagos en cero, marcada como completa
     if (isFree === true) {
       initialPayment = 0;
       secondNightPayment = 0;
@@ -943,6 +940,7 @@ exports.createBooking = async (req, res, next) => {
         });
       }
     } else {
+      // ✅ FIX: reserva gratuita → completed automáticamente
       if (isFree === true) {
         paymentStatus = 'completed';
         console.log('🎁 Reserva gratuita — paymentStatus: completed');
@@ -1095,7 +1093,6 @@ exports.updateBooking = async (req, res, next) => {
     }
 
     const isAdmin = req.user && req.user.role === 'admin';
-    // ✅ FIX: admin siempre ignora bloqueos al editar
     const shouldIgnoreBlocks = isAdmin;
 
     if ((checkIn && checkOut) || roomId) {
@@ -1103,17 +1100,9 @@ exports.updateBooking = async (req, res, next) => {
       const newCheckIn = formatDateWithTimezone(checkIn || booking.checkIn);
       const newCheckOut = formatDateWithTimezone(checkOut || booking.checkOut);
 
+      // Skip availability check for admin to allow overriding any constraints
       if (!isAdmin) {
-        // ✅ FIX: pasar excludeBookingId para que no se cuente a sí misma
-        const availability = await checkRoomAvailabilityInternal(
-          newRoomId,
-          newCheckIn,
-          newCheckOut,
-          {
-            ignoreBlocks: shouldIgnoreBlocks,
-            excludeBookingId: booking.bookingId
-          }
-        );
+        const availability = await checkRoomAvailabilityInternal(newRoomId, newCheckIn, newCheckOut, { ignoreBlocks: shouldIgnoreBlocks });
 
         if (!availability.available) {
           return res.status(409).json({
@@ -1133,7 +1122,7 @@ exports.updateBooking = async (req, res, next) => {
           booking.roomName = availability.room.name;
         }
       } else {
-        // ✅ FIX: admin también pasa excludeBookingId por si cambia fechas sin cambiar room
+        // For admin, we still need to validate the room exists if changing room
         if (roomId && roomId !== booking.roomId.toString()) {
           const room = await Room.findById(newRoomId);
           if (!room) {
@@ -1142,8 +1131,6 @@ exports.updateBooking = async (req, res, next) => {
           booking.roomId = newRoomId;
           booking.roomName = room.name;
         }
-        // Admin puede editar fechas sin restricción — no se verifica disponibilidad
-        console.log(`🔓 Admin editando reserva ${bookingId} — skip availability check`);
       }
     }
 
@@ -1362,6 +1349,8 @@ exports.generateCheckin = async (req, res, next) => {
     const rawBody = req.body || {};
 
     const signature = sanitizeValue(rawBody.signature);
+    const signaturePolicies1 = sanitizeValue(rawBody.signaturePolicies1);
+    const signaturePolicies2 = sanitizeValue(rawBody.signaturePolicies2);
     const ciudad = sanitizeValue(rawBody.ciudad);
     const estado = sanitizeValue(rawBody.estado);
     const breakfastBoolean = toBoolean(rawBody.includeBreakfast);
@@ -1376,7 +1365,7 @@ exports.generateCheckin = async (req, res, next) => {
     }
 
     try {
-      const pdfBuffer = await generateCheckinPDF(booking, signature, ciudad, estado, breakfastBoolean);
+      const pdfBuffer = await generateCheckinPDF(booking, signature, signaturePolicies1, signaturePolicies2, ciudad, estado, breakfastBoolean);
 
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="Checkin_${bookingId}.pdf"`);
