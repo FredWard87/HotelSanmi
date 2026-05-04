@@ -4,15 +4,21 @@ const fs = require('fs');
 const path = require('path');
 
 /**
- * Genera un PDF de check-in (formato de reservación La Capilla Hotel)
+ * Genera un PDF de check-in de 3 páginas:
+ * Página 1: Formato de reservación (check-in)
+ * Página 2: Políticas del hotel parte 1 + firma del huésped
+ * Página 3: Políticas del hotel parte 2 + firma del huésped
+ *
  * @param {Object} booking - Datos de la reserva desde MongoDB
- * @param {String} signatureBase64 - Firma del huésped en base64
+ * @param {String} signatureBase64 - Firma del check-in (página 1) en base64
+ * @param {String} signaturePolicies1Base64 - Firma de políticas página 1 en base64
+ * @param {String} signaturePolicies2Base64 - Firma de políticas página 2 en base64
  * @param {String} ciudad - Ciudad del huésped
  * @param {String} estado - Estado del huésped
  * @param {Boolean} includeBreakfast - Si incluye desayuno
  * @returns {Promise<Buffer>} - Buffer del PDF generado
  */
-async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, includeBreakfast) {
+async function generateCheckinPDF(booking, signatureBase64, signaturePolicies1Base64, signaturePolicies2Base64, ciudad, estado, includeBreakfast) {
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({
@@ -25,34 +31,34 @@ async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, incl
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', reject);
 
-      // Logo path (ajusta según tu estructura)
       const logoPath = path.join(__dirname, '../assets/logo.png');
       const hasLogo = fs.existsSync(logoPath);
+
+      // =====================================================================
+      // ======================== PÁGINA 1: CHECK-IN =========================
+      // =====================================================================
 
       // ===== ENCABEZADO =====
       doc.rect(40, 30, 532, 30).stroke();
       doc.fontSize(14).font('Helvetica-Bold')
          .text('RESERVACIÓN LA CAPILLA HOTEL', 40, 40, { align: 'center', width: 532 });
 
-      // Logo más grande (si existe)
       if (hasLogo) {
         doc.image(logoPath, 50, 75, { width: 80 });
       }
 
-      // Texto de bienvenida con fechas
       doc.fontSize(9).font('Helvetica')
          .text('Bienvenidos a La Capilla Hotel, es para nosotros un gusto recibirlos. Favor de verificar en este', 120, 85)
          .text('documento que los datos previamente proporcionados al momento de realizar su reserva sean los', 120, 97)
          .text('correctos.', 120, 109);
 
-      // Fechas de ENTRADA y SALIDA
       const formatDateFull = (date) => {
         if (!date) return '';
         const d = new Date(date);
-        return d.toLocaleDateString('es-MX', { 
-          day: 'numeric', 
-          month: 'long', 
-          year: 'numeric' 
+        return d.toLocaleDateString('es-MX', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
         });
       };
 
@@ -70,23 +76,18 @@ async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, incl
       const guestY = 150;
       doc.fontSize(10).font('Helvetica-Bold')
          .text('Nombre: ', 50, guestY);
-       
       const guestFirstName = booking.guestInfo?.firstName || '';
       const guestLastName = booking.guestInfo?.lastName || '';
       doc.font('Helvetica')
          .text(`${guestFirstName} ${guestLastName}`, 110, guestY);
 
-      // CIUDAD - Asegurarse de mostrar el valor que llega
       doc.font('Helvetica-Bold')
          .text('Ciudad: ', 50, guestY + 20);
-      // Usar el valor que viene del parámetro, no de booking
       doc.font('Helvetica')
          .text(ciudad || 'No especificado', 110, guestY + 20);
 
-      // ESTADO - Asegurarse de mostrar el valor que llega
       doc.font('Helvetica-Bold')
          .text('Estado: ', 270, guestY + 20);
-      // Usar el valor que viene del parámetro, no de booking
       doc.font('Helvetica')
          .text(estado || 'No especificado', 320, guestY + 20);
 
@@ -103,11 +104,9 @@ async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, incl
       // ===== TABLA DE HABITACIONES =====
       const tableY = 235;
       const tableHeight = 90;
-      
-      // Rectángulo principal de la tabla
+
       doc.rect(40, tableY, 532, tableHeight).stroke();
-      
-      // Definir columnas con anchos exactos y balanceados
+
       const colStandard = 40;
       const colStandardW = 50;
       const colJunior = colStandard + colStandardW;
@@ -123,105 +122,86 @@ async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, incl
       const colDesayuno = colFechas + colFechasW;
       const colDesayunoW = 100;
 
-      // ===== LÍNEAS HORIZONTALES PARA SEPARAR TÍTULOS DE SUB-ENCABEZADOS =====
-      // Línea que separa títulos principales de sub-encabezados (para toda la tabla)
       const headerLine1 = tableY + 15;
       doc.moveTo(40, headerLine1).lineTo(572, headerLine1).stroke();
 
-      // Línea horizontal que separa encabezados de contenido
       const headerSplitY = tableY + 45;
       doc.moveTo(40, headerSplitY).lineTo(572, headerSplitY).stroke();
 
-      // Líneas verticales principales que van de arriba a abajo (completas)
       doc.moveTo(colOtroServicio, tableY).lineTo(colOtroServicio, tableY + tableHeight).stroke();
       doc.moveTo(colFechas, tableY).lineTo(colFechas, tableY + tableHeight).stroke();
       doc.moveTo(colDesayuno, tableY).lineTo(colDesayuno, tableY + tableHeight).stroke();
 
-      // Líneas verticales de tipo de habitación - empiezan después del título
       doc.moveTo(colJunior, headerLine1).lineTo(colJunior, tableY + tableHeight).stroke();
       doc.moveTo(colMaster, headerLine1).lineTo(colMaster, tableY + tableHeight).stroke();
       doc.moveTo(colCabana, headerLine1).lineTo(colCabana, tableY + tableHeight).stroke();
 
-      // Líneas verticales dentro de "Fechas"
       const colLlegada = colFechas + (colFechasW / 2);
       doc.moveTo(colLlegada, headerLine1).lineTo(colLlegada, tableY + tableHeight).stroke();
 
-      // ===== SECCIÓN DE DESAYUNO =====
       const desayunoLine1 = headerLine1;
-
-      // Línea vertical dentro de Desayuno (separa "Incluye" de "No incluye")
       const colIncluye = colDesayuno + (colDesayunoW / 2);
       doc.moveTo(colIncluye, desayunoLine1).lineTo(colIncluye, tableY + tableHeight).stroke();
 
-      // Encabezado "Tipo de habitación" - centrado en la parte superior
       doc.fontSize(8).font('Helvetica-Bold')
-         .text('Tipo de habitación', colStandard, tableY + 5, { 
-           width: colOtroServicio - colStandard, 
-           align: 'center' 
+         .text('Tipo de habitación', colStandard, tableY + 5, {
+           width: colOtroServicio - colStandard,
+           align: 'center'
          });
 
-      // Otros encabezados principales
-      doc.text('Otro servicio', colOtroServicio, tableY + 22, { 
-           width: colOtroServicioW, 
-           align: 'center' 
+      doc.text('Otro servicio', colOtroServicio, tableY + 22, {
+           width: colOtroServicioW,
+           align: 'center'
          })
-         .text('Fechas', colFechas, tableY + 5, { 
-           width: colFechasW, 
-           align: 'center' 
+         .text('Fechas', colFechas, tableY + 5, {
+           width: colFechasW,
+           align: 'center'
          })
-         .text('Desayuno', colDesayuno, tableY + 5, { 
-           width: colDesayunoW, 
-           align: 'center' 
+         .text('Desayuno', colDesayuno, tableY + 5, {
+           width: colDesayunoW,
+           align: 'center'
          });
 
-      // Sub-encabezados de tipo de habitación
       doc.fontSize(7).font('Helvetica')
-         .text('Standard', colStandard, tableY + 22, { 
-           width: colStandardW, 
-           align: 'center' 
+         .text('Standard', colStandard, tableY + 22, {
+           width: colStandardW,
+           align: 'center'
          })
-         .text('Junior\nSuite', colJunior, tableY + 20, { 
-           width: colJuniorW, 
-           align: 'center' 
+         .text('Junior\nSuite', colJunior, tableY + 20, {
+           width: colJuniorW,
+           align: 'center'
          })
-         .text('Master\nSuite', colMaster, tableY + 20, { 
-           width: colMasterW, 
-           align: 'center' 
+         .text('Master\nSuite', colMaster, tableY + 20, {
+           width: colMasterW,
+           align: 'center'
          })
-         .text('Cabaña', colCabana, tableY + 22, { 
-           width: colCabanaW, 
-           align: 'center' 
+         .text('Cabaña', colCabana, tableY + 22, {
+           width: colCabanaW,
+           align: 'center'
          });
 
-      // Sub-encabezados de Fechas
-      doc.text('Llegada', colFechas, tableY + 25, { 
-        width: colFechasW / 2, 
-        align: 'center' 
+      doc.text('Llegada', colFechas, tableY + 25, {
+        width: colFechasW / 2,
+        align: 'center'
       })
-      .text('Salida', colLlegada, tableY + 25, { 
-        width: colFechasW / 2, 
-        align: 'center' 
+      .text('Salida', colLlegada, tableY + 25, {
+        width: colFechasW / 2,
+        align: 'center'
       });
 
-      // Sub-encabezados de Desayuno
       doc.fontSize(7).font('Helvetica')
-         .text('Incluye', colDesayuno, tableY + 20, { 
-           width: colDesayunoW / 2, 
-           align: 'center' 
+         .text('Incluye', colDesayuno, tableY + 20, {
+           width: colDesayunoW / 2,
+           align: 'center'
          })
-         .text('No incluye', colIncluye, tableY + 20, { 
-           width: colDesayunoW / 2, 
-           align: 'center' 
+         .text('No incluye', colIncluye, tableY + 20, {
+           width: colDesayunoW / 2,
+           align: 'center'
          });
 
-      // ===== CONTENIDO DE LA TABLA =====
       const contentY = headerSplitY + 5;
 
-      // Determinar el tipo de habitación basado en booking.roomName
       const roomName = booking.roomName || '';
-      let roomType = 'Junior Suite'; // valor por defecto
-      
-      // Mapear nombres de habitación a las opciones de la tabla
       const roomMapping = {
         'Standard': 'Standard',
         'Standard Suite': 'Standard',
@@ -231,57 +211,55 @@ async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, incl
         'Cabaña': 'Cabaña',
         'Cabaña Suite': 'Cabaña'
       };
+      const roomType = roomMapping[roomName] || 'Junior Suite';
 
-      roomType = roomMapping[roomName] || 'Junior Suite';
-
-      // Marcar tipo de habitación con X
       const roomTypePositions = {
         'Standard': colStandard + (colStandardW / 2) - 5,
         'Junior Suite': colJunior + (colJuniorW / 2) - 5,
         'Master Suite': colMaster + (colMasterW / 2) - 5,
         'Cabaña': colCabana + (colCabanaW / 2) - 5
       };
-      
+
       const roomX = roomTypePositions[roomType] || roomTypePositions['Junior Suite'];
       doc.fontSize(16).font('Helvetica-Bold')
          .text('X', roomX, contentY + 15);
 
-      // Si es Junior Suite, también mostrar el número de unidades como (07)
       if (roomType === 'Junior Suite') {
         doc.fontSize(8).font('Helvetica')
-           .text('(07)', colJunior, contentY + 32, { 
-             width: colJuniorW, 
-             align: 'center' 
+           .text('(07)', colJunior, contentY + 32, {
+             width: colJuniorW,
+             align: 'center'
            });
       }
 
-      // Formato de fecha en español para la tabla
       const formatDateSpanish = (date) => {
         if (!date) return '';
         const d = new Date(date);
-        return d.toLocaleDateString('es-MX', { 
-          day: 'numeric', 
-          month: 'long', 
-          year: 'numeric' 
+        return d.toLocaleDateString('es-MX', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
         });
       };
 
-      // Fechas en la tabla - formato español
       doc.fontSize(7).font('Helvetica')
-         .text(formatDateSpanish(booking.checkIn), colFechas, contentY + 20, { 
-           width: colFechasW / 2, 
-           align: 'center' 
+         .text(formatDateSpanish(booking.checkIn), colFechas, contentY + 20, {
+           width: colFechasW / 2,
+           align: 'center'
          })
-         .text(formatDateSpanish(booking.checkOut), colLlegada, contentY + 20, { 
-           width: colFechasW / 2, 
-           align: 'center' 
+         .text(formatDateSpanish(booking.checkOut), colLlegada, contentY + 20, {
+           width: colFechasW / 2,
+           align: 'center'
          });
 
-      // ===== DESAYUNO - PROCESAR CORRECTAMENTE =====
-      // Convertir a booleano explícitamente
-      let hasBreakfast = Boolean(includeBreakfast === true || includeBreakfast === 'true' || includeBreakfast === 1 || includeBreakfast === '1' || (typeof includeBreakfast === 'string' && includeBreakfast.toLowerCase() === 'true'));
+      let hasBreakfast = Boolean(
+        includeBreakfast === true ||
+        includeBreakfast === 'true' ||
+        includeBreakfast === 1 ||
+        includeBreakfast === '1' ||
+        (typeof includeBreakfast === 'string' && includeBreakfast.toLowerCase() === 'true')
+      );
 
-      // Marcar X en la columna de Desayuno según includeBreakfast
       if (hasBreakfast) {
         doc.fontSize(16).font('Helvetica-Bold')
            .text('X', colDesayuno + (colDesayunoW / 4) - 8, contentY + 18);
@@ -296,8 +274,7 @@ async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, incl
          .text('FORMA DE PAGO:', 50, paymentY);
 
       const paymentCheckY = paymentY + 25;
-      
-      // Checkbox de tarjeta
+
       doc.rect(50, paymentCheckY - 2, 12, 12).stroke();
       doc.fontSize(10).text('X', 53, paymentCheckY - 1);
       doc.fontSize(9).font('Helvetica')
@@ -305,12 +282,10 @@ async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, incl
       doc.fontSize(7).font('Helvetica-Oblique')
          .text('*No cabina como una garantía del 4% sobre el monto total', 70, paymentCheckY + 12);
 
-      // Checkbox de efectivo
       doc.rect(250, paymentCheckY - 2, 12, 12).stroke();
       doc.fontSize(9).font('Helvetica')
          .text('Efectivo', 270, paymentCheckY);
 
-      // Checkbox de transferencia - MARCADO si el pago está completo
       doc.rect(400, paymentCheckY - 2, 12, 12).stroke();
       if (booking.paymentStatus === 'completed' || booking.secondNightNotePaid) {
         doc.fontSize(10).text('X', 403, paymentCheckY - 1);
@@ -325,11 +300,9 @@ async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, incl
 
       const importTableY = importY + 25;
       const importTableH = 60;
-      
-      // Rectángulo principal
+
       doc.rect(40, importTableY, 532, importTableH).stroke();
-      
-      // Líneas verticales para dividir las columnas
+
       const colTotal = 40;
       const colTotalW = 177;
       const colAnticipo = colTotal + colTotalW;
@@ -340,156 +313,451 @@ async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, incl
       doc.moveTo(colAnticipo, importTableY).lineTo(colAnticipo, importTableY + importTableH).stroke();
       doc.moveTo(colSaldo, importTableY).lineTo(colSaldo, importTableY + importTableH).stroke();
 
-      // Línea horizontal en medio
       const importMidY = importTableY + 30;
       doc.moveTo(40, importMidY).lineTo(572, importMidY).stroke();
 
-      // Encabezados
       doc.fontSize(9).font('Helvetica-Bold')
-         .text('Costo total de los servicios contratados', colTotal, importTableY + 10, { 
-           width: colTotalW, 
-           align: 'center' 
+         .text('Costo total de los servicios contratados', colTotal, importTableY + 10, {
+           width: colTotalW,
+           align: 'center'
          })
-         .text('Anticipo', colAnticipo, importTableY + 10, { 
-           width: colAnticipoW, 
-           align: 'center' 
+         .text('Anticipo', colAnticipo, importTableY + 10, {
+           width: colAnticipoW,
+           align: 'center'
          })
-         .text('Saldo pendiente', colSaldo, importTableY + 10, { 
-           width: colSaldoW, 
-           align: 'center' 
+         .text('Saldo pendiente', colSaldo, importTableY + 10, {
+           width: colSaldoW,
+           align: 'center'
          });
 
-      // Valores
       const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('es-MX', { 
-          style: 'currency', 
-          currency: 'MXN' 
+        return new Intl.NumberFormat('es-MX', {
+          style: 'currency',
+          currency: 'MXN'
         }).format(amount || 0);
       };
 
       doc.fontSize(12).font('Helvetica-Bold')
-         .text(formatCurrency(booking.totalPrice || 0), colTotal, importMidY + 12, { 
-           width: colTotalW, 
-           align: 'center' 
+         .text(formatCurrency(booking.totalPrice || 0), colTotal, importMidY + 12, {
+           width: colTotalW,
+           align: 'center'
          });
 
-      // Si el pago está completo, mostrar valores, sino guiones
       const isPaymentComplete = booking.paymentStatus === 'completed' || booking.secondNightNotePaid;
       if (isPaymentComplete) {
         doc.fontSize(12)
-           .text('-', colAnticipo, importMidY + 12, { 
-             width: colAnticipoW, 
-             align: 'center' 
+           .text('-', colAnticipo, importMidY + 12, {
+             width: colAnticipoW,
+             align: 'center'
            })
-           .text('PAGADO', colSaldo, importMidY + 5, { 
-             width: colSaldoW, 
-             align: 'center' 
+           .text('PAGADO', colSaldo, importMidY + 5, {
+             width: colSaldoW,
+             align: 'center'
            })
            .fontSize(10)
-           .text('-', colSaldo, importMidY + 22, { 
-             width: colSaldoW, 
-             align: 'center' 
+           .text('-', colSaldo, importMidY + 22, {
+             width: colSaldoW,
+             align: 'center'
            });
       } else {
         doc.fontSize(12)
-           .text('-', colAnticipo, importMidY + 12, { 
-             width: colAnticipoW, 
-             align: 'center' 
+           .text('-', colAnticipo, importMidY + 12, {
+             width: colAnticipoW,
+             align: 'center'
            })
-           .text('-', colSaldo, importMidY + 12, { 
-             width: colSaldoW, 
-             align: 'center' 
+           .text('-', colSaldo, importMidY + 12, {
+             width: colSaldoW,
+             align: 'center'
            });
       }
 
-      // ===== FIRMA DEL HUÉSPED =====
+      // ===== FIRMA DEL HUÉSPED (Check-in) =====
       const signatureY = importTableY + importTableH + 25;
       const signatureBoxH = 130;
       const signatureBoxW = 394;
       doc.rect(40, signatureY, signatureBoxW, signatureBoxH).stroke();
 
       doc.fontSize(11).font('Helvetica-Bold')
-         .text('FIRMA DEL HUÉSPED', 40, signatureY + 8, { 
-           align: 'center', 
-           width: signatureBoxW 
+         .text('FIRMA DEL HUÉSPED', 40, signatureY + 8, {
+           align: 'center',
+           width: signatureBoxW
          });
 
-      // Agregar firma si existe
       if (signatureBase64) {
         try {
-          // Remover el prefijo data:image/png;base64, si existe
           const base64Data = signatureBase64.replace(/^data:image\/\w+;base64,/, '');
           const signatureBuffer = Buffer.from(base64Data, 'base64');
-          
-          doc.image(signatureBuffer, 60, signatureY + 30, { 
-            width: 354, 
+          doc.image(signatureBuffer, 60, signatureY + 30, {
+            width: 354,
             height: 50,
             align: 'center'
           });
         } catch (err) {
           doc.fontSize(9).font('Helvetica-Oblique')
-             .text('(Firma no disponible)', 60, signatureY + 50, { 
-               align: 'center', 
-               width: 354 
+             .text('(Firma no disponible)', 60, signatureY + 50, {
+               align: 'center',
+               width: 354
              });
         }
       }
 
-      // Línea para la firma
       doc.moveTo(60, signatureY + 88).lineTo(414, signatureY + 88).stroke();
 
       doc.fontSize(9).font('Helvetica-Bold')
-         .text('En pleno uso de mis facultades, libre y voluntariamente, declaro que', 40, signatureY + 95, { 
-           width: signatureBoxW, 
-           align: 'center' 
+         .text('En pleno uso de mis facultades, libre y voluntariamente, declaro que', 40, signatureY + 95, {
+           width: signatureBoxW,
+           align: 'center'
          })
-         .text('he sido debidamente informado acerca de mis servicios contratados', 40, signatureY + 107, { 
-           width: signatureBoxW, 
-           align: 'center' 
+         .text('he sido debidamente informado acerca de mis servicios contratados', 40, signatureY + 107, {
+           width: signatureBoxW,
+           align: 'center'
          });
 
       doc.fontSize(8).font('Helvetica-Bold')
-         .text('y de los términos en La Capilla Hotel.', 40, signatureY + 119, { 
-           width: signatureBoxW, 
-           align: 'center' 
+         .text('y de los términos en La Capilla Hotel.', 40, signatureY + 119, {
+           width: signatureBoxW,
+           align: 'center'
          });
 
-      // ===== PIE DE PÁGINA =====
+      // ===== PIE DE PÁGINA PÁGINA 1 =====
       const footerY = signatureY + signatureBoxH + 10;
       const footerH = 75;
       doc.rect(40, footerY, 532, footerH).stroke();
 
-      // Logo en pie de página
       if (hasLogo) {
         doc.image(logoPath, 50, footerY + 8, { width: 70 });
       }
 
       doc.fontSize(10).font('Helvetica-Bold')
-         .text('LA CAPILLA HOTEL', 130, footerY + 10, { 
-           align: 'center', 
-           width: 370 
+         .text('LA CAPILLA HOTEL', 130, footerY + 10, {
+           align: 'center',
+           width: 370
          });
 
       doc.fontSize(8).font('Helvetica')
-         .text('Dolores Hidalgo – San Miguel de Allende 378/4, El Durazno Gto. Ciudad de', 130, footerY + 24, { 
-           align: 'center', 
-           width: 370 
+         .text('Dolores Hidalgo – San Miguel de Allende 378/4, El Durazno Gto. Ciudad de', 130, footerY + 24, {
+           align: 'center',
+           width: 370
          })
-         .text('los 80, a 2 horas de la Ciudad de México y 45 minutos de San Miguel de Allende.', 130, footerY + 36, { 
-           align: 'center', 
-           width: 370 
+         .text('los 80, a 2 horas de la Ciudad de México y 45 minutos de San Miguel de Allende.', 130, footerY + 36, {
+           align: 'center',
+           width: 370
          })
-         .text('Cel. 413 117 00 99 | Email: reservaciones@hotelacapilla.com | www.hotelacapilla.com', 130, footerY + 52, { 
-           align: 'center', 
-           width: 370 
+         .text('Cel. 413 117 00 99 | Email: reservaciones@hotelacapilla.com | www.hotelacapilla.com', 130, footerY + 52, {
+           align: 'center',
+           width: 370
          });
 
-      // Finalizar el PDF
+      // =====================================================================
+      // ================== PÁGINA 2: POLÍTICAS PARTE 1 =====================
+      // =====================================================================
+      doc.addPage();
+
+      _drawPoliciesPage1(doc, booking, signaturePolicies1Base64, hasLogo, logoPath, formatDateFull, guestFirstName, guestLastName);
+
+      // =====================================================================
+      // ================== PÁGINA 3: POLÍTICAS PARTE 2 =====================
+      // =====================================================================
+      doc.addPage();
+
+      _drawPoliciesPage2(doc, booking, signaturePolicies2Base64, hasLogo, logoPath, formatDateFull, guestFirstName, guestLastName);
+
       doc.end();
     } catch (error) {
       reject(error);
     }
   });
+}
+
+// =====================================================================
+// ========== FUNCIÓN: POLÍTICAS PÁGINA 1 (puntos 1 al 7) =============
+// =====================================================================
+function _drawPoliciesPage1(doc, booking, signatureBase64, hasLogo, logoPath, formatDateFull, guestFirstName, guestLastName) {
+  const pageWidth = 532;
+  const leftMargin = 40;
+
+  // Encabezado
+  doc.rect(leftMargin, 30, pageWidth, 30).stroke();
+  doc.fontSize(13).font('Helvetica-Bold')
+     .text('POLÍTICAS LA CAPILLA HOTEL', leftMargin, 40, { align: 'center', width: pageWidth });
+
+  // Logo + introducción
+  if (hasLogo) {
+    doc.image(logoPath, leftMargin + 10, 70, { width: 60 });
+  }
+
+  doc.fontSize(8).font('Helvetica')
+     .text(
+       'Un gusto saludarte y esperamos que te encuentres muy bien, gracias por escogernos como destino para realizar tu viaje, esperamos con ansias tu llegada, asimismo te adjuntamos tu confirmación de reserva y políticas del establecimiento, si hay algún error en la misma, estamos a tus órdenes para aclarar cualquier inconveniente.',
+       leftMargin + 75, 75,
+       { width: pageWidth - 75, align: 'justify' }
+     );
+
+  let currentY = 130;
+
+  // Función auxiliar para sección
+  const drawSection = (title, items, y) => {
+    doc.fontSize(9).font('Helvetica-Bold')
+       .text(title, leftMargin, y);
+    let lineY = y + 14;
+    items.forEach(item => {
+      if (item.sub) {
+        doc.fontSize(8).font('Helvetica')
+           .text(`       ${item.text}`, leftMargin, lineY, { width: pageWidth });
+      } else {
+        doc.fontSize(8).font('Helvetica-Bold')
+           .text(`   ${item.text}`, leftMargin, lineY, { width: pageWidth });
+      }
+      lineY += 12;
+    });
+    return lineY + 4;
+  };
+
+  // 1. Check-in / Check-out
+  currentY = drawSection('1- Check-in / Check-out', [
+    { text: '• El check-in es a partir de las 15:00 hrs (sujeto a disponibilidad en caso de ingreso anticipado).', sub: true },
+    { text: '• El check-out es a las 12:00 hrs.', sub: true },
+    { text: '• Salida tardía:', sub: false },
+    { text: '• De 12:30 a 17:00 hrs: $500.00 MXN por persona.', sub: true },
+    { text: '• A partir de las 17:01 hrs: se cobrará una noche completa.', sub: true },
+    { text: '• Todo late check-out está sujeto a disponibilidad.', sub: true },
+  ], currentY);
+
+  // 2. Pagos y cancelaciones
+  currentY = drawSection('2- Pagos y cancelaciones', [
+    { text: '• El total de la reservación deberá liquidarse al momento del check-in.', sub: true },
+    { text: '• Cancelaciones con al menos 48 horas de anticipación reciben reembolso del 100% (3 a 5 días hábiles).', sub: true },
+    { text: '• Cancelaciones con menos de 48 horas generan una penalización del 50% del total de la reservación.', sub: true },
+    { text: '• En temporada alta (Semana Santa, días festivos y fechas especiales), se requiere aviso con al menos 15 días hábiles.', sub: true },
+    { text: '• Las políticas pueden variar según temporada y serán confirmadas al momento de la reservación.', sub: true },
+  ], currentY);
+
+  // 3. Conducta del huésped
+  currentY = drawSection('3- Conducta del huésped', [
+    { text: '• Las habitaciones y espacios cerrados son 100% libres de humo.', sub: true },
+    { text: '• No se permite ruido excesivo a partir de las 22:00 hrs en habitaciones, pasillos y áreas comunes.', sub: true },
+    { text: '• No se permite el uso de bocinas o equipos de audio a alto volumen dentro de las habitaciones.', sub: true },
+    { text: '• No se permite realizar reuniones o fiestas no autorizadas dentro del hotel.', sub: true },
+    { text: '• No se permite el consumo de sustancias ilegales dentro de las instalaciones.', sub: true },
+    { text: '• En caso de incumplimiento, el hotel podrá cancelar la estancia sin derecho a reembolso y solicitar el retiro inmediato del huésped.', sub: true },
+  ], currentY);
+
+  // 4. Derecho de admisión
+  currentY = drawSection('4- Derecho de admisión y permanencia', [
+    { text: '• La Capilla Hotel se reserva el derecho de admisión y permanencia.', sub: true },
+    { text: '• En caso de conductas agresivas, faltas de respeto al personal, daños a instalaciones o afectación a otros huéspedes,', sub: true },
+    { text: '  el hotel podrá cancelar la estancia sin reembolso, solicitar el retiro inmediato y aplicar cargos correspondientes.', sub: true },
+  ], currentY);
+
+  // 5. Responsabilidad por daños
+  currentY = drawSection('5- Responsabilidad por daños', [
+    { text: '• Cualquier daño causado a habitaciones, mobiliario, jardín, piscina, jacuzzi o instalaciones será responsabilidad del titular.', sub: true },
+    { text: '• El huésped se compromete a cubrir el costo total de reparación o reposición.', sub: true },
+  ], currentY);
+
+  // 6. Autorización de cargo a tarjeta
+  currentY = drawSection('6- Autorización de cargo a tarjeta', [
+    { text: '• El huésped autoriza expresamente a La Capilla Hotel a realizar cargos a la tarjeta proporcionada como garantía en caso de:', sub: true },
+    { text: '  daños a instalaciones, servicios adicionales no liquidados, penalizaciones por incumplimiento o limpieza profunda o especializada.', sub: true },
+  ], currentY);
+
+  // 7. Uso de instalaciones
+  currentY = drawSection('7- Uso de instalaciones', [
+    { text: '• El uso de piscina y jacuzzi es bajo responsabilidad del huésped.', sub: true },
+    { text: '• No se permite arrojar objetos, alimentos, bebidas o cualquier elemento que dañe los sistemas o instalaciones.', sub: true },
+    { text: '• El hotel podrá restringir el uso de estas áreas en caso de mal uso.', sub: true },
+  ], currentY);
+
+  currentY += 8;
+
+  // ===== FIRMA EN PÁGINA 2 =====
+  _drawPoliciesSignatureBlock(doc, booking, signatureBase64, guestFirstName, guestLastName, currentY, hasLogo, logoPath, 1);
+}
+
+// =====================================================================
+// ========== FUNCIÓN: POLÍTICAS PÁGINA 2 (puntos 8 al 13) ============
+// =====================================================================
+function _drawPoliciesPage2(doc, booking, signatureBase64, hasLogo, logoPath, formatDateFull, guestFirstName, guestLastName) {
+  const pageWidth = 532;
+  const leftMargin = 40;
+
+  // Encabezado
+  doc.rect(leftMargin, 30, pageWidth, 30).stroke();
+  doc.fontSize(13).font('Helvetica-Bold')
+     .text('POLÍTICAS LA CAPILLA HOTEL (Continuación)', leftMargin, 40, { align: 'center', width: pageWidth });
+
+  let currentY = 80;
+
+  const drawSection = (title, items, y) => {
+    doc.fontSize(9).font('Helvetica-Bold')
+       .text(title, leftMargin, y);
+    let lineY = y + 14;
+    items.forEach(item => {
+      if (item.sub) {
+        doc.fontSize(8).font('Helvetica')
+           .text(`       ${item.text}`, leftMargin, lineY, { width: pageWidth });
+      } else {
+        doc.fontSize(8).font('Helvetica-Bold')
+           .text(`   ${item.text}`, leftMargin, lineY, { width: pageWidth });
+      }
+      lineY += 12;
+    });
+    return lineY + 4;
+  };
+
+  // 8. Alimentos y bebidas
+  currentY = drawSection('8- Alimentos y bebidas externas', [
+    { text: '• No se permite el ingreso de alimentos o bebidas externas, salvo autorización expresa del hotel.', sub: true },
+    { text: '• El incumplimiento podrá generar cargos adicionales o cancelación de la estancia.', sub: true },
+  ], currentY);
+
+  // 9. Capacidad
+  currentY = drawSection('9- Capacidad y personas adicionales', [
+    { text: '• Se deberá respetar la capacidad máxima de cada habitación.', sub: true },
+    { text: '• Se cobrará $500.00 MXN por persona adicional por la noche.', sub: true },
+  ], currentY);
+
+  // 10. Mascotas
+  currentY = drawSection('10- Mascotas', [
+    { text: '• No se aceptan mascotas dentro de las instalaciones.', sub: true },
+  ], currentY);
+
+  // 11. Responsabilidad sobre pertenencias
+  currentY = drawSection('11- Responsabilidad sobre pertenencias', [
+    { text: '• La Capilla Hotel no se hace responsable por robo, pérdida o daño de pertenencias personales.', sub: true },
+    { text: '• El hotel no se hace responsable por daños a vehículos dentro del estacionamiento.', sub: true },
+    { text: '• La Capilla Hotel no se hace responsable por objetos olvidados, extraviados o dejados dentro de las instalaciones o habitaciones.', sub: true },
+    { text: '• En caso de localizar algún objeto, el hotel podrá resguardarlo por un periodo máximo de 15 días naturales.', sub: true },
+    { text: '  Transcurrido dicho plazo, el hotel podrá disponer de los objetos sin responsabilidad alguna.', sub: true },
+    { text: '• El envío o recuperación de dichos objetos será responsabilidad del huésped, incluyendo costos de mensajería o traslado.', sub: true },
+  ], currentY);
+
+  // 12. Menores de edad
+  currentY = drawSection('12- Menores de edad', [
+    { text: '• Los menores de edad deberán estar supervisados en todo momento por un adulto.', sub: true },
+    { text: '• El hotel no se hace responsable por accidentes derivados de falta de supervisión.', sub: true },
+  ], currentY);
+
+  // 13. Servicios adicionales
+  currentY = drawSection('13- Servicios adicionales', [
+    { text: '• Los servicios adicionales requieren supervisión previa.', sub: true },
+    { text: '• Cancelaciones con menos de 2 horas de anticipación generarán cargo completo.', sub: true },
+  ], currentY);
+
+  currentY += 8;
+
+  // Declaración final
+  doc.fontSize(8).font('Helvetica')
+     .text(
+       'Declaro haber leído y aceptado las políticas de estancia de La Capilla Hotel, así como mi responsabilidad sobre el cumplimiento de las mismas.',
+       leftMargin, currentY,
+       { width: pageWidth, align: 'justify' }
+     );
+
+  currentY += 20;
+
+  // ===== FIRMA EN PÁGINA 3 =====
+  _drawPoliciesSignatureBlock(doc, booking, signatureBase64, guestFirstName, guestLastName, currentY, hasLogo, logoPath, 2);
+}
+
+// =====================================================================
+// ========== FUNCIÓN: BLOQUE DE FIRMA PARA PÁGINAS DE POLÍTICAS =======
+// =====================================================================
+function _drawPoliciesSignatureBlock(doc, booking, signatureBase64, guestFirstName, guestLastName, startY, hasLogo, logoPath, pageNum) {
+  const pageWidth = 532;
+  const leftMargin = 40;
+
+  const signBoxH = 110;
+  const signBoxW = 394;
+
+  doc.rect(leftMargin, startY, signBoxW, signBoxH).stroke();
+
+  doc.fontSize(10).font('Helvetica-Bold')
+     .text('NOMBRE Y FIRMA DEL HUÉSPED', leftMargin, startY + 8, {
+       align: 'center',
+       width: signBoxW
+     });
+
+  // Nombre del huésped
+  doc.fontSize(8).font('Helvetica')
+     .text(`${guestFirstName} ${guestLastName}`, leftMargin, startY + 22, {
+       align: 'center',
+       width: signBoxW
+     });
+
+  // Imagen de firma si existe
+  if (signatureBase64) {
+    try {
+      const base64Data = signatureBase64.replace(/^data:image\/\w+;base64,/, '');
+      const signatureBuffer = Buffer.from(base64Data, 'base64');
+      doc.image(signatureBuffer, leftMargin + 20, startY + 30, {
+        width: signBoxW - 40,
+        height: 40,
+        align: 'center'
+      });
+    } catch (err) {
+      doc.fontSize(8).font('Helvetica-Oblique')
+         .text('(Firma no disponible)', leftMargin, startY + 50, {
+           align: 'center',
+           width: signBoxW
+         });
+    }
+  }
+
+  // Línea de firma
+  doc.moveTo(leftMargin + 20, startY + 78).lineTo(leftMargin + signBoxW - 20, startY + 78).stroke();
+
+  doc.fontSize(7).font('Helvetica-Bold')
+     .text('Acepto y he leído las políticas de estancia de La Capilla Hotel.', leftMargin, startY + 83, {
+       width: signBoxW,
+       align: 'center'
+     });
+
+  doc.fontSize(7).font('Helvetica')
+     .text(`Reservación: ${booking.bookingId || ''}`, leftMargin, startY + 93, {
+       width: signBoxW,
+       align: 'center'
+     });
+
+  // Pie de página
+  const footerY = startY + signBoxH + 15;
+  const footerH = 65;
+  const remainingSpace = 792 - 40 - footerY; // LETTER height = 792
+
+  if (remainingSpace >= footerH) {
+    doc.rect(leftMargin, footerY, pageWidth, footerH).stroke();
+
+    if (hasLogo) {
+      doc.image(logoPath, leftMargin + 10, footerY + 8, { width: 60 });
+    }
+
+    doc.fontSize(9).font('Helvetica-Bold')
+       .text('LA CAPILLA HOTEL', leftMargin + 75, footerY + 8, {
+         align: 'center',
+         width: pageWidth - 75
+       });
+
+    doc.fontSize(7).font('Helvetica')
+       .text('Dolores Hidalgo – San Miguel de Allende 378/4, El Durazno Gto. Ciudad de', leftMargin + 75, footerY + 22, {
+         align: 'center',
+         width: pageWidth - 75
+       })
+       .text('los 80, a 2 horas de la Ciudad de México y 45 minutos de San Miguel de Allende.', leftMargin + 75, footerY + 32, {
+         align: 'center',
+         width: pageWidth - 75
+       })
+       .text('Cel. 413 117 00 99 | Email: reservaciones@hotelacapilla.com | www.hotelacapilla.com', leftMargin + 75, footerY + 44, {
+         align: 'center',
+         width: pageWidth - 75
+       });
+  } else {
+    // Si no hay espacio suficiente, poner el pie más arriba
+    doc.fontSize(7).font('Helvetica')
+       .text('LA CAPILLA HOTEL | Cel. 413 117 00 99 | reservaciones@hotelacapilla.com | www.hotelacapilla.com',
+         leftMargin, footerY,
+         { align: 'center', width: pageWidth }
+       );
+  }
 }
 
 module.exports = {
