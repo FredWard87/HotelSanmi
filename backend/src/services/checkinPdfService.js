@@ -42,13 +42,13 @@ async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, incl
          .text('RESERVACIÓN LA CAPILLA HOTEL', 40, 40, { align: 'center', width: 532 });
 
       if (hasLogo) {
-        doc.image(logoPath, 50, 75, { width: 80 });
+        doc.image(logoPath, 50, 75, { width: 160 }); // Logo del doble de tamaño (antes era 80)
       }
 
       doc.fontSize(9).font('Helvetica')
-         .text('Bienvenidos a La Capilla Hotel, es para nosotros un gusto recibirlos. Favor de verificar en este', 120, 85)
-         .text('documento que los datos previamente proporcionados al momento de realizar su reserva sean los', 120, 97)
-         .text('correctos.', 120, 109);
+         .text('Bienvenidos a La Capilla Hotel, es para nosotros un gusto recibirlos. Favor de verificar en este', 220, 85)
+         .text('documento que los datos previamente proporcionados al momento de realizar su reserva sean los', 220, 97)
+         .text('correctos.', 220, 109);
 
       const formatDateFull = (date) => {
         if (!date) return '';
@@ -72,14 +72,14 @@ async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, incl
       };
 
       doc.fontSize(9).font('Helvetica-Bold')
-         .text('ENTRADA: ', 120, 125);
+         .text('ENTRADA: ', 220, 125);
       doc.font('Helvetica')
-         .text(formatDateFull(booking.checkIn), 170, 125);
+         .text(formatDateFull(booking.checkIn), 270, 125);
 
       doc.font('Helvetica-Bold')
-         .text('SALIDA: ', 370, 125);
+         .text('SALIDA: ', 420, 125);
       doc.font('Helvetica')
-         .text(formatDateFull(booking.checkOut), 415, 125);
+         .text(formatDateFull(booking.checkOut), 465, 125);
 
       // Datos del huésped
       const guestY = 150;
@@ -513,34 +513,70 @@ async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, incl
            align: 'center'
          });
 
-      // ===== PIE DE PÁGINA PÁGINA 1 =====
+      // ===== PIE DE PÁGINA PÁGINA 1 (CORREGIDO) =====
       const footerY = signatureY + signatureBoxH + 10;
-      const footerH = 75;
-      doc.rect(40, footerY, 532, footerH).stroke();
+      const pageHeight = 792;
+      const pageBottom = pageHeight - 40;
+      
+      // Verificar si hay suficiente espacio para el pie de página completo
+      if (footerY + 65 <= pageBottom) {
+        // Hay suficiente espacio, dibujar pie de página normal
+        const footerH = 65;
+        doc.rect(40, footerY, 532, footerH).stroke();
 
-      if (hasLogo) {
-        doc.image(logoPath, 50, footerY + 8, { width: 70 });
+        if (hasLogo) {
+          doc.image(logoPath, 50, footerY + 5, { width: 60 });
+        }
+
+        doc.fontSize(9).font('Helvetica-Bold')
+           .text('LA CAPILLA HOTEL', 125, footerY + 5, {
+             align: 'center',
+             width: 370
+           });
+
+        doc.fontSize(7).font('Helvetica')
+           .text('Dolores Hidalgo – San Miguel de Allende 378/4, El Durazno Gto. Ciudad de los 80,', 125, footerY + 18, {
+             align: 'center',
+             width: 370
+           })
+           .text('a 2 horas de la Ciudad de México y 45 minutos de San Miguel de Allende.', 125, footerY + 28, {
+             align: 'center',
+             width: 370
+           })
+           .text('Cel. 413 117 00 99 | Email: reservaciones@hotelacapilla.com | www.hotelacapilla.com', 125, footerY + 38, {
+             align: 'center',
+             width: 370
+           });
+      } else {
+        // No hay suficiente espacio, ajustar el pie de página hacia arriba
+        const adjustedFooterY = pageBottom - 65;
+        const footerH = 65;
+        doc.rect(40, adjustedFooterY, 532, footerH).stroke();
+
+        if (hasLogo) {
+          doc.image(logoPath, 50, adjustedFooterY + 5, { width: 60 });
+        }
+
+        doc.fontSize(9).font('Helvetica-Bold')
+           .text('LA CAPILLA HOTEL', 125, adjustedFooterY + 5, {
+             align: 'center',
+             width: 370
+           });
+
+        doc.fontSize(7).font('Helvetica')
+           .text('Dolores Hidalgo – San Miguel de Allende 378/4, El Durazno Gto. Ciudad de los 80,', 125, adjustedFooterY + 18, {
+             align: 'center',
+             width: 370
+           })
+           .text('a 2 horas de la Ciudad de México y 45 minutos de San Miguel de Allende.', 125, adjustedFooterY + 28, {
+             align: 'center',
+             width: 370
+           })
+           .text('Cel. 413 117 00 99 | Email: reservaciones@hotelacapilla.com | www.hotelacapilla.com', 125, adjustedFooterY + 38, {
+             align: 'center',
+             width: 370
+           });
       }
-
-      doc.fontSize(8).font('Helvetica-Bold')
-         .text('LA CAPILLA HOTEL', 130, footerY + 10, {
-           align: 'center',
-           width: 370
-         });
-
-      doc.fontSize(6).font('Helvetica')
-         .text('Dolores Hidalgo – San Miguel de Allende 378/4, El Durazno Gto. Ciudad de', 130, footerY + 24, {
-           align: 'center',
-           width: 370
-         })
-         .text('los 80, a 2 horas de la Ciudad de México y 45 minutos de San Miguel de Allende.', 130, footerY + 36, {
-           align: 'center',
-           width: 370
-         })
-         .text('Cel. 413 117 00 99 | Email: reservaciones@hotelacapilla.com | www.hotelacapilla.com', 130, footerY + 52, {
-           align: 'center',
-           width: 370
-         });
 
       // =====================================================================
       // ================== PÁGINA 2: POLÍTICAS PARTE 1 =====================
@@ -681,25 +717,25 @@ function _drawPoliciesPage1(doc, booking, hasLogo, logoPath, formatDateFull, gue
     doc.rect(leftMargin, footerY, pageWidth, footerH).stroke();
 
     if (hasLogo) {
-      doc.image(logoPath, leftMargin + 10, footerY + 8, { width: 60 });
+      doc.image(logoPath, leftMargin + 10, footerY + 5, { width: 60 });
     }
 
     doc.fontSize(9).font('Helvetica-Bold')
-       .text('LA CAPILLA HOTEL', leftMargin + 75, footerY + 8, {
+       .text('LA CAPILLA HOTEL', leftMargin + 75, footerY + 5, {
          align: 'center',
          width: pageWidth - 75
        });
 
     doc.fontSize(7).font('Helvetica')
-       .text('Dolores Hidalgo – San Miguel de Allende 378/4, El Durazno Gto. Ciudad de', leftMargin + 75, footerY + 22, {
+       .text('Dolores Hidalgo – San Miguel de Allende 378/4, El Durazno Gto. Ciudad de los 80,', leftMargin + 75, footerY + 18, {
          align: 'center',
          width: pageWidth - 75
        })
-       .text('los 80, a 2 horas de la Ciudad de México y 45 minutos de San Miguel de Allende.', leftMargin + 75, footerY + 32, {
+       .text('a 2 horas de la Ciudad de México y 45 minutos de San Miguel de Allende.', leftMargin + 75, footerY + 28, {
          align: 'center',
          width: pageWidth - 75
        })
-       .text('Cel. 413 117 00 99 | Email: reservaciones@hotelacapilla.com | www.hotelacapilla.com', leftMargin + 75, footerY + 44, {
+       .text('Cel. 413 117 00 99 | Email: reservaciones@hotelacapilla.com | www.hotelacapilla.com', leftMargin + 75, footerY + 38, {
          align: 'center',
          width: pageWidth - 75
        });
@@ -795,25 +831,25 @@ function _drawPoliciesPage2(doc, booking, hasLogo, logoPath, formatDateFull, gue
     doc.rect(leftMargin, footerY, pageWidth, footerH).stroke();
 
     if (hasLogo) {
-      doc.image(logoPath, leftMargin + 10, footerY + 8, { width: 60 });
+      doc.image(logoPath, leftMargin + 10, footerY + 5, { width: 60 });
     }
 
     doc.fontSize(9).font('Helvetica-Bold')
-       .text('LA CAPILLA HOTEL', leftMargin + 75, footerY + 8, {
+       .text('LA CAPILLA HOTEL', leftMargin + 75, footerY + 5, {
          align: 'center',
          width: pageWidth - 75
        });
 
     doc.fontSize(7).font('Helvetica')
-       .text('Dolores Hidalgo – San Miguel de Allende 378/4, El Durazno Gto. Ciudad de', leftMargin + 75, footerY + 22, {
+       .text('Dolores Hidalgo – San Miguel de Allende 378/4, El Durazno Gto. Ciudad de los 80,', leftMargin + 75, footerY + 18, {
          align: 'center',
          width: pageWidth - 75
        })
-       .text('los 80, a 2 horas de la Ciudad de México y 45 minutos de San Miguel de Allende.', leftMargin + 75, footerY + 32, {
+       .text('a 2 horas de la Ciudad de México y 45 minutos de San Miguel de Allende.', leftMargin + 75, footerY + 28, {
          align: 'center',
          width: pageWidth - 75
        })
-       .text('Cel. 413 117 00 99 | Email: reservaciones@hotelacapilla.com | www.hotelacapilla.com', leftMargin + 75, footerY + 44, {
+       .text('Cel. 413 117 00 99 | Email: reservaciones@hotelacapilla.com | www.hotelacapilla.com', leftMargin + 75, footerY + 38, {
          align: 'center',
          width: pageWidth - 75
        });
