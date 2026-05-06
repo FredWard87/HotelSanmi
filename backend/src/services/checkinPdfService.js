@@ -7,10 +7,10 @@ const path = require('path');
  * Genera un PDF de check-in de 3 páginas:
  * Página 1: Formato de reservación (check-in) CON firma del huésped
  * Página 2: Políticas del hotel parte 1 (SIN firma)
- * Página 3: Políticas del hotel parte 2 CON firma del huésped (igual que página 1)
+ * Página 3: Políticas del hotel parte 2 (SIN firma)
  *
  * @param {Object} booking - Datos de la reserva desde MongoDB
- * @param {String} signatureBase64 - Firma del huésped en base64 (se usa en página 1 y página 3)
+ * @param {String} signatureBase64 - Firma del check-in (solo página 1) en base64
  * @param {String} ciudad - Ciudad del huésped
  * @param {String} estado - Estado del huésped
  * @param {Boolean} includeBreakfast - Si incluye desayuno
@@ -58,6 +58,17 @@ async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, incl
           month: 'long',
           year: 'numeric'
         });
+      };
+
+      // ── Fecha de reserva (createdAt) formateada con hora ──────────────────
+      const formatDateWithTime = (date) => {
+        if (!date) return '';
+        const d = new Date(date);
+        return d.toLocaleDateString('es-MX', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
+        }) + ' ' + d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
       };
 
       doc.fontSize(9).font('Helvetica-Bold')
@@ -206,6 +217,7 @@ async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, incl
         'Standard Deluxe': 'Standard',
         'Junior Suite': 'Junior Suite',
         'Master Suite': 'Master Suite',
+        'Master Suite Deluxe': 'Master Suite',
         'Cabaña': 'Cabaña',
         'Cabaña Suite': 'Cabaña'
       };
@@ -291,39 +303,54 @@ async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, incl
       doc.fontSize(9).font('Helvetica')
          .text('Transferencia', 420, paymentCheckY);
 
-      // ===== DATOS DE IMPORTE =====
+      // =====================================================================
+      // ===== DATOS DE IMPORTE (con anticipo y fecha de reserva) ============
+      // =====================================================================
       const importY = paymentCheckY + 45;
       doc.fontSize(10).font('Helvetica-Bold')
          .text('Datos de importe', 40, importY, { align: 'center', width: 532 });
 
-      const importTableY = importY + 25;
-      const importTableH = 60;
+      const isPaymentComplete =
+        booking.paymentStatus === 'completed' ||
+        booking.secondNightNotePaid === true;
 
-      doc.rect(40, importTableY, 532, importTableH).stroke();
+      const isPartial =
+        booking.paymentStatus === 'partial' && !booking.secondNightNotePaid;
 
-      const colTotal = 40;
-      const colTotalW = 177;
+      // ── Tabla principal de importes (Total / Anticipo / Saldo) ────────────
+      const importTableY = importY + 20;
+      const importTableH = isPartial ? 100 : 60; // más alta si hay anticipo
+
+      const pageWidth = 532;
+      const leftMargin = 40;
+
+      doc.rect(leftMargin, importTableY, pageWidth, importTableH).stroke();
+
+      const colTotal = leftMargin;
+      const colTotalW = pageWidth / 3;
       const colAnticipo = colTotal + colTotalW;
-      const colAnticipoW = 177.5;
+      const colAnticipoW = pageWidth / 3;
       const colSaldo = colAnticipo + colAnticipoW;
-      const colSaldoW = 177.5;
+      const colSaldoW = pageWidth / 3;
 
       doc.moveTo(colAnticipo, importTableY).lineTo(colAnticipo, importTableY + importTableH).stroke();
       doc.moveTo(colSaldo, importTableY).lineTo(colSaldo, importTableY + importTableH).stroke();
 
-      const importMidY = importTableY + 30;
-      doc.moveTo(40, importMidY).lineTo(572, importMidY).stroke();
+      // Línea divisora de encabezado
+      const importMidY = importTableY + 28;
+      doc.moveTo(leftMargin, importMidY).lineTo(leftMargin + pageWidth, importMidY).stroke();
 
-      doc.fontSize(9).font('Helvetica-Bold')
-         .text('Costo total de los servicios contratados', colTotal, importTableY + 10, {
+      // Encabezados de columnas
+      doc.fontSize(8).font('Helvetica-Bold')
+         .text('Costo total de los servicios contratados', colTotal, importTableY + 8, {
            width: colTotalW,
            align: 'center'
          })
-         .text('Anticipo', colAnticipo, importTableY + 10, {
+         .text('Anticipo', colAnticipo, importTableY + 8, {
            width: colAnticipoW,
            align: 'center'
          })
-         .text('Saldo pendiente', colSaldo, importTableY + 10, {
+         .text('Saldo pendiente', colSaldo, importTableY + 8, {
            width: colSaldoW,
            align: 'center'
          });
@@ -335,42 +362,104 @@ async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, incl
         }).format(amount || 0);
       };
 
+      // ── Fila de valores ───────────────────────────────────────────────────
       doc.fontSize(12).font('Helvetica-Bold')
-         .text(formatCurrency(booking.totalPrice || 0), colTotal, importMidY + 12, {
+         .text(formatCurrency(booking.totalPrice || 0), colTotal, importMidY + 10, {
            width: colTotalW,
            align: 'center'
          });
 
-      const isPaymentComplete = booking.paymentStatus === 'completed' || booking.secondNightNotePaid;
       if (isPaymentComplete) {
-        doc.fontSize(12)
-           .text('-', colAnticipo, importMidY + 12, {
+        // Pago completo: sin anticipo pendiente
+        doc.fontSize(11).font('Helvetica-Bold')
+           .text(formatCurrency(booking.initialPayment || booking.totalPrice || 0), colAnticipo, importMidY + 10, {
              width: colAnticipoW,
              align: 'center'
-           })
-           .text('PAGADO', colSaldo, importMidY + 5, {
+           });
+        doc.fontSize(12).font('Helvetica-Bold')
+           .text('PAGADO', colSaldo, importMidY + 6, {
              width: colSaldoW,
              align: 'center'
-           })
-           .fontSize(10)
-           .text('-', colSaldo, importMidY + 22, {
+           });
+        doc.fontSize(9).font('Helvetica')
+           .text('$0.00', colSaldo, importMidY + 22, {
+             width: colSaldoW,
+             align: 'center'
+           });
+      } else if (isPartial) {
+        // Pago parcial: mostrar anticipo y saldo
+        doc.fontSize(11).font('Helvetica-Bold')
+           .text(formatCurrency(booking.initialPayment || 0), colAnticipo, importMidY + 10, {
+             width: colAnticipoW,
+             align: 'center'
+           });
+        doc.fontSize(11).font('Helvetica-Bold')
+           .text(formatCurrency(booking.secondNightPayment || 0), colSaldo, importMidY + 10, {
+             width: colSaldoW,
+             align: 'center'
+           });
+
+        // ── Línea divisora extra para la fila de fecha ────────────────────
+        const importExtraLineY = importMidY + 38;
+        doc.moveTo(leftMargin, importExtraLineY).lineTo(leftMargin + pageWidth, importExtraLineY).stroke();
+
+        // ── Fila "Fecha de anticipo" ───────────────────────────────────────
+        const createdDate = booking.createdAt
+          ? new Date(booking.createdAt).toLocaleDateString('es-MX', {
+              day: '2-digit',
+              month: 'long',
+              year: 'numeric'
+            })
+          : '—';
+
+        doc.fontSize(7).font('Helvetica-Bold')
+           .text('Fecha de reserva:', colTotal, importExtraLineY + 6, {
+             width: colTotalW,
+             align: 'center'
+           });
+        doc.fontSize(7).font('Helvetica')
+           .text(createdDate, colTotal, importExtraLineY + 16, {
+             width: colTotalW,
+             align: 'center'
+           });
+
+        doc.fontSize(7).font('Helvetica-Bold')
+           .text('Anticipo recibido el:', colAnticipo, importExtraLineY + 6, {
+             width: colAnticipoW,
+             align: 'center'
+           });
+        doc.fontSize(7).font('Helvetica')
+           .text(createdDate, colAnticipo, importExtraLineY + 16, {
+             width: colAnticipoW,
+             align: 'center'
+           });
+
+        doc.fontSize(7).font('Helvetica-Bold')
+           .text('Saldo a liquidar al check-in', colSaldo, importExtraLineY + 6, {
+             width: colSaldoW,
+             align: 'center'
+           });
+        doc.fontSize(7).font('Helvetica')
+           .text('(al momento de la llegada)', colSaldo, importExtraLineY + 16, {
              width: colSaldoW,
              align: 'center'
            });
       } else {
-        doc.fontSize(12)
-           .text('-', colAnticipo, importMidY + 12, {
+        // Pendiente sin anticipo
+        doc.fontSize(11).font('Helvetica')
+           .text('—', colAnticipo, importMidY + 10, {
              width: colAnticipoW,
              align: 'center'
-           })
-           .text('-', colSaldo, importMidY + 12, {
+           });
+        doc.fontSize(11).font('Helvetica')
+           .text('—', colSaldo, importMidY + 10, {
              width: colSaldoW,
              align: 'center'
            });
       }
 
-      // ===== FIRMA DEL HUÉSPED (PÁGINA 1 - CHECK-IN) =====
-      const signatureY = importTableY + importTableH + 25;
+      // ===== FIRMA DEL HUÉSPED (SOLO EN PÁGINA 1 - CHECK-IN) =====
+      const signatureY = importTableY + importTableH + 20;
       const signatureBoxH = 130;
       const signatureBoxW = 394;
       doc.rect(40, signatureY, signatureBoxW, signatureBoxH).stroke();
@@ -381,7 +470,30 @@ async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, incl
            width: signatureBoxW
          });
 
-      _drawSignatureImage(doc, signatureBase64, 60, signatureY + 30, 354, 50);
+      if (signatureBase64) {
+        try {
+          const base64Data = signatureBase64.replace(/^data:image\/\w+;base64,/, '');
+          const signatureBuffer = Buffer.from(base64Data, 'base64');
+          doc.image(signatureBuffer, 60, signatureY + 30, {
+            width: 354,
+            height: 50,
+            align: 'center'
+          });
+        } catch (err) {
+          console.error('Error al cargar firma:', err);
+          doc.fontSize(9).font('Helvetica-Oblique')
+             .text('(Firma no disponible)', 60, signatureY + 50, {
+               align: 'center',
+               width: 354
+             });
+        }
+      } else {
+        doc.fontSize(9).font('Helvetica-Oblique')
+           .text('(Sin firma)', 60, signatureY + 50, {
+             align: 'center',
+             width: 354
+           });
+      }
 
       doc.moveTo(60, signatureY + 88).lineTo(414, signatureY + 88).stroke();
 
@@ -442,43 +554,13 @@ async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, incl
       // =====================================================================
       doc.addPage();
 
-      _drawPoliciesPage2(doc, booking, hasLogo, logoPath, formatDateFull, guestFirstName, guestLastName, signatureBase64);
+      _drawPoliciesPage2(doc, booking, hasLogo, logoPath, formatDateFull, guestFirstName, guestLastName);
 
       doc.end();
     } catch (error) {
       reject(error);
     }
   });
-}
-
-// =====================================================================
-// ========== HELPER: dibujar imagen de firma =========================
-// =====================================================================
-function _drawSignatureImage(doc, signatureBase64, x, y, width, height) {
-  if (signatureBase64) {
-    try {
-      const base64Data = signatureBase64.replace(/^data:image\/\w+;base64,/, '');
-      const signatureBuffer = Buffer.from(base64Data, 'base64');
-      doc.image(signatureBuffer, x, y, {
-        width: width,
-        height: height,
-        align: 'center'
-      });
-    } catch (err) {
-      console.error('Error al cargar firma en PDF:', err);
-      doc.fontSize(9).font('Helvetica-Oblique')
-         .text('(Firma no disponible)', x, y + (height / 2) - 5, {
-           align: 'center',
-           width: width
-         });
-    }
-  } else {
-    doc.fontSize(9).font('Helvetica-Oblique')
-       .text('(Sin firma)', x, y + (height / 2) - 5, {
-         align: 'center',
-         width: width
-       });
-  }
 }
 
 // =====================================================================
@@ -507,6 +589,7 @@ function _drawPoliciesPage1(doc, booking, hasLogo, logoPath, formatDateFull, gue
 
   let currentY = 130;
 
+  // Función auxiliar para sección
   const drawSection = (title, items, y) => {
     doc.fontSize(9).font('Helvetica-Bold')
        .text(title, leftMargin, y);
@@ -581,7 +664,7 @@ function _drawPoliciesPage1(doc, booking, hasLogo, logoPath, formatDateFull, gue
 
   currentY += 8;
 
-  // Declaración final (SIN FIRMA en página 2)
+  // Declaración final (SIN FIRMA)
   doc.fontSize(8).font('Helvetica')
      .text(
        'Declaro haber leído y aceptado las políticas de estancia de La Capilla Hotel, así como mi responsabilidad sobre el cumplimiento de las mismas.',
@@ -624,9 +707,9 @@ function _drawPoliciesPage1(doc, booking, hasLogo, logoPath, formatDateFull, gue
 }
 
 // =====================================================================
-// ========== FUNCIÓN: POLÍTICAS PÁGINA 2 (puntos 8 al 13) + FIRMA ====
+// ========== FUNCIÓN: POLÍTICAS PÁGINA 2 (puntos 8 al 13) ============
 // =====================================================================
-function _drawPoliciesPage2(doc, booking, hasLogo, logoPath, formatDateFull, guestFirstName, guestLastName, signatureBase64) {
+function _drawPoliciesPage2(doc, booking, hasLogo, logoPath, formatDateFull, guestFirstName, guestLastName) {
   const pageWidth = 532;
   const leftMargin = 40;
 
@@ -695,7 +778,7 @@ function _drawPoliciesPage2(doc, booking, hasLogo, logoPath, formatDateFull, gue
 
   currentY += 8;
 
-  // Declaración final
+  // Declaración final (SIN FIRMA)
   doc.fontSize(8).font('Helvetica')
      .text(
        'Declaro haber leído y aceptado las políticas de estancia de La Capilla Hotel, así como mi responsabilidad sobre el cumplimiento de las mismas.',
@@ -703,45 +786,8 @@ function _drawPoliciesPage2(doc, booking, hasLogo, logoPath, formatDateFull, gue
        { width: pageWidth, align: 'justify' }
      );
 
-  currentY += 20;
-
-  // =====================================================================
-  // ===== FIRMA DEL HUÉSPED — PÁGINA 3 (igual que página 1) ============
-  // =====================================================================
-  const signatureBoxH = 130;
-  const signatureBoxW = 394;
-
-  doc.rect(leftMargin, currentY, signatureBoxW, signatureBoxH).stroke();
-
-  doc.fontSize(11).font('Helvetica-Bold')
-     .text('FIRMA DEL HUÉSPED', leftMargin, currentY + 8, {
-       align: 'center',
-       width: signatureBoxW
-     });
-
-  // Dibujar la firma (misma que página 1)
-  _drawSignatureImage(doc, signatureBase64, leftMargin + 20, currentY + 30, signatureBoxW - 40, 50);
-
-  doc.moveTo(leftMargin + 20, currentY + 88).lineTo(leftMargin + signatureBoxW - 20, currentY + 88).stroke();
-
-  doc.fontSize(9).font('Helvetica-Bold')
-     .text('En pleno uso de mis facultades, libre y voluntariamente, declaro que', leftMargin, currentY + 95, {
-       width: signatureBoxW,
-       align: 'center'
-     })
-     .text('he sido debidamente informado acerca de mis servicios contratados', leftMargin, currentY + 107, {
-       width: signatureBoxW,
-       align: 'center'
-     });
-
-  doc.fontSize(8).font('Helvetica-Bold')
-     .text('y de los términos en La Capilla Hotel.', leftMargin, currentY + 119, {
-       width: signatureBoxW,
-       align: 'center'
-     });
-
   // ===== PIE DE PÁGINA PÁGINA 3 =====
-  const footerY = currentY + signatureBoxH + 15;
+  const footerY = currentY + 25;
   const footerH = 65;
   const remainingSpace = 792 - 40 - footerY;
 
