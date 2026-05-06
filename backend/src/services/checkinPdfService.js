@@ -522,13 +522,13 @@ async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, incl
         doc.image(logoPath, 50, footerY + 8, { width: 70 });
       }
 
-      doc.fontSize(10).font('Helvetica-Bold')
+      doc.fontSize(8).font('Helvetica-Bold')
          .text('LA CAPILLA HOTEL', 130, footerY + 10, {
            align: 'center',
            width: 370
          });
 
-      doc.fontSize(8).font('Helvetica')
+      doc.fontSize(6).font('Helvetica')
          .text('Dolores Hidalgo – San Miguel de Allende 378/4, El Durazno Gto. Ciudad de', 130, footerY + 24, {
            align: 'center',
            width: 370
