@@ -1174,6 +1174,142 @@ function sendVoucherEmail(booking, pdfBuffer) {
   return sendPartialPaymentEmail(booking, pdfBuffer);
 }
 
+async function sendMultiBookingEmail(bookings, pdfBuffers) {
+  try {
+    const guestInfo = bookings[0].guestInfo || {};
+    const totalAmount = bookings.reduce((sum, booking) => sum + (Number(booking.totalPrice) || 0), 0);
+
+    const attachments = pdfBuffers.map((pdfBuffer, index) => ({
+      filename: `Voucher_${bookings[index].bookingId}.pdf`,
+      content: pdfBuffer,
+      contentType: 'application/pdf'
+    }));
+
+    if (logoBuffer) {
+      attachments.push({
+        filename: 'logo.png',
+        content: logoBuffer,
+        contentType: 'image/png',
+        cid: LOGO_CID
+      });
+    }
+
+    const bookingRows = bookings.map(booking => `
+      <tr>
+        <td style="padding:10px;border:1px solid #eee;">${booking.bookingId}</td>
+        <td style="padding:10px;border:1px solid #eee;">${booking.roomName}</td>
+        <td style="padding:10px;border:1px solid #eee;">${new Date(booking.checkIn).toLocaleDateString('es-MX')}</td>
+        <td style="padding:10px;border:1px solid #eee;">${new Date(booking.checkOut).toLocaleDateString('es-MX')}</td>
+        <td style="padding:10px;border:1px solid #eee;text-align:right;">${Number(booking.totalPrice || 0).toFixed(2)} MXN</td>
+      </tr>
+    `).join('');
+
+    const mailOptions = {
+      from: `"La Capilla Hotel" <${process.env.EMAIL_USERNAME}>`,
+      to: guestInfo.email,
+      cc: 'fredyesparza08@gmail.com, lacapillasl@gmail.com',
+      subject: `Reservas Confirmadas - La Capilla Hotel | ${bookings.length} reserv${bookings.length === 1 ? 'a' : 'as'}`,
+      html: `
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+          <meta charset="UTF-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <style>
+            body { font-family: Arial, sans-serif; background: #f5f5f5; color: #333; }
+            .container { max-width: 680px; margin: 0 auto; background: #ffffff; padding: 24px; border-radius: 8px; }
+            .header { text-align: center; margin-bottom: 24px; }
+            .header-title { font-size: 22px; color: #C9A961; margin-bottom: 8px; }
+            .section { margin-bottom: 22px; }
+            .section-title { color: #C9A961; font-weight: bold; font-size: 14px; margin-bottom: 12px; text-transform: uppercase; }
+            .table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+            .table th, .table td { padding: 10px; border: 1px solid #eee; text-align: left; }
+            .summary { background: #F8F8F8; padding: 16px; border-radius: 6px; margin-top: 20px; }
+            .footer { font-size: 12px; color: #777; text-align: center; margin-top: 28px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              ${logoBuffer ? `<img src="cid:${LOGO_CID}" alt="La Capilla Hotel" style="max-width:240px; margin-bottom:14px;"/>` : '<h1 class="header-title">LA CAPILLA HOTEL</h1>'}
+              <p>Hola <strong>${guestInfo.firstName || 'Hu&eacute;sped'}</strong>,</p>
+              <p>Hemos generado con éxito tus reservas internas en un solo envío. A continuación encontrarás el resumen y los vouchers adjuntos.</p>
+            </div>
+
+            <div class="section">
+              <div class="section-title">Resumen de Reservas</div>
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>ID de reserva</th>
+                    <th>Habitación</th>
+                    <th>Check-in</th>
+                    <th>Check-out</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${bookingRows}
+                </tbody>
+              </table>
+            </div>
+
+            <div class="summary">
+              <p><strong>Total general:</strong> ${totalAmount.toFixed(2)} MXN</p>
+              <p>Todos los vouchers están adjuntos en un solo correo electrónico.</p>
+            </div>
+
+            <div class="section">
+              <div class="section-title">Importante</div>
+              <p>Presenta los vouchers adjuntos en recepción al momento del check-in.</p>
+              <p>Si tienes alguna pregunta, responde a este correo o contáctanos por WhatsApp.</p>
+            </div>
+
+            <div class="footer">
+              <p>Hotel La Capilla</p>
+              <p>Este es un correo automatizado. No respondas directamente a este mensaje.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      attachments
+    };
+
+    const result = await transporter.sendMail(mailOptions);
+    console.log('✅ Email de reservas múltiples enviado exitosamente');
+    return result;
+  } catch (error) {
+    console.error('❌ Error enviando email de reservas múltiples:', error);
+    throw error;
+  }
+}
+
+async function generateAndSendMultipleVouchers(bookings) {
+  try {
+    const pdfBuffers = [];
+    for (const booking of bookings) {
+      const bookingPayload = booking.toObject ? booking.toObject() : { ...booking };
+      if (booking.roomId) {
+        try {
+          const roomDetails = await Room.findById(booking.roomId).lean();
+          if (roomDetails) bookingPayload.room = roomDetails;
+        } catch (roomErr) {
+          console.warn('⚠️ No se pudo obtener info de Room para el voucher múltiple:', roomErr.message);
+        }
+      }
+      const pdfBuffer = await generateVoucherPDF(bookingPayload);
+      pdfBuffers.push(pdfBuffer);
+    }
+
+    await sendMultiBookingEmail(bookings, pdfBuffers);
+    return { success: true, pdfBuffers };
+  } catch (error) {
+    console.error('❌ Error en generateAndSendMultipleVouchers:', error);
+    throw error;
+  }
+}
+
 // ─────────────────────────────────────────────
 // GENERAR Y ENVIAR VOUCHER
 // ─────────────────────────────────────────────
