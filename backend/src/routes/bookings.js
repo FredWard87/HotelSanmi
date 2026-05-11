@@ -45,6 +45,7 @@ router.get('/download/:bookingId', async (req, res, next) => {
 
 // 🔥 CREAR RESERVA - Con optionalAuth para detectar admin
 router.post('/', optionalAuth, bookingController.createBooking);
+router.post('/bulk', optionalAuth, bookingController.createBulkBookings);
 
 // Obtener detalles de reserva (puede ser pública o protegida)
 router.get('/:bookingId', optionalAuth, bookingController.getBooking);
