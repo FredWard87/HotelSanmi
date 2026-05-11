@@ -1468,6 +1468,7 @@ module.exports = {
   generateVoucherPDF,
   sendVoucherEmail,
   generateAndSendVoucher,
+  generateAndSendMultipleVouchers,
   generateFullPaymentVoucherPDF,
   generatePartialPaymentVoucherPDF,
   sendFullPaymentEmail,
