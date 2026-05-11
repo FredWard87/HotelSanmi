@@ -1043,6 +1043,206 @@ exports.createBooking = async (req, res, next) => {
   }
 };
 
+exports.createBulkBookings = async (req, res, next) => {
+  try {
+    const { guestInfo, bookings, origin } = req.body;
+
+    if (!guestInfo || !guestInfo.email || guestInfo.email.trim() === '') {
+      return res.status(400).json({
+        message: 'Información del huésped es requerida',
+        error: 'Guest info required'
+      });
+    }
+
+    if (!Array.isArray(bookings) || bookings.length === 0) {
+      return res.status(400).json({
+        message: 'Debe enviar al menos una reserva',
+        error: 'No bookings provided'
+      });
+    }
+
+    if (bookings.length > 10) {
+      return res.status(400).json({
+        message: 'No se pueden crear más de 10 reservas en un solo envío',
+        error: 'Too many bookings'
+      });
+    }
+
+    const isAdmin = req.user && req.user.role === 'admin';
+    const createdBookings = [];
+
+    for (let index = 0; index < bookings.length; index += 1) {
+      const item = bookings[index];
+      const {
+        roomId,
+        roomName,
+        checkIn,
+        checkOut,
+        nights,
+        pricePerNight,
+        totalPrice,
+        advancePayment,
+        paymentIntentId,
+        specialRequests,
+        isFree,
+        manualPrice,
+      } = item;
+
+      if (!roomId || !checkIn || !checkOut || !nights || nights <= 0) {
+        return res.status(400).json({
+          message: `Reserva ${index + 1} incompleta: roomId, checkIn, checkOut y nights son requeridos`,
+          error: 'Missing booking fields',
+          bookingIndex: index
+        });
+      }
+
+      const startDate = formatDateWithTimezone(checkIn);
+      const endDate = formatDateWithTimezone(checkOut);
+
+      if (!startDate || !endDate || endDate <= startDate) {
+        return res.status(400).json({
+          message: `Reserva ${index + 1}: check-out debe ser posterior a check-in`,
+          error: 'Invalid dates',
+          bookingIndex: index
+        });
+      }
+
+      const availability = await checkRoomAvailabilityInternal(roomId, startDate, endDate, { ignoreBlocks: isAdmin });
+
+      if (!availability.available) {
+        let message = `Reserva ${index + 1} no disponible para estas fechas`;
+        if (availability.error) message = availability.error;
+
+        return res.status(409).json({
+          message,
+          error: 'Room not available',
+          bookingIndex: index,
+          details: {
+            totalUnits: availability.totalUnits,
+            bookedUnits: availability.bookedUnits,
+            blockedUnits: availability.blockedUnits,
+            availableUnits: availability.availableUnits,
+            blocks: availability.blocks.map(b => ({
+              type: b.blockType,
+              reason: b.reason,
+              scope: b.scope,
+              blockAll: b.blockAll
+            }))
+          }
+        });
+      }
+
+      const room = availability.room;
+      const shouldUseManualPrice = manualPrice !== undefined && manualPrice !== null && manualPrice !== '' && manualPrice !== 'gratis';
+      const isManualPrice = shouldUseManualPrice && !isFree;
+      const originalSubtotal = ((pricePerNight || room.price || 0) * Number(nights));
+
+      let finalSubtotal;
+      let finalTax;
+      let finalMunicipalTax;
+      let finalTotal;
+
+      if (isFree === true || String(manualPrice).trim().toLowerCase() === 'gratis') {
+        finalSubtotal = 0;
+        finalTax = 0;
+        finalMunicipalTax = 0;
+        finalTotal = 0;
+      } else if (isManualPrice && typeof totalPrice === 'number' && totalPrice >= 0) {
+        finalSubtotal = Number(totalPrice);
+        finalTax = 0;
+        finalMunicipalTax = 0;
+        finalTotal = Number(totalPrice);
+      } else {
+        finalSubtotal = originalSubtotal;
+        finalTax = originalSubtotal * 0.16;
+        finalMunicipalTax = originalSubtotal * 0.04;
+        finalTotal = finalSubtotal + finalTax + finalMunicipalTax;
+      }
+
+      const advance = advancePayment && !Number.isNaN(Number(advancePayment)) ? Number(advancePayment) : 0;
+      let initialPayment;
+      let secondNightPayment;
+      let paymentStatus = 'pending';
+
+      if (isFree === true || String(manualPrice).trim().toLowerCase() === 'gratis') {
+        initialPayment = 0;
+        secondNightPayment = 0;
+        paymentStatus = 'completed';
+      } else if (advance > 0) {
+        initialPayment = Math.min(advance, finalTotal);
+        secondNightPayment = Math.max(0, finalTotal - initialPayment);
+        paymentStatus = initialPayment >= finalTotal ? 'completed' : 'partial';
+      } else {
+        initialPayment = finalTotal * 0.5;
+        secondNightPayment = finalTotal * 0.5;
+        paymentStatus = 'pending';
+      }
+
+      const bookingId = generateBookingId();
+
+      const newBooking = new Booking({
+        bookingId,
+        roomId: availability.room._id,
+        roomName: availability.room.name,
+        guestInfo,
+        checkIn: startDate,
+        checkOut: endDate,
+        nights,
+        pricePerNight: pricePerNight !== undefined ? Number(pricePerNight) : room.price,
+        subtotalBeforeDiscount: originalSubtotal,
+        discountCode: null,
+        discountCodeId: null,
+        discountAmount: 0,
+        subtotal: finalSubtotal,
+        tax: finalTax,
+        municipalTax: finalMunicipalTax,
+        totalPrice: finalTotal,
+        initialPayment,
+        secondNightPayment,
+        secondNightPaid: false,
+        paymentStatus,
+        paymentIntentId: paymentIntentId || null,
+        stripePaymentIntentId: paymentIntentId || null,
+        stripeChargeId: null,
+        secondNightNoteId: secondNightPayment > 0 ? `NOTE-${bookingId}-2ND-NIGHT` : null,
+        status: 'active',
+        specialRequests: specialRequests || `Reserva creada por ${origin || 'ADMIN'}`,
+        createdBy: req.user ? req.user._id : null,
+        createdByRole: req.user ? req.user.role : 'guest',
+        adminOverride: isAdmin && availability.blockedUnits > 0,
+        isPrecioManual: isManualPrice,
+        isFree: isFree === true || String(manualPrice).trim().toLowerCase() === 'gratis',
+      });
+
+      await newBooking.save();
+      createdBookings.push(newBooking);
+    }
+
+    let emailResult = null;
+    try {
+      emailResult = await generateAndSendMultipleVouchers(createdBookings);
+    } catch (emailError) {
+      console.error('❌ Error enviando email de reservas en lote:', emailError);
+    }
+
+    res.status(201).json({
+      success: true,
+      message: `Se crearon ${createdBookings.length} reservas. Se envió un solo correo de confirmación a ${guestInfo.email}.`,
+      bookings: createdBookings.map(b => ({
+        bookingId: b.bookingId,
+        roomName: b.roomName,
+        totalPrice: b.totalPrice,
+        status: b.status
+      })),
+      emailSent: !!emailResult,
+      emailError: emailResult ? null : 'No se pudo enviar el correo de confirmación'
+    });
+  } catch (error) {
+    console.error('Error al crear reservas en lote:', error);
+    next(error);
+  }
+};
+
 exports.getBooking = async (req, res, next) => {
   try {
     const { bookingId } = req.params;
@@ -1534,6 +1734,7 @@ exports.testEmail = async (req, res, next) => {
 module.exports = {
   createPaymentIntent: exports.createPaymentIntent,
   createBooking: exports.createBooking,
+  createBulkBookings: exports.createBulkBookings,
   getAllBookings: exports.getAllBookings,
   getBooking: exports.getBooking,
   getBookingById: exports.getBookingById,
