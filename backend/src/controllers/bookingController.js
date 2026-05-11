@@ -1224,14 +1224,20 @@ exports.createBulkBookings = async (req, res, next) => {
 
     let emailResult = null;
     try {
-      emailResult = await generateAndSendMultipleVouchers(createdBookings);
+      if (createdBookings.length === 1) {
+        emailResult = await generateAndSendVoucher(createdBookings[0]);
+      } else {
+        emailResult = await generateAndSendMultipleVouchers(createdBookings);
+      }
     } catch (emailError) {
       console.error('❌ Error enviando email de reservas en lote:', emailError);
     }
 
     res.status(201).json({
       success: true,
-      message: `Se crearon ${createdBookings.length} reservas. Se envió un solo correo de confirmación a ${guestInfo.email}.`,
+      message: createdBookings.length === 1
+        ? `Se creó 1 reserva. Se envió el correo de confirmación estándar a ${guestInfo.email}.`
+        : `Se crearon ${createdBookings.length} reservas. Se envió un solo correo de confirmación a ${guestInfo.email}.`,
       bookings: createdBookings.map(b => ({
         bookingId: b.bookingId,
         roomName: b.roomName,
