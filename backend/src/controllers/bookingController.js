@@ -4,7 +4,7 @@ const Room = require('../models/Room');
 const RoomBlock = require('../models/RoomBlock');
 const DiscountCode = require('../models/DiscountCode');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const { generateAndSendVoucher } = require('../services/pdfService');
+const { generateAndSendVoucher, generateAndSendMultipleVouchers } = require('../services/pdfService');
 const { generateCheckinPDF } = require('../services/checkinPdfService');
 
 // ─────────────────────────────────────────────
@@ -1166,6 +1166,10 @@ exports.createBulkBookings = async (req, res, next) => {
 
       if (isFree === true || String(manualPrice).trim().toLowerCase() === 'gratis') {
         initialPayment = 0;
+        secondNightPayment = 0;
+        paymentStatus = 'completed';
+      } else if (Number(nights) === 1) {
+        initialPayment = finalTotal;
         secondNightPayment = 0;
         paymentStatus = 'completed';
       } else if (advance > 0) {
