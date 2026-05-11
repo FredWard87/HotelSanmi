@@ -1265,6 +1265,21 @@ async function sendMultiBookingEmail(bookings, pdfBuffers) {
               <p>Si tienes alguna pregunta, responde a este correo o contáctanos por WhatsApp.</p>
             </div>
 
+            <div class="section">
+              <div class="section-title">Cómo Completar tu Pago</div>
+              <p>Presenta este correo electrónico de forma digital en recepción.</p>
+              <p>El día del check-in, realiza el pago del 50% restante.</p>
+              <p>Aceptamos: efectivo, tarjeta de crédito y débito.</p>
+              <p>Recibirás tu recibo final al momento del pago.</p>
+            </div>
+
+            <div class="section">
+              <div class="section-title">¿Preguntas?</div>
+              <p>Teléfono:<br/><strong>+52 4777 347474</strong></p>
+              <p>WhatsApp:<br/><strong>+52 4777 347474</strong></p>
+              <p>Email:<br/><strong>lacapillasl@gmail.com</strong></p>
+            </div>
+
             <div class="footer">
               <p>Hotel La Capilla</p>
               <p>Este es un correo automatizado. No respondas directamente a este mensaje.</p>
