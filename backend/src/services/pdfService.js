@@ -1220,8 +1220,12 @@ async function sendMultiBookingEmail(bookings, pdfBuffers) {
             .container { max-width: 680px; margin: 0 auto; background: #ffffff; padding: 24px; border-radius: 8px; }
             .header { text-align: center; margin-bottom: 24px; }
             .header-title { font-size: 22px; color: #C9A961; margin-bottom: 8px; }
-            .section { margin-bottom: 22px; }
-            .section-title { color: #C9A961; font-weight: bold; font-size: 14px; margin-bottom: 12px; text-transform: uppercase; }
+            .section { margin-bottom: 22px; padding: 18px; background: #f8f8f8; border-radius: 10px; }
+            .section-title { color: #C9A961; font-weight: bold; font-size: 15px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+            .section p { margin: 0 0 10px; line-height: 1.6; color: #333; }
+            .section ul { list-style: none; padding: 0; margin: 0; }
+            .section li { margin: 0 0 8px; }
+            .section strong { color: #1a1a1a; }
             .table { width: 100%; border-collapse: collapse; margin-top: 12px; }
             .table th, .table td { padding: 10px; border: 1px solid #eee; text-align: left; }
             .summary { background: #F8F8F8; padding: 16px; border-radius: 6px; margin-top: 20px; }
@@ -1267,17 +1271,21 @@ async function sendMultiBookingEmail(bookings, pdfBuffers) {
 
             <div class="section">
               <div class="section-title">Cómo Completar tu Pago</div>
-              <p>Presenta este correo electrónico de forma digital en recepción.</p>
-              <p>El día del check-in, realiza el pago del 50% restante.</p>
-              <p>Aceptamos: efectivo, tarjeta de crédito y débito.</p>
-              <p>Recibirás tu recibo final al momento del pago.</p>
+              <ul>
+                <li>Presenta este correo electrónico de forma digital en recepción.</li>
+                <li>El día del check-in, realiza el pago del 50% restante.</li>
+                <li>Aceptamos: efectivo, tarjeta de crédito y débito.</li>
+                <li>Recibirás tu recibo final al momento del pago.</li>
+              </ul>
             </div>
 
             <div class="section">
               <div class="section-title">¿Preguntas?</div>
-              <p>Teléfono:<br/><strong>+52 4777 347474</strong></p>
-              <p>WhatsApp:<br/><strong>+52 4777 347474</strong></p>
-              <p>Email:<br/><strong>lacapillasl@gmail.com</strong></p>
+              <ul>
+                <li><strong>Teléfono:</strong> +52 4777 347474</li>
+                <li><strong>WhatsApp:</strong> +52 4777 347474</li>
+                <li><strong>Email:</strong> lacapillasl@gmail.com</li>
+              </ul>
             </div>
 
             <div class="footer">
