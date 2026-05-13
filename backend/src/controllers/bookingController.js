@@ -1183,11 +1183,12 @@ exports.createBulkBookings = async (req, res, next) => {
       }
 
       const bookingId = generateBookingId();
+      const finalRoomName = roomName && roomName.trim() !== '' ? roomName : availability.room.name;
 
       const newBooking = new Booking({
         bookingId,
         roomId: availability.room._id,
-        roomName: availability.room.name,
+        roomName: finalRoomName,
         guestInfo,
         checkIn: startDate,
         checkOut: endDate,
