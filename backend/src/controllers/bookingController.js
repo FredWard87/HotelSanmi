@@ -8,7 +8,7 @@ const { generateAndSendVoucher, generateAndSendMultipleVouchers } = require('../
 const { generateCheckinPDF } = require('../services/checkinPdfService');
 const crypto = require('crypto');
 
-const CHECKIN_SIGNATURE_SECRET = process.env.CHECKIN_SIGNATURE_SECRET || 'change-me-before-production';
+const CHECKIN_SIGNATURE_SECRET = process.env.CHECKIN_SIGNATURE_SECRET;
 const CHECKIN_SIGNATURE_KEY = crypto.createHash('sha256').update(CHECKIN_SIGNATURE_SECRET).digest();
 
 function encryptSignature(signatureBase64) {
@@ -1841,6 +1841,8 @@ module.exports = {
   checkRoomAvailability: exports.checkAvailability,
   checkMultipleAvailability: exports.checkMultipleAvailability,
   generateCheckin: exports.generateCheckin,
+  getSignedCheckins: exports.getSignedCheckins,
+  downloadSignedCheckin: exports.downloadSignedCheckin,
   downloadVoucher: exports.downloadVoucher,
   resendBookingEmail: exports.resendBookingEmail,
   sendTestEmailToExistingBooking: exports.sendTestEmailToExistingBooking,
