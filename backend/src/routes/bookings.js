@@ -78,6 +78,12 @@ router.delete('/:bookingId/cancel', protect, bookingController.cancelBooking);
 // Generar documento de check-in con firma (admin/employee)
 router.post('/generate-checkin/:bookingId', protect, bookingController.generateCheckin);
 
+// Listar check-ins firmados (admin/employee)
+router.get('/signed-checkins', protect, bookingController.getSignedCheckins);
+
+// Descargar PDF de check-in firmado guardado (admin/employee)
+router.get('/:bookingId/checkin/pdf', protect, bookingController.downloadSignedCheckin);
+
 // ====================================
 // RUTA DE PRUEBA: Enviar email de segundo pago
 // ====================================
