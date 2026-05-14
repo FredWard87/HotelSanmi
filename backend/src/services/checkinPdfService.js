@@ -42,7 +42,7 @@ async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, incl
          .text('RESERVACIÓN LA CAPILLA HOTEL', 40, 40, { align: 'center', width: 532 });
 
       if (hasLogo) {
-        doc.image(logoPath, 50, 75, { width: 80 }); // Logo del encabezado tamaño original
+        doc.image(logoPath, 50, 75, { width: 80 });
       }
 
       doc.fontSize(9).font('Helvetica')
@@ -58,17 +58,6 @@ async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, incl
           month: 'long',
           year: 'numeric'
         });
-      };
-
-      // ── Fecha de reserva (createdAt) formateada con hora ──────────────────
-      const formatDateWithTime = (date) => {
-        if (!date) return '';
-        const d = new Date(date);
-        return d.toLocaleDateString('es-MX', {
-          day: 'numeric',
-          month: 'long',
-          year: 'numeric'
-        }) + ' ' + d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
       };
 
       doc.fontSize(9).font('Helvetica-Bold')
@@ -217,7 +206,6 @@ async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, incl
         'Standard Deluxe': 'Standard',
         'Junior Suite': 'Junior Suite',
         'Master Suite': 'Master Suite',
-        'Master Suite Deluxe': 'Master Suite',
         'Cabaña': 'Cabaña',
         'Cabaña Suite': 'Cabaña'
       };
@@ -303,54 +291,39 @@ async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, incl
       doc.fontSize(9).font('Helvetica')
          .text('Transferencia', 420, paymentCheckY);
 
-      // =====================================================================
-      // ===== DATOS DE IMPORTE (con anticipo y fecha de reserva) ============
-      // =====================================================================
+      // ===== DATOS DE IMPORTE =====
       const importY = paymentCheckY + 45;
       doc.fontSize(10).font('Helvetica-Bold')
          .text('Datos de importe', 40, importY, { align: 'center', width: 532 });
 
-      const isPaymentComplete =
-        booking.paymentStatus === 'completed' ||
-        booking.secondNightNotePaid === true;
+      const importTableY = importY + 25;
+      const importTableH = 60;
 
-      const isPartial =
-        booking.paymentStatus === 'partial' && !booking.secondNightNotePaid;
+      doc.rect(40, importTableY, 532, importTableH).stroke();
 
-      // ── Tabla principal de importes (Total / Anticipo / Saldo) ────────────
-      const importTableY = importY + 20;
-      const importTableH = isPartial ? 100 : 60; // más alta si hay anticipo
-
-      const pageWidth = 532;
-      const leftMargin = 40;
-
-      doc.rect(leftMargin, importTableY, pageWidth, importTableH).stroke();
-
-      const colTotal = leftMargin;
-      const colTotalW = pageWidth / 3;
+      const colTotal = 40;
+      const colTotalW = 177;
       const colAnticipo = colTotal + colTotalW;
-      const colAnticipoW = pageWidth / 3;
+      const colAnticipoW = 177.5;
       const colSaldo = colAnticipo + colAnticipoW;
-      const colSaldoW = pageWidth / 3;
+      const colSaldoW = 177.5;
 
       doc.moveTo(colAnticipo, importTableY).lineTo(colAnticipo, importTableY + importTableH).stroke();
       doc.moveTo(colSaldo, importTableY).lineTo(colSaldo, importTableY + importTableH).stroke();
 
-      // Línea divisora de encabezado
-      const importMidY = importTableY + 28;
-      doc.moveTo(leftMargin, importMidY).lineTo(leftMargin + pageWidth, importMidY).stroke();
+      const importMidY = importTableY + 30;
+      doc.moveTo(40, importMidY).lineTo(572, importMidY).stroke();
 
-      // Encabezados de columnas
-      doc.fontSize(8).font('Helvetica-Bold')
-         .text('Costo total de los servicios contratados', colTotal, importTableY + 8, {
+      doc.fontSize(9).font('Helvetica-Bold')
+         .text('Costo total de los servicios contratados', colTotal, importTableY + 10, {
            width: colTotalW,
            align: 'center'
          })
-         .text('Anticipo', colAnticipo, importTableY + 8, {
+         .text('Anticipo', colAnticipo, importTableY + 10, {
            width: colAnticipoW,
            align: 'center'
          })
-         .text('Saldo pendiente', colSaldo, importTableY + 8, {
+         .text('Saldo pendiente', colSaldo, importTableY + 10, {
            width: colSaldoW,
            align: 'center'
          });
@@ -362,105 +335,43 @@ async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, incl
         }).format(amount || 0);
       };
 
-      // ── Fila de valores ───────────────────────────────────────────────────
       doc.fontSize(12).font('Helvetica-Bold')
-         .text(formatCurrency(booking.totalPrice || 0), colTotal, importMidY + 10, {
+         .text(formatCurrency(booking.totalPrice || 0), colTotal, importMidY + 12, {
            width: colTotalW,
            align: 'center'
          });
 
+      const isPaymentComplete = booking.paymentStatus === 'completed' || booking.secondNightNotePaid;
       if (isPaymentComplete) {
-        // Pago completo: sin anticipo pendiente
-        doc.fontSize(11).font('Helvetica-Bold')
-           .text(formatCurrency(booking.initialPayment || booking.totalPrice || 0), colAnticipo, importMidY + 10, {
+        doc.fontSize(12)
+           .text('-', colAnticipo, importMidY + 12, {
              width: colAnticipoW,
              align: 'center'
-           });
-        doc.fontSize(12).font('Helvetica-Bold')
-           .text('PAGADO', colSaldo, importMidY + 6, {
+           })
+           .text('PAGADO', colSaldo, importMidY + 5, {
              width: colSaldoW,
              align: 'center'
-           });
-        doc.fontSize(9).font('Helvetica')
-           .text('$0.00', colSaldo, importMidY + 22, {
-             width: colSaldoW,
-             align: 'center'
-           });
-      } else if (isPartial) {
-        // Pago parcial: mostrar anticipo y saldo
-        doc.fontSize(11).font('Helvetica-Bold')
-           .text(formatCurrency(booking.initialPayment || 0), colAnticipo, importMidY + 10, {
-             width: colAnticipoW,
-             align: 'center'
-           });
-        doc.fontSize(11).font('Helvetica-Bold')
-           .text(formatCurrency(booking.secondNightPayment || 0), colSaldo, importMidY + 10, {
-             width: colSaldoW,
-             align: 'center'
-           });
-
-        // ── Línea divisora extra para la fila de fecha ────────────────────
-        const importExtraLineY = importMidY + 38;
-        doc.moveTo(leftMargin, importExtraLineY).lineTo(leftMargin + pageWidth, importExtraLineY).stroke();
-
-        // ── Fila "Fecha de anticipo" ───────────────────────────────────────
-        const createdDate = booking.createdAt
-          ? new Date(booking.createdAt).toLocaleDateString('es-MX', {
-              day: '2-digit',
-              month: 'long',
-              year: 'numeric'
-            })
-          : '—';
-
-        doc.fontSize(7).font('Helvetica-Bold')
-           .text('Fecha de reserva:', colTotal, importExtraLineY + 6, {
-             width: colTotalW,
-             align: 'center'
-           });
-        doc.fontSize(7).font('Helvetica')
-           .text(createdDate, colTotal, importExtraLineY + 16, {
-             width: colTotalW,
-             align: 'center'
-           });
-
-        doc.fontSize(7).font('Helvetica-Bold')
-           .text('Anticipo recibido el:', colAnticipo, importExtraLineY + 6, {
-             width: colAnticipoW,
-             align: 'center'
-           });
-        doc.fontSize(7).font('Helvetica')
-           .text(createdDate, colAnticipo, importExtraLineY + 16, {
-             width: colAnticipoW,
-             align: 'center'
-           });
-
-        doc.fontSize(7).font('Helvetica-Bold')
-           .text('Saldo a liquidar al check-in', colSaldo, importExtraLineY + 6, {
-             width: colSaldoW,
-             align: 'center'
-           });
-        doc.fontSize(7).font('Helvetica')
-           .text('(al momento de la llegada)', colSaldo, importExtraLineY + 16, {
+           })
+           .fontSize(10)
+           .text('-', colSaldo, importMidY + 22, {
              width: colSaldoW,
              align: 'center'
            });
       } else {
-        // Pendiente sin anticipo
-        doc.fontSize(11).font('Helvetica')
-           .text('—', colAnticipo, importMidY + 10, {
+        doc.fontSize(12)
+           .text('-', colAnticipo, importMidY + 12, {
              width: colAnticipoW,
              align: 'center'
-           });
-        doc.fontSize(11).font('Helvetica')
-           .text('—', colSaldo, importMidY + 10, {
+           })
+           .text('-', colSaldo, importMidY + 12, {
              width: colSaldoW,
              align: 'center'
            });
       }
 
       // ===== FIRMA DEL HUÉSPED (SOLO EN PÁGINA 1 - CHECK-IN) =====
-      const signatureY = importTableY + importTableH + 20;
-      const signatureBoxH = 110; // Reducido de 130 a 110 para dar más espacio
+      const signatureY = importTableY + importTableH + 25;
+      const signatureBoxH = 130;
       const signatureBoxW = 394;
       doc.rect(40, signatureY, signatureBoxW, signatureBoxH).stroke();
 
@@ -474,107 +385,73 @@ async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, incl
         try {
           const base64Data = signatureBase64.replace(/^data:image\/\w+;base64,/, '');
           const signatureBuffer = Buffer.from(base64Data, 'base64');
-          doc.image(signatureBuffer, 60, signatureY + 25, {
+          doc.image(signatureBuffer, 60, signatureY + 30, {
             width: 354,
-            height: 40,
+            height: 50,
             align: 'center'
           });
         } catch (err) {
           console.error('Error al cargar firma:', err);
           doc.fontSize(9).font('Helvetica-Oblique')
-             .text('(Firma no disponible)', 60, signatureY + 40, {
+             .text('(Firma no disponible)', 60, signatureY + 50, {
                align: 'center',
                width: 354
              });
         }
       } else {
         doc.fontSize(9).font('Helvetica-Oblique')
-           .text('(Sin firma)', 60, signatureY + 40, {
+           .text('(Sin firma)', 60, signatureY + 50, {
              align: 'center',
              width: 354
            });
       }
 
-      doc.moveTo(60, signatureY + 70).lineTo(414, signatureY + 70).stroke();
+      doc.moveTo(60, signatureY + 88).lineTo(414, signatureY + 88).stroke();
 
-      doc.fontSize(8).font('Helvetica-Bold')
-         .text('En pleno uso de mis facultades, libre y voluntariamente, declaro que', 40, signatureY + 77, {
+      doc.fontSize(9).font('Helvetica-Bold')
+         .text('En pleno uso de mis facultades, libre y voluntariamente, declaro que', 40, signatureY + 95, {
            width: signatureBoxW,
            align: 'center'
          })
-         .text('he sido debidamente informado acerca de mis servicios contratados', 40, signatureY + 87, {
-           width: signatureBoxW,
-           align: 'center'
-         })
-         .text('y de los términos en La Capilla Hotel.', 40, signatureY + 97, {
+         .text('he sido debidamente informado acerca de mis servicios contratados', 40, signatureY + 107, {
            width: signatureBoxW,
            align: 'center'
          });
 
-      // ===== PIE DE PÁGINA PÁGINA 1 (CORREGIDO CON LOGO MÁS GRANDE) =====
-      const footerY = signatureY + signatureBoxH + 15;
-      const pageHeight = 792;
-      const pageBottom = pageHeight - 40;
-      
-      // Verificar si hay suficiente espacio para el pie de página completo
-      if (footerY + 75 <= pageBottom) {
-        // Hay suficiente espacio, dibujar pie de página normal
-        const footerH = 75;
-        doc.rect(40, footerY, 532, footerH).stroke();
+      doc.fontSize(8).font('Helvetica-Bold')
+         .text('y de los términos en La Capilla Hotel.', 40, signatureY + 119, {
+           width: signatureBoxW,
+           align: 'center'
+         });
 
-        if (hasLogo) {
-          doc.image(logoPath, 50, footerY + 8, { width: 140 }); // Logo del pie de página del doble de tamaño (antes era 70)
-        }
+      // ===== PIE DE PÁGINA PÁGINA 1 =====
+      const footerY = signatureY + signatureBoxH + 10;
+      const footerH = 75;
+      doc.rect(40, footerY, 532, footerH).stroke();
 
-        doc.fontSize(8).font('Helvetica-Bold')
-           .text('LA CAPILLA HOTEL', 130, footerY + 10, {
-             align: 'center',
-             width: 370
-           });
-
-        doc.fontSize(7).font('Helvetica')
-           .text('Dolores Hidalgo – San Miguel de Allende 378/4, El Durazno Gto. Ciudad de', 130, footerY + 24, {
-             align: 'center',
-             width: 370
-           })
-           .text('los 80, a 2 horas de la Ciudad de México y 45 minutos de San Miguel de Allende.', 130, footerY + 36, {
-             align: 'center',
-             width: 370
-           })
-           .text('Cel. 413 117 00 99 | Email: reservaciones@hotelacapilla.com | www.hotelacapilla.com', 130, footerY + 52, {
-             align: 'center',
-             width: 370
-           });
-      } else {
-        // No hay suficiente espacio, ajustar el pie de página hacia arriba
-        const adjustedFooterY = pageBottom - 75;
-        const footerH = 75;
-        doc.rect(40, adjustedFooterY, 532, footerH).stroke();
-
-        if (hasLogo) {
-          doc.image(logoPath, 50, adjustedFooterY + 8, { width: 140 }); // Logo del pie de página del doble de tamaño
-        }
-
-        doc.fontSize(10).font('Helvetica-Bold')
-           .text('LA CAPILLA HOTEL', 130, adjustedFooterY + 10, {
-             align: 'center',
-             width: 370
-           });
-
-        doc.fontSize(8).font('Helvetica')
-           .text('Dolores Hidalgo – San Miguel de Allende 378/4, El Durazno Gto. Ciudad de', 130, adjustedFooterY + 24, {
-             align: 'center',
-             width: 370
-           })
-           .text('los 80, a 2 horas de la Ciudad de México y 45 minutos de San Miguel de Allende.', 130, adjustedFooterY + 36, {
-             align: 'center',
-             width: 370
-           })
-           .text('Cel. 413 117 00 99 | Email: reservaciones@hotelacapilla.com | www.hotelacapilla.com', 130, adjustedFooterY + 52, {
-             align: 'center',
-             width: 370
-           });
+      if (hasLogo) {
+        doc.image(logoPath, 50, footerY + 8, { width: 70 });
       }
+
+      doc.fontSize(9).font('Helvetica-Bold')
+         .text('LA CAPILLA HOTEL', 130, footerY + 10, {
+           align: 'center',
+           width: 370
+         });
+
+      doc.fontSize(7).font('Helvetica')
+         .text('Dolores Hidalgo – San Miguel de Allende 378/4, El Durazno Gto. Ciudad de', 130, footerY + 24, {
+           align: 'center',
+           width: 370
+         })
+         .text('los 80, a 2 horas de la Ciudad de México y 45 minutos de San Miguel de Allende.', 130, footerY + 36, {
+           align: 'center',
+           width: 370
+         })
+         .text('Cel. 413 117 00 99 | Email: reservaciones@hotelacapilla.com | www.hotelacapilla.com', 130, footerY + 52, {
+           align: 'center',
+           width: 370
+         });
 
       // =====================================================================
       // ================== PÁGINA 2: POLÍTICAS PARTE 1 =====================
@@ -588,7 +465,7 @@ async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, incl
       // =====================================================================
       doc.addPage();
 
-      _drawPoliciesPage2(doc, booking, hasLogo, logoPath, formatDateFull, guestFirstName, guestLastName);
+      _drawPoliciesPage2(doc, booking, hasLogo, logoPath, formatDateFull, guestFirstName, guestLastName, signatureBase64);
 
       doc.end();
     } catch (error) {
@@ -708,34 +585,34 @@ function _drawPoliciesPage1(doc, booking, hasLogo, logoPath, formatDateFull, gue
 
   // ===== PIE DE PÁGINA PÁGINA 2 =====
   const footerY = currentY + 25;
-  const footerH = 75;
+  const footerH = 65;
   const remainingSpace = 792 - 40 - footerY;
 
   if (remainingSpace >= footerH) {
     doc.rect(leftMargin, footerY, pageWidth, footerH).stroke();
 
     if (hasLogo) {
-      doc.image(logoPath, leftMargin + 10, footerY + 8, { width: 140 }); // Logo más grande también en página 2
+      doc.image(logoPath, leftMargin + 10, footerY + 8, { width: 60 });
     }
 
-    doc.fontSize(10).font('Helvetica-Bold')
-       .text('LA CAPILLA HOTEL', leftMargin + 85, footerY + 10, {
+    doc.fontSize(9).font('Helvetica-Bold')
+       .text('LA CAPILLA HOTEL', leftMargin + 75, footerY + 8, {
          align: 'center',
-         width: pageWidth - 85
+         width: pageWidth - 75
        });
 
-    doc.fontSize(8).font('Helvetica')
-       .text('Dolores Hidalgo – San Miguel de Allende 378/4, El Durazno Gto. Ciudad de', leftMargin + 85, footerY + 24, {
+    doc.fontSize(7).font('Helvetica')
+       .text('Dolores Hidalgo – San Miguel de Allende 378/4, El Durazno Gto. Ciudad de', leftMargin + 75, footerY + 22, {
          align: 'center',
-         width: pageWidth - 85
+         width: pageWidth - 75
        })
-       .text('los 80, a 2 horas de la Ciudad de México y 45 minutos de San Miguel de Allende.', leftMargin + 85, footerY + 36, {
+       .text('los 80, a 2 horas de la Ciudad de México y 45 minutos de San Miguel de Allende.', leftMargin + 75, footerY + 32, {
          align: 'center',
-         width: pageWidth - 85
+         width: pageWidth - 75
        })
-       .text('Cel. 413 117 00 99 | Email: reservaciones@hotelacapilla.com | www.hotelacapilla.com', leftMargin + 85, footerY + 52, {
+       .text('Cel. 413 117 00 99 | Email: reservaciones@hotelacapilla.com | www.hotelacapilla.com', leftMargin + 75, footerY + 44, {
          align: 'center',
-         width: pageWidth - 85
+         width: pageWidth - 75
        });
   }
 }
@@ -743,7 +620,7 @@ function _drawPoliciesPage1(doc, booking, hasLogo, logoPath, formatDateFull, gue
 // =====================================================================
 // ========== FUNCIÓN: POLÍTICAS PÁGINA 2 (puntos 8 al 13) ============
 // =====================================================================
-function _drawPoliciesPage2(doc, booking, hasLogo, logoPath, formatDateFull, guestFirstName, guestLastName) {
+function _drawPoliciesPage2(doc, booking, hasLogo, logoPath, formatDateFull, guestFirstName, guestLastName, signatureBase64) {
   const pageWidth = 532;
   const leftMargin = 40;
 
@@ -812,44 +689,82 @@ function _drawPoliciesPage2(doc, booking, hasLogo, logoPath, formatDateFull, gue
 
   currentY += 8;
 
-  // Declaración final (SIN FIRMA)
+  // ===== FIRMA DEL HUÉSPED EN PÁGINA 3 =====
+  const signatureY = currentY + 10;
+  const signatureBoxH = 110;
+  const signatureBoxW = 394;
+  
+  doc.rect(leftMargin, signatureY, signatureBoxW, signatureBoxH).stroke();
+
+  doc.fontSize(10).font('Helvetica-Bold')
+     .text('FIRMA FINAL DEL HUÉSPED', leftMargin, signatureY + 5, {
+       align: 'center',
+       width: signatureBoxW
+     });
+
+  if (signatureBase64) {
+    try {
+      const base64Data = signatureBase64.replace(/^data:image\/\w+;base64,/, '');
+      const signatureBuffer = Buffer.from(base64Data, 'base64');
+      doc.image(signatureBuffer, leftMargin + 20, signatureY + 20, {
+        width: signatureBoxW - 40,
+        height: 45,
+        align: 'center'
+      });
+    } catch (err) {
+      console.error('Error al cargar firma en página 3:', err);
+      doc.fontSize(9).font('Helvetica-Oblique')
+         .text('(Firma no disponible)', leftMargin + 20, signatureY + 40, {
+           align: 'center',
+           width: signatureBoxW - 40
+         });
+    }
+  } else {
+    doc.fontSize(9).font('Helvetica-Oblique')
+       .text('(Sin firma)', leftMargin + 20, signatureY + 40, {
+         align: 'center',
+         width: signatureBoxW - 40
+       });
+  }
+
+  doc.moveTo(leftMargin + 20, signatureY + 70).lineTo(leftMargin + signatureBoxW - 20, signatureY + 70).stroke();
+
   doc.fontSize(8).font('Helvetica')
-     .text(
-       'Declaro haber leído y aceptado las políticas de estancia de La Capilla Hotel, así como mi responsabilidad sobre el cumplimiento de las mismas.',
-       leftMargin, currentY,
-       { width: pageWidth, align: 'justify' }
-     );
+     .text('Firma del huésped', leftMargin + 20, signatureY + 72, {
+       align: 'center',
+       width: signatureBoxW - 40
+     });
 
   // ===== PIE DE PÁGINA PÁGINA 3 =====
-  const footerY = currentY + 25;
-  const footerH = 75;
+  const footerY = signatureY + signatureBoxH + 10;
+  const footerH = 65;
   const remainingSpace = 792 - 40 - footerY;
 
   if (remainingSpace >= footerH) {
     doc.rect(leftMargin, footerY, pageWidth, footerH).stroke();
 
     if (hasLogo) {
-      doc.image(logoPath, leftMargin + 10, footerY + 8, { width: 140 }); // Logo más grande también en página 3
+      doc.image(logoPath, leftMargin + 10, footerY + 8, { width: 60 });
     }
 
-    doc.fontSize(10).font('Helvetica-Bold')
-       .text('LA CAPILLA HOTEL', leftMargin + 85, footerY + 10, {
+    doc.fontSize(9).font('Helvetica-Bold')
+       .text('LA CAPILLA HOTEL', leftMargin + 75, footerY + 8, {
          align: 'center',
-         width: pageWidth - 85
+         width: pageWidth - 75
        });
 
-    doc.fontSize(8).font('Helvetica')
-       .text('Dolores Hidalgo – San Miguel de Allende 378/4, El Durazno Gto. Ciudad de', leftMargin + 85, footerY + 24, {
+    doc.fontSize(7).font('Helvetica')
+       .text('Dolores Hidalgo – San Miguel de Allende 378/4, El Durazno Gto. Ciudad de', leftMargin + 75, footerY + 22, {
          align: 'center',
-         width: pageWidth - 85
+         width: pageWidth - 75
        })
-       .text('los 80, a 2 horas de la Ciudad de México y 45 minutos de San Miguel de Allende.', leftMargin + 85, footerY + 36, {
+       .text('los 80, a 2 horas de la Ciudad de México y 45 minutos de San Miguel de Allende.', leftMargin + 75, footerY + 32, {
          align: 'center',
-         width: pageWidth - 85
+         width: pageWidth - 75
        })
-       .text('Cel. 413 117 00 99 | Email: reservaciones@hotelacapilla.com | www.hotelacapilla.com', leftMargin + 85, footerY + 52, {
+       .text('Cel. 413 117 00 99 | Email: reservaciones@hotelacapilla.com | www.hotelacapilla.com', leftMargin + 75, footerY + 44, {
          align: 'center',
-         width: pageWidth - 85
+         width: pageWidth - 75
        });
   }
 }
