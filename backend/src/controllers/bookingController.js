@@ -6,6 +6,31 @@ const DiscountCode = require('../models/DiscountCode');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { generateAndSendVoucher, generateAndSendMultipleVouchers } = require('../services/pdfService');
 const { generateCheckinPDF } = require('../services/checkinPdfService');
+const crypto = require('crypto');
+
+const CHECKIN_SIGNATURE_SECRET = process.env.CHECKIN_SIGNATURE_SECRET || 'change-me-before-production';
+const CHECKIN_SIGNATURE_KEY = crypto.createHash('sha256').update(CHECKIN_SIGNATURE_SECRET).digest();
+
+function encryptSignature(signatureBase64) {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', CHECKIN_SIGNATURE_KEY, iv);
+  const encrypted = Buffer.concat([cipher.update(signatureBase64, 'utf8'), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+  return {
+    encrypted: encrypted.toString('base64'),
+    iv: iv.toString('base64'),
+    authTag: authTag.toString('base64'),
+  };
+}
+
+function decryptSignature(encryptedBase64, ivBase64, authTagBase64) {
+  const iv = Buffer.from(ivBase64, 'base64');
+  const authTag = Buffer.from(authTagBase64, 'base64');
+  const decipher = crypto.createDecipheriv('aes-256-gcm', CHECKIN_SIGNATURE_KEY, iv);
+  decipher.setAuthTag(authTag);
+  const decrypted = Buffer.concat([decipher.update(Buffer.from(encryptedBase64, 'base64')), decipher.final()]);
+  return decrypted.toString('utf8');
+}
 
 // ─────────────────────────────────────────────
 // FUNCIONES AUXILIARES
@@ -1580,6 +1605,18 @@ exports.generateCheckin = async (req, res, next) => {
       return res.status(404).json({ message: 'Reserva no encontrada' });
     }
 
+    const encrypted = encryptSignature(signature);
+    booking.checkinSignatureEncrypted = encrypted.encrypted;
+    booking.checkinSignatureIV = encrypted.iv;
+    booking.checkinSignatureAuthTag = encrypted.authTag;
+    booking.checkinCity = ciudad;
+    booking.checkinState = estado;
+    booking.checkinIncludeBreakfast = breakfastBoolean;
+    booking.checkinSignedAt = new Date();
+    booking.checkinSignedBy = req.user?.email || 'unknown';
+    booking.updatedAt = Date.now();
+    await booking.save();
+
     try {
       const pdfBuffer = await generateCheckinPDF(
         booking,
@@ -1602,6 +1639,52 @@ exports.generateCheckin = async (req, res, next) => {
     }
   } catch (error) {
     console.error('Error en generateCheckin:', error);
+    next(error);
+  }
+};
+
+exports.getSignedCheckins = async (req, res, next) => {
+  try {
+    const signedRecords = await Booking.find({ checkinSignatureEncrypted: { $exists: true, $ne: null } })
+      .sort({ checkinSignedAt: -1 })
+      .select('bookingId roomName guestInfo checkIn checkOut totalPrice paymentStatus status checkinSignedAt checkinSignedBy');
+
+    res.json(signedRecords);
+  } catch (error) {
+    console.error('Error obteniendo check-ins firmados:', error);
+    next(error);
+  }
+};
+
+exports.downloadSignedCheckin = async (req, res, next) => {
+  try {
+    const { bookingId } = req.params;
+    const booking = await Booking.findOne({ bookingId });
+    if (!booking) {
+      return res.status(404).json({ message: 'Reserva no encontrada' });
+    }
+    if (!booking.checkinSignatureEncrypted || !booking.checkinSignatureIV || !booking.checkinSignatureAuthTag) {
+      return res.status(404).json({ message: 'Check-in firmado no encontrado para esta reserva' });
+    }
+    const signature = decryptSignature(
+      booking.checkinSignatureEncrypted,
+      booking.checkinSignatureIV,
+      booking.checkinSignatureAuthTag
+    );
+
+    const pdfBuffer = await generateCheckinPDF(
+      booking,
+      signature,
+      booking.checkinCity || '',
+      booking.checkinState || '',
+      Boolean(booking.checkinIncludeBreakfast)
+    );
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="SignedCheckin_${bookingId}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error('Error descargando check-in firmado:', error);
     next(error);
   }
 };
