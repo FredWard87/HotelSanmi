@@ -1689,6 +1689,41 @@ exports.downloadSignedCheckin = async (req, res, next) => {
   }
 };
 
+// Eliminar check-in firmado guardado
+exports.deleteSignedCheckin = async (req, res, next) => {
+  try {
+    const { bookingId } = req.params;
+    const booking = await Booking.findOne({ bookingId });
+    if (!booking) {
+      return res.status(404).json({ message: 'Reserva no encontrada' });
+    }
+    if (!booking.checkinSignatureEncrypted) {
+      return res.status(404).json({ message: 'No hay check-in firmado para eliminar' });
+    }
+
+    // Limpiar todos los campos relacionados con el check-in
+    booking.checkinSignatureEncrypted = null;
+    booking.checkinSignatureIV = null;
+    booking.checkinSignatureAuthTag = null;
+    booking.checkinCity = null;
+    booking.checkinState = null;
+    booking.checkinIncludeBreakfast = null;
+    booking.checkinSignedAt = null;
+    booking.checkinSignedBy = null;
+
+    await booking.save();
+
+    res.json({ 
+      success: true,
+      message: 'Check-in firmado eliminado correctamente',
+      bookingId 
+    });
+  } catch (error) {
+    console.error('Error eliminando check-in firmado:', error);
+    next(error);
+  }
+};
+
 exports.downloadVoucher = async (req, res, next) => {
   try {
     const { bookingId } = req.params;
@@ -1843,6 +1878,7 @@ module.exports = {
   generateCheckin: exports.generateCheckin,
   getSignedCheckins: exports.getSignedCheckins,
   downloadSignedCheckin: exports.downloadSignedCheckin,
+  deleteSignedCheckin: exports.deleteSignedCheckin,
   downloadVoucher: exports.downloadVoucher,
   resendBookingEmail: exports.resendBookingEmail,
   sendTestEmailToExistingBooking: exports.sendTestEmailToExistingBooking,
