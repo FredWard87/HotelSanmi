@@ -47,11 +47,9 @@ router.get('/download/:bookingId', async (req, res, next) => {
 router.post('/', optionalAuth, bookingController.createBooking);
 router.post('/bulk', optionalAuth, bookingController.createBulkBookings);
 
-// Obtener detalles de reserva (puede ser pública o protegida)
-router.get('/:bookingId', optionalAuth, bookingController.getBooking);
-
 // ====================================
-// RUTAS PROTEGIDAS (requieren autenticación)
+// RUTAS PROTEGIDAS ESPECÍFICAS (SIN PARAMS)
+// Deben ir ANTES que /:bookingId para que Express las matchee correctamente
 // ====================================
 
 // Obtener todas las reservas (admin/employee)
@@ -62,6 +60,16 @@ router.get('/stats', protect, bookingController.getBookingStats);
 
 // Obtener estadísticas de códigos de descuento (admin/employee)
 router.get('/stats/discount-codes', protect, bookingController.getDiscountCodeUsageStats);
+
+// Listar check-ins firmados (admin/employee)
+router.get('/signed-checkins', protect, bookingController.getSignedCheckins);
+
+// ====================================
+// RUTAS PROTEGIDAS CON PARÁMETROS
+// ====================================
+
+// Generar documento de check-in con firma (admin/employee)
+router.post('/generate-checkin/:bookingId', protect, bookingController.generateCheckin);
 
 // Actualizar reserva (admin/employee)
 router.patch('/:bookingId', protect, bookingController.updateBooking);
@@ -75,14 +83,11 @@ router.post('/:bookingId/resend-voucher', protect, bookingController.resendBooki
 // Cancelar reserva (admin/employee)
 router.delete('/:bookingId/cancel', protect, bookingController.cancelBooking);
 
-// Generar documento de check-in con firma (admin/employee)
-router.post('/generate-checkin/:bookingId', protect, bookingController.generateCheckin);
-
-// Listar check-ins firmados (admin/employee)
-router.get('/signed-checkins', protect, bookingController.getSignedCheckins);
-
 // Descargar PDF de check-in firmado guardado (admin/employee)
 router.get('/:bookingId/checkin/pdf', protect, bookingController.downloadSignedCheckin);
+
+// Obtener detalles de reserva (puede ser pública o protegida) — AL FINAL
+router.get('/:bookingId', optionalAuth, bookingController.getBooking);
 
 // ====================================
 // RUTA DE PRUEBA: Enviar email de segundo pago
