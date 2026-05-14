@@ -35,6 +35,15 @@ const BookingSchema = new mongoose.Schema({
   stripeChargeId: { type: String },
   secondNightNoteId: { type: String }, // ID de la nota para segunda noche
   secondNightNotePaid: { type: Boolean, default: false },
+  // Fields for encrypted signed check-in
+  checkinSignatureEncrypted: { type: String, default: null },
+  checkinSignatureIV: { type: String, default: null },
+  checkinSignatureAuthTag: { type: String, default: null },
+  checkinCity: { type: String, default: null },
+  checkinState: { type: String, default: null },
+  checkinIncludeBreakfast: { type: Boolean, default: false },
+  checkinSignedAt: { type: Date, default: null },
+  checkinSignedBy: { type: String, default: null },
   // status: active | cancelled
   status: { type: String, enum: ['active', 'cancelled'], default: 'active' },
   createdAt: { type: Date, default: Date.now },
