@@ -86,6 +86,9 @@ router.delete('/:bookingId/cancel', protect, bookingController.cancelBooking);
 // Descargar PDF de check-in firmado guardado (admin/employee)
 router.get('/:bookingId/checkin/pdf', protect, bookingController.downloadSignedCheckin);
 
+// Eliminar check-in firmado guardado (admin/employee)
+router.delete('/:bookingId/checkin', protect, bookingController.deleteSignedCheckin);
+
 // Obtener detalles de reserva (puede ser pública o protegida) — AL FINAL
 router.get('/:bookingId', optionalAuth, bookingController.getBooking);
 
