@@ -1579,6 +1579,42 @@ exports.markSecondNightPaid = async (req, res, next) => {
   }
 };
 
+exports.unmarkSecondNightPaid = async (req, res, next) => {
+  try {
+    const { bookingId } = req.params;
+    const booking = await Booking.findOne({ bookingId });
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found', message: 'Reserva no encontrada' });
+    }
+
+    if (!booking.secondNightPaid && !booking.secondNightNotePaid) {
+      return res.status(400).json({ message: 'La segunda noche no está marcada como pagada' });
+    }
+
+    if (booking.secondNightPayment === 0) {
+      return res.status(400).json({ message: 'Esta reserva no tiene pago de segunda noche pendiente' });
+    }
+
+    booking.secondNightPaid = false;
+    booking.secondNightNotePaid = false;
+    booking.paymentStatus = booking.initialPayment < booking.totalPrice ? 'partial' : 'completed';
+    booking.updatedAt = Date.now();
+
+    await booking.save();
+    await booking.populate('roomId', 'name type totalUnits');
+    await booking.populate('discountCodeId', 'code description');
+
+    res.json({
+      success: true,
+      message: '✅ Pago de segunda noche anulado. La reserva vuelve a estado parcial.',
+      booking
+    });
+  } catch (error) {
+    console.error('Error al anular pago de segunda noche:', error);
+    next(error);
+  }
+};
+
 exports.generateCheckin = async (req, res, next) => {
   try {
     const { bookingId } = req.params;
@@ -1879,6 +1915,7 @@ module.exports = {
   getSignedCheckins: exports.getSignedCheckins,
   downloadSignedCheckin: exports.downloadSignedCheckin,
   deleteSignedCheckin: exports.deleteSignedCheckin,
+  unmarkSecondNightPaid: exports.unmarkSecondNightPaid,
   downloadVoucher: exports.downloadVoucher,
   resendBookingEmail: exports.resendBookingEmail,
   sendTestEmailToExistingBooking: exports.sendTestEmailToExistingBooking,
