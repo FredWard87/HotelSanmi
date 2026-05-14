@@ -335,19 +335,25 @@ async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, incl
         }).format(amount || 0);
       };
 
+      const anticipoAmount = Number(booking.initialPayment || 0);
+      const totalAmount = Number(booking.totalPrice || 0);
+      const pendingAmount = Math.max(0, totalAmount - anticipoAmount);
+      const isPaymentComplete = booking.paymentStatus === 'completed' || booking.secondNightNotePaid;
+
       doc.fontSize(12).font('Helvetica-Bold')
-         .text(formatCurrency(booking.totalPrice || 0), colTotal, importMidY + 12, {
+         .text(formatCurrency(totalAmount), colTotal, importMidY + 12, {
            width: colTotalW,
            align: 'center'
          });
 
-      const isPaymentComplete = booking.paymentStatus === 'completed' || booking.secondNightNotePaid;
+      doc.fontSize(12).font('Helvetica-Bold')
+         .text(formatCurrency(anticipoAmount), colAnticipo, importMidY + 12, {
+           width: colAnticipoW,
+           align: 'center'
+         });
+
       if (isPaymentComplete) {
         doc.fontSize(12)
-           .text('-', colAnticipo, importMidY + 12, {
-             width: colAnticipoW,
-             align: 'center'
-           })
            .text('PAGADO', colSaldo, importMidY + 5, {
              width: colSaldoW,
              align: 'center'
@@ -359,11 +365,7 @@ async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, incl
            });
       } else {
         doc.fontSize(12)
-           .text('-', colAnticipo, importMidY + 12, {
-             width: colAnticipoW,
-             align: 'center'
-           })
-           .text('-', colSaldo, importMidY + 12, {
+           .text(formatCurrency(pendingAmount), colSaldo, importMidY + 12, {
              width: colSaldoW,
              align: 'center'
            });
