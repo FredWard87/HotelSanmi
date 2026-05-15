@@ -8,7 +8,7 @@ const { generateAndSendVoucher, generateAndSendMultipleVouchers } = require('../
 const { generateCheckinPDF } = require('../services/checkinPdfService');
 const crypto = require('crypto');
 
-const CHECKIN_SIGNATURE_SECRET = process.env.CHECKIN_SIGNATURE_SECRET;
+const CHECKIN_SIGNATURE_SECRET = process.env.CHECKIN_SIGNATURE_SECRET || 'change-me-before-production';
 const CHECKIN_SIGNATURE_KEY = crypto.createHash('sha256').update(CHECKIN_SIGNATURE_SECRET).digest();
 
 function encryptSignature(signatureBase64) {
@@ -91,7 +91,7 @@ function formatMXN(amount) {
 // ─────────────────────────────────────────────
 
 async function checkRoomAvailabilityInternal(roomId, startDate, endDate, options = {}) {
-  const { ignoreBlocks = false } = options;
+  const { ignoreBlocks = false, ignoreBookings = false } = options;
 
   const room = await Room.findById(roomId);
   if (!room) {
@@ -108,7 +108,7 @@ async function checkRoomAvailabilityInternal(roomId, startDate, endDate, options
   const start = formatDateWithTimezone(startDate);
   const end = formatDateWithTimezone(endDate);
 
-  const overlappingBookings = await Booking.countDocuments({
+  const overlappingBookings = ignoreBookings ? 0 : await Booking.countDocuments({
     roomId: room._id,
     status: 'active',
     $or: [
@@ -805,11 +805,19 @@ exports.createBooking = async (req, res, next) => {
     }
 
     const shouldIgnoreBlocks = isAdmin || hasValidDiscountCode;
+    const shouldIgnoreBookings = isAdmin;
 
-    if (isAdmin) console.log('🔓 ADMIN DETECTADO - IGNORANDO BLOQUEOS DE HABITACIÓN');
-    if (hasValidDiscountCode) console.log('🔓 CÓDIGO DE DESCUENTO VÁLIDO - IGNORANDO BLOQUEOS');
+    if (isAdmin) {
+      console.log('🔓 ADMIN DETECTADO - IGNORANDO DISPONIBILIDAD Y BLOQUEOS DE HABITACIÓN');
+    }
+    if (hasValidDiscountCode) {
+      console.log('🔓 CÓDIGO DE DESCUENTO VÁLIDO - IGNORANDO BLOQUEOS');
+    }
 
-    const availability = await checkRoomAvailabilityInternal(roomId, startDate, endDate, { ignoreBlocks: shouldIgnoreBlocks });
+    const availability = await checkRoomAvailabilityInternal(roomId, startDate, endDate, {
+      ignoreBlocks: shouldIgnoreBlocks,
+      ignoreBookings: shouldIgnoreBookings,
+    });
 
     if (!availability.available) {
       let message = `No disponible para estas fechas`;
@@ -833,6 +841,9 @@ exports.createBooking = async (req, res, next) => {
       });
     }
 
+    if (shouldIgnoreBookings && availability.bookedUnits > 0) {
+      console.log(`⚠️ ADMIN OVERRIDE: Se ignoraron ${availability.bookedUnits} unidades reservadas`);
+    }
     if (shouldIgnoreBlocks && availability.blockedUnits > 0) {
       console.log(`⚠️ ADMIN OVERRIDE: Se ignoraron ${availability.blockedUnits} unidades bloqueadas`);
     }
@@ -1132,7 +1143,10 @@ exports.createBulkBookings = async (req, res, next) => {
         });
       }
 
-      const availability = await checkRoomAvailabilityInternal(roomId, startDate, endDate, { ignoreBlocks: isAdmin });
+      const availability = await checkRoomAvailabilityInternal(roomId, startDate, endDate, {
+        ignoreBlocks: isAdmin,
+        ignoreBookings: isAdmin,
+      });
 
       if (!availability.available) {
         let message = `Reserva ${index + 1} no disponible para estas fechas`;
