@@ -44,8 +44,15 @@ const BookingSchema = new mongoose.Schema({
   checkinIncludeBreakfast: { type: Boolean, default: false },
   checkinSignedAt: { type: Date, default: null },
   checkinSignedBy: { type: String, default: null },
-  // status: active | cancelled
-  status: { type: String, enum: ['active', 'cancelled'], default: 'active' },
+  // status: active | cancelled | partial
+  status: {
+    type: String,
+    enum: {
+      values: ['active', 'cancelled', 'partial'],
+      message: '{VALUE} no es un estado válido. Usa: active, cancelled o partial'
+    },
+    default: 'active'
+  },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });
