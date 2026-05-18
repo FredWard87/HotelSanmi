@@ -363,7 +363,8 @@ async function sendCancellationEmail(booking, refundResult = null) {
 
 exports.getAllBookings = async (req, res, next) => {
   try {
-    const { status, startDate, endDate, limit = 100 } = req.query;
+    const { status, startDate, endDate, limit } = req.query;
+    const isAdmin = req.user && req.user.role === 'admin';
 
     const filter = {};
 
@@ -378,22 +379,30 @@ exports.getAllBookings = async (req, res, next) => {
       filter.checkOut = { $lte: end };
     }
 
-    console.log('[getAllBookings] user:', req.user?.email || 'anon', '| filter:', JSON.stringify(filter), '| limit:', limit);
+    console.log('[getAllBookings] user:', req.user?.email || 'anon', '| filter:', JSON.stringify(filter), '| limit:', limit || (isAdmin ? 'sin límite' : '500'));
 
-    const bookings = await Booking.find(filter)
+    const query = Booking.find(filter)
       .populate('roomId', 'name type totalUnits')
       .populate('discountCodeId', 'code description discountType discountValue')
-      .sort({ createdAt: -1 })
-      .limit(Number(limit));
+      .sort({ createdAt: -1 });
+
+    // Si se pasa limit explícito en query params, usarlo
+    // Si es admin sin limit explícito → sin límite (trae todas)
+    // Si no es admin sin limit explícito → límite de 500
+    if (limit !== undefined && limit !== null && limit !== '') {
+      query.limit(Number(limit));
+    } else if (!isAdmin) {
+      query.limit(500);
+    }
+    // admin sin limit explícito → sin .limit() → trae todas
+
+    const bookings = await query;
 
     console.log('[getAllBookings] → returning', bookings.length, 'bookings');
-    // Debug: log Ellen's bookingId if present
+
     const ellen = bookings.find(b => b.bookingId === 'LC-2026-378565JM1');
     console.log('[getAllBookings] Ellen booking found?', !!ellen,
       ellen ? `| status:${ellen.status} | roomName:${ellen.roomName}` : '');
-    if (bookings.length < 5) {
-      bookings.forEach(b => console.log('  ←', b.bookingId, '| status:', b.status, '| roomName:', b.roomName));
-    }
 
     res.json(bookings);
   } catch (error) {
@@ -765,7 +774,7 @@ exports.createBooking = async (req, res, next) => {
       specialRequests,
       discountCode,
       chargeFullPrice,
-      isFree,           // ✅ FIX: leer isFree del body
+      isFree,
     } = req.body;
 
     console.log('=== CREANDO RESERVA ===');
@@ -870,9 +879,7 @@ exports.createBooking = async (req, res, next) => {
     let finalTax;
     let finalMunicipalTax;
 
-    // ✅ FIX: manejar isFree y totalPrice === 0 correctamente
     if (isFree === true) {
-      // Reserva gratuita — precio cero, sin impuestos
       finalTotal = 0;
       isPrecioManual = true;
       finalSubtotal = 0;
@@ -880,7 +887,6 @@ exports.createBooking = async (req, res, next) => {
       finalMunicipalTax = 0;
       console.log('🎁 Reserva GRATUITA detectada — precio: $0.00');
     } else if (isAdmin && typeof totalPrice === 'number' && totalPrice > 0) {
-      // Precio manual ingresado por admin
       finalTotal = totalPrice;
       isPrecioManual = true;
       finalSubtotal = totalPrice;
@@ -889,7 +895,6 @@ exports.createBooking = async (req, res, next) => {
       console.log('💰 Usando PRECIO MANUAL (sin impuestos):');
       console.log('  - Total recibido:', finalTotal);
     } else {
-      // Precio automático
       finalTotal = originalTotal;
 
       if (discountCode && discountCode.trim()) {
@@ -943,7 +948,6 @@ exports.createBooking = async (req, res, next) => {
     let initialPayment, secondNightPayment;
     const adminAdvancePayment = advancePayment && advancePayment > 0 ? advancePayment : null;
 
-    // ✅ FIX: reserva gratuita → pagos en cero, marcada como completa
     if (isFree === true) {
       initialPayment = 0;
       secondNightPayment = 0;
@@ -987,7 +991,6 @@ exports.createBooking = async (req, res, next) => {
         });
       }
     } else {
-      // ✅ FIX: reserva gratuita → completed automáticamente
       if (isFree === true) {
         paymentStatus = 'completed';
         console.log('🎁 Reserva gratuita — paymentStatus: completed');
@@ -1361,7 +1364,6 @@ exports.updateBooking = async (req, res, next) => {
       const newCheckIn = formatDateWithTimezone(checkIn || booking.checkIn);
       const newCheckOut = formatDateWithTimezone(checkOut || booking.checkOut);
 
-      // Skip availability check for admin to allow overriding any constraints
       if (!isAdmin) {
         const availability = await checkRoomAvailabilityInternal(newRoomId, newCheckIn, newCheckOut, { ignoreBlocks: shouldIgnoreBlocks });
 
@@ -1383,7 +1385,6 @@ exports.updateBooking = async (req, res, next) => {
           booking.roomName = availability.room.name;
         }
       } else {
-        // For admin, we still need to validate the room exists if changing room
         if (roomId && roomId !== booking.roomId.toString()) {
           const room = await Room.findById(newRoomId);
           if (!room) {
@@ -1645,7 +1646,6 @@ exports.generateCheckin = async (req, res, next) => {
     const { bookingId } = req.params;
     const rawBody = req.body || {};
 
-    // SOLO una firma ahora
     const signature = sanitizeValue(rawBody.signature);
     const ciudad = sanitizeValue(rawBody.ciudad);
     const estado = sanitizeValue(rawBody.estado);
@@ -1750,7 +1750,6 @@ exports.downloadSignedCheckin = async (req, res, next) => {
   }
 };
 
-// Eliminar check-in firmado guardado
 exports.deleteSignedCheckin = async (req, res, next) => {
   try {
     const { bookingId } = req.params;
@@ -1762,7 +1761,6 @@ exports.deleteSignedCheckin = async (req, res, next) => {
       return res.status(404).json({ message: 'No hay check-in firmado para eliminar' });
     }
 
-    // Limpiar todos los campos relacionados con el check-in
     booking.checkinSignatureEncrypted = null;
     booking.checkinSignatureIV = null;
     booking.checkinSignatureAuthTag = null;
@@ -1774,10 +1772,10 @@ exports.deleteSignedCheckin = async (req, res, next) => {
 
     await booking.save();
 
-    res.json({ 
+    res.json({
       success: true,
       message: 'Check-in firmado eliminado correctamente',
-      bookingId 
+      bookingId
     });
   } catch (error) {
     console.error('Error eliminando check-in firmado:', error);
