@@ -166,27 +166,15 @@ DiscountCodeSchema.methods.calculateFinalPrice = function(originalTotal, nights 
   console.log('  - this.finalPrice:', this.finalPrice);
   console.log('  - pricePerNight:', pricePerNight);
   console.log('  - nights:', nights);
-  
-  // Si chargeFullPrice es true, cobrar todas las noches
-  // Si es false (default), solo cobrar la primera noche (2 noches por precio de 1)
-  if (this.chargeFullPrice === true) {
-    console.log('  → Cobrando precio completo:', this.finalPrice);
-    // Cobrar el precio fijo por todas las noches
-    return this.finalPrice;
-  }
-  
-  // Comportamiento default: solo cobrar primera noche (precio de 1 noche)
-  // El finalPrice ya representa el precio total para 2 noches
-  // Pero si el usuario reserva 2 noches, solo cobramos 1 noche
-  const firstNightPrice = pricePerNight > 0 ? pricePerNight : (this.finalPrice / nights);
-  console.log('  → Cobrando solo primera noche:', firstNightPrice);
-  return firstNightPrice;
+
+  // Comportamiento default: el finalPrice ya representa el precio total para 2 noches
+  // (sin necesidad de dividir por noches, el admin ya configuró el precio total correcto)
+  return this.finalPrice;
 };
 
 // 🆕 SIMPLIFICADO: Calcular descuento aplicado
 DiscountCodeSchema.methods.calculateDiscountAmount = function(originalTotal, nights = 2, pricePerNight = 0) {
-  const finalPrice = this.calculateFinalPrice(originalTotal, nights, pricePerNight);
-  return originalTotal - finalPrice;
+  return originalTotal - this.finalPrice;
 };
 
 module.exports = mongoose.model('DiscountCode', DiscountCodeSchema);
