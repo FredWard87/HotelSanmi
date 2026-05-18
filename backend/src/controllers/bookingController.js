@@ -378,15 +378,26 @@ exports.getAllBookings = async (req, res, next) => {
       filter.checkOut = { $lte: end };
     }
 
+    console.log('[getAllBookings] user:', req.user?.email || 'anon', '| filter:', JSON.stringify(filter), '| limit:', limit);
+
     const bookings = await Booking.find(filter)
       .populate('roomId', 'name type totalUnits')
       .populate('discountCodeId', 'code description discountType discountValue')
       .sort({ createdAt: -1 })
       .limit(Number(limit));
 
+    console.log('[getAllBookings] → returning', bookings.length, 'bookings');
+    // Debug: log Ellen's bookingId if present
+    const ellen = bookings.find(b => b.bookingId === 'LC-2026-378565JM1');
+    console.log('[getAllBookings] Ellen booking found?', !!ellen,
+      ellen ? `| status:${ellen.status} | roomName:${ellen.roomName}` : '');
+    if (bookings.length < 5) {
+      bookings.forEach(b => console.log('  ←', b.bookingId, '| status:', b.status, '| roomName:', b.roomName));
+    }
+
     res.json(bookings);
   } catch (error) {
-    console.error('Error al obtener reservas:', error);
+    console.error('[getAllBookings] ERROR:', error);
     next(error);
   }
 };
