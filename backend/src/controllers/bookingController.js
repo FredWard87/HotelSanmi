@@ -8,7 +8,7 @@ const { generateAndSendVoucher, generateAndSendMultipleVouchers } = require('../
 const { generateCheckinPDF } = require('../services/checkinPdfService');
 const crypto = require('crypto');
 
-const CHECKIN_SIGNATURE_SECRET = process.env.CHECKIN_SIGNATURE_SECRET || 'change-me-before-production';
+const CHECKIN_SIGNATURE_SECRET = process.env.CHECKIN_SIGNATURE_SECRET;
 const CHECKIN_SIGNATURE_KEY = crypto.createHash('sha256').update(CHECKIN_SIGNATURE_SECRET).digest();
 
 function encryptSignature(signatureBase64) {
@@ -1212,28 +1212,33 @@ exports.createBulkBookings = async (req, res, next) => {
         finalTotal = finalSubtotal + finalTax + finalMunicipalTax;
       }
 
-      const advance = advancePayment && !Number.isNaN(Number(advancePayment)) ? Number(advancePayment) : 0;
-      let initialPayment;
-      let secondNightPayment;
-      let paymentStatus = 'pending';
+       const advance = advancePayment && !Number.isNaN(Number(advancePayment)) ? Number(advancePayment) : 0;
+       let initialPayment;
+       let secondNightPayment;
+       let paymentStatus = 'pending';
 
-      if (isFree === true || String(manualPrice).trim().toLowerCase() === 'gratis') {
-        initialPayment = 0;
-        secondNightPayment = 0;
-        paymentStatus = 'completed';
-      } else if (Number(nights) === 1) {
-        initialPayment = finalTotal;
-        secondNightPayment = 0;
-        paymentStatus = 'completed';
-      } else if (advance > 0) {
-        initialPayment = Math.min(advance, finalTotal);
-        secondNightPayment = Math.max(0, finalTotal - initialPayment);
-        paymentStatus = initialPayment >= finalTotal ? 'completed' : 'partial';
-      } else {
-        initialPayment = finalTotal * 0.5;
-        secondNightPayment = finalTotal * 0.5;
-        paymentStatus = 'pending';
-      }
+       if (isFree === true || String(manualPrice).trim().toLowerCase() === 'gratis') {
+         initialPayment = 0;
+         secondNightPayment = 0;
+         paymentStatus = 'completed';
+       } else if (advance > 0) {
+         initialPayment = Math.min(advance, finalTotal);
+         secondNightPayment = Math.max(0, finalTotal - initialPayment);
+         paymentStatus = initialPayment >= finalTotal ? 'completed' : 'partial';
+       } else {
+         // No advance payment
+         if (Number(nights) === 1) {
+           // For 1-night stay: expect full payment at check-in
+           initialPayment = finalTotal;
+           secondNightPayment = 0;
+           paymentStatus = 'pending';
+         } else {
+           // For 2+ night stay: expect 50% deposit, 50% at check-in
+           initialPayment = finalTotal * 0.5;
+           secondNightPayment = finalTotal * 0.5;
+           paymentStatus = 'pending';
+         }
+       }
 
       const bookingId = generateBookingId();
       const finalRoomName = roomName && roomName.trim() !== '' ? roomName : availability.room.name;
