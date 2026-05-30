@@ -199,36 +199,42 @@ async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, incl
 
       const contentY = headerSplitY + 5;
 
-      const roomName = booking.roomName || '';
-      const roomMapping = {
-        'Standard': 'Standard',
-        'Standard Suite': 'Standard',
-        'Standard Deluxe': 'Standard',
-        'Junior Suite': 'Junior Suite',
-        'Master Suite': 'Master Suite',
-        'Cabaña': 'Cabaña',
-        'Cabaña Suite': 'Cabaña'
-      };
-      const roomType = roomMapping[roomName] || 'Junior Suite';
+       // Determine room type from the populated room object
+       const roomTypeEnum = booking.roomId?.type || 'STANDARD'; // Default to STANDARD if not available
+       let roomTypeDisplay;
+       switch (roomTypeEnum) {
+         case 'STANDARD':
+           roomTypeDisplay = 'Standard';
+           break;
+         case 'SUITE':
+           roomTypeDisplay = 'Junior Suite';
+           break;
+         case 'MASTER':
+           roomTypeDisplay = 'Master Suite';
+           break;
+         default:
+           roomTypeDisplay = 'Standard'; // fallback
+       }
 
-      const roomTypePositions = {
-        'Standard': colStandard + (colStandardW / 2) - 5,
-        'Junior Suite': colJunior + (colJuniorW / 2) - 5,
-        'Master Suite': colMaster + (colMasterW / 2) - 5,
-        'Cabaña': colCabana + (colCabanaW / 2) - 5
-      };
+       const roomTypePositions = {
+         'Standard': colStandard + (colStandardW / 2) - 5,
+         'Junior Suite': colJunior + (colJuniorW / 2) - 5,
+         'Master Suite': colMaster + (colMasterW / 2) - 5,
+         'Cabaña': colCabana + (colCabanaW / 2) - 5
+       };
 
-      const roomX = roomTypePositions[roomType] || roomTypePositions['Junior Suite'];
-      doc.fontSize(16).font('Helvetica-Bold')
-         .text('X', roomX, contentY + 15);
+       const roomX = roomTypePositions[roomTypeDisplay] || roomTypePositions['Standard'];
+       doc.fontSize(16).font('Helvetica-Bold')
+          .text('X', roomX, contentY + 15);
 
-      if (roomType === 'Junior Suite') {
-        doc.fontSize(8).font('Helvetica')
-           .text('(07)', colJunior, contentY + 32, {
-             width: colJuniorW,
-             align: 'center'
-           });
-      }
+       // Add room number notation for Junior Suite (keeping existing functionality)
+       if (roomTypeDisplay === 'Junior Suite') {
+         doc.fontSize(8).font('Helvetica')
+            .text('(07)', colJunior, contentY + 32, {
+              width: colJuniorW,
+              align: 'center'
+            });
+       }
 
       const formatDateSpanish = (date) => {
         if (!date) return '';
@@ -335,9 +341,9 @@ async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, incl
         }).format(amount || 0);
       };
 
-      const anticipoAmount = Number(booking.initialPayment || 0);
-      const totalAmount = Number(booking.totalPrice || 0);
-      const pendingAmount = Math.max(0, totalAmount - anticipoAmount);
+       const anticipoAmount = Number(booking.advancePayment || 0);
+       const totalAmount = Number(booking.totalPrice || 0);
+       const pendingAmount = Math.max(0, totalAmount - anticipoAmount);
       const isPaymentComplete = booking.paymentStatus === 'completed' || booking.secondNightNotePaid;
 
       doc.fontSize(12).font('Helvetica-Bold')
