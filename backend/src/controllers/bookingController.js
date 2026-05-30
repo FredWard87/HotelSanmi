@@ -1022,14 +1022,16 @@ exports.createBooking = async (req, res, next) => {
       municipalTax: finalMunicipalTax || 0,
       totalPrice: finalTotal,
       initialPayment,
-      secondNightPayment,
-      secondNightPaid: false,
+         secondNightPayment,
+         advancePayment: advance,
+         secondNightPaid: false,
       paymentStatus,
       paymentIntentId: paymentIntentId || null,
       stripePaymentIntentId: paymentIntentId || null,
       stripeChargeId: stripeChargeId || null,
-      secondNightNoteId: secondNightPayment > 0 ? `NOTE-${bookingId}-2ND-NIGHT` : null,
-      status: 'active',
+       secondNightNoteId: secondNightPayment > 0 ? `NOTE-${bookingId}-2ND-NIGHT` : null,
+       advancePayment: Number(advancePayment) || 0,
+       status: 'active',
       specialRequests: specialRequests || '',
       createdBy: req.user ? req.user._id : null,
       createdByRole: req.user ? req.user.role : 'guest',
@@ -1666,7 +1668,7 @@ exports.generateCheckin = async (req, res, next) => {
       return res.status(400).json({ message: 'Se requiere el estado' });
     }
 
-    const booking = await Booking.findOne({ bookingId });
+    const booking = await Booking.findOne({ bookingId }).populate('roomId');
     if (!booking) {
       return res.status(404).json({ message: 'Reserva no encontrada' });
     }
@@ -1723,10 +1725,10 @@ exports.getSignedCheckins = async (req, res, next) => {
 };
 
 exports.downloadSignedCheckin = async (req, res, next) => {
-  try {
-    const { bookingId } = req.params;
-    const booking = await Booking.findOne({ bookingId });
-    if (!booking) {
+   try {
+     const { bookingId } = req.params;
+     const booking = await Booking.findOne({ bookingId }).populate('roomId');
+     if (!booking) {
       return res.status(404).json({ message: 'Reserva no encontrada' });
     }
     if (!booking.checkinSignatureEncrypted || !booking.checkinSignatureIV || !booking.checkinSignatureAuthTag) {
