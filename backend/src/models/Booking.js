@@ -29,8 +29,9 @@ const BookingSchema = new mongoose.Schema({
   municipalTax: { type: Number, required: true }, // 4% Impuesto municipal
   totalPrice: { type: Number, required: true },
   initialPayment: { type: Number, required: true }, // 50% del total
-  secondNightPayment: { type: Number, required: true }, // 50% del total (a pagar en recepción)
-  paymentStatus: { type: String, enum: ['pending', 'completed', 'partial'], default: 'pending' },
+   secondNightPayment: { type: Number, required: true }, // 50% del total (a pagar en recepción)
+   advancePayment: { type: Number, default: 0 }, // Monto pagado por anticipo
+   paymentStatus: { type: String, enum: ['pending', 'completed', 'partial'], default: 'pending' },
   stripePaymentIntentId: { type: String },
   stripeChargeId: { type: String },
   secondNightNoteId: { type: String }, // ID de la nota para segunda noche
