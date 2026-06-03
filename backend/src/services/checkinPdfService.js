@@ -227,14 +227,7 @@ async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, incl
        doc.fontSize(16).font('Helvetica-Bold')
           .text('X', roomX, contentY + 15);
 
-       // Add room number notation for Junior Suite (keeping existing functionality)
-       if (roomTypeDisplay === 'Junior Suite') {
-         doc.fontSize(8).font('Helvetica')
-            .text('(07)', colJunior, contentY + 32, {
-              width: colJuniorW,
-              align: 'center'
-            });
-       }
+
 
       const formatDateSpanish = (date) => {
         if (!date) return '';
