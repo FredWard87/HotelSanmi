@@ -334,8 +334,10 @@ async function generateCheckinPDF(booking, signatureBase64, ciudad, estado, incl
         }).format(amount || 0);
       };
 
-       const anticipoAmount = Number(booking.advancePayment || 0);
        const totalAmount = Number(booking.totalPrice || 0);
+       // initialPayment represents the advance/deposit paid before check-in
+       // advancePayment (new field) would be used for payments made separately, but for now use initialPayment
+       const anticipoAmount = Number(booking.advancePayment || booking.initialPayment || 0);
        const pendingAmount = Math.max(0, totalAmount - anticipoAmount);
       const isPaymentComplete = booking.paymentStatus === 'completed' || booking.secondNightNotePaid;
 
