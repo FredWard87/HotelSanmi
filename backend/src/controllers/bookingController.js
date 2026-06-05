@@ -8,7 +8,7 @@ const { generateAndSendVoucher, generateAndSendMultipleVouchers } = require('../
 const { generateCheckinPDF } = require('../services/checkinPdfService');
 const crypto = require('crypto');
 
-const CHECKIN_SIGNATURE_SECRET = process.env.CHECKIN_SIGNATURE_SECRET;
+const CHECKIN_SIGNATURE_SECRET = process.env.CHECKIN_SIGNATURE_SECRET || 'change-me-before-production';
 const CHECKIN_SIGNATURE_KEY = crypto.createHash('sha256').update(CHECKIN_SIGNATURE_SECRET).digest();
 
 function encryptSignature(signatureBase64) {
@@ -1002,7 +1002,7 @@ exports.createBooking = async (req, res, next) => {
       }
     }
 
-    const bookingId = generateBookingId();
+const bookingId = generateBookingId();
 
     const newBooking = new Booking({
       bookingId,
@@ -1022,16 +1022,15 @@ exports.createBooking = async (req, res, next) => {
       municipalTax: finalMunicipalTax || 0,
       totalPrice: finalTotal,
       initialPayment,
-         secondNightPayment,
-         advancePayment: advance,
-         secondNightPaid: false,
+      secondNightPayment,
+      advancePayment: advance,
+      secondNightPaid: false,
       paymentStatus,
       paymentIntentId: paymentIntentId || null,
       stripePaymentIntentId: paymentIntentId || null,
       stripeChargeId: stripeChargeId || null,
-       secondNightNoteId: secondNightPayment > 0 ? `NOTE-${bookingId}-2ND-NIGHT` : null,
-       advancePayment: Number(advancePayment) || 0,
-       status: 'active',
+      secondNightNoteId: secondNightPayment > 0 ? `NOTE-${bookingId}-2ND-NIGHT` : null,
+      status: 'active',
       specialRequests: specialRequests || '',
       createdBy: req.user ? req.user._id : null,
       createdByRole: req.user ? req.user.role : 'guest',
@@ -1262,9 +1261,10 @@ exports.createBulkBookings = async (req, res, next) => {
         tax: finalTax,
         municipalTax: finalMunicipalTax,
         totalPrice: finalTotal,
-        initialPayment,
-        secondNightPayment,
-        secondNightPaid: false,
+initialPayment,
+         secondNightPayment,
+         advancePayment: advance,
+         secondNightPaid: false,
         paymentStatus,
         paymentIntentId: paymentIntentId || null,
         stripePaymentIntentId: paymentIntentId || null,
