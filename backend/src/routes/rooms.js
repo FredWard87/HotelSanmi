@@ -6,6 +6,9 @@ const adminRoomController = require('../controllers/adminRoomController');
 // GET /api/rooms -> list all rooms
 router.get('/', roomController.getRooms);
 
+// GET /api/rooms/available-rooms -> list rooms available for specific dates
+router.get('/available-rooms', roomController.getAvailableRooms);
+
 // POST /api/rooms/seed -> seed the database (development only)
 router.post('/seed', roomController.seed);
 
