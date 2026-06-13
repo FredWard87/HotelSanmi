@@ -1011,7 +1011,8 @@ exports.sendDiscountCodeWhatsApp = async (req, res) => {
       return res.status(400).json({ error: 'No guests', message: 'No hay huéspedes con número de WhatsApp registrado en las listas/grupos seleccionados' });
     }
 
-    console.log(`📱 Enviando código de descuento ${discountCode.code} a ${recipients.length} huéspedes...`);
+    const discountDesc = discountCode ? `código de descuento ${discountCode.code}` : 'precio preaprobado';
+    console.log(`📱 Enviando ${discountDesc} a ${recipients.length} huéspedes...`);
 
     // Enviar mensaje a cada huésped via WhatsApp
     const results = { total: recipients.length, sent: 0, failed: 0, errors: [] };
