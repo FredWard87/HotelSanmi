@@ -522,6 +522,76 @@ exports.getAssignmentDetails = async (req, res) => {
   }
 };
 
+// ADMIN: Guardar/actualizar grupos de fechas para una asignación
+exports.saveAssignmentGroups = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { groups } = req.body;
+
+    const assignment = await GuestAssignment.findById(id);
+    if (!assignment) return res.status(404).json({ error: 'Not found', message: 'Asignación no encontrada' });
+
+    // Validate minimal structure
+    if (!groups || !Array.isArray(groups)) {
+      return res.status(400).json({ error: 'Invalid', message: 'Groups debe ser un arreglo' });
+    }
+
+    assignment.dateGroups = groups.map(g => ({
+      id: g.id || (Date.now().toString()),
+      name: g.name || '',
+      start: g.start || '',
+      end: g.end || '',
+      pricing: g.pricing || {},
+      selectedGuests: g.selectedGuests || []
+    }));
+
+    await assignment.save();
+
+    res.json({ success: true, message: 'Grupos guardados', data: { dateGroups: assignment.dateGroups } });
+  } catch (error) {
+    console.error('Error saving groups:', error);
+    res.status(500).json({ error: 'Error', message: error.message });
+  }
+};
+
+// PUBLIC: Obtener información de un GuestPriceToken (validar precio preaprobado)
+exports.getGuestPriceToken = async (req, res) => {
+  try {
+    const { token } = req.params;
+    const GuestPriceToken = require('../models/GuestPriceToken');
+    const tokenDoc = await GuestPriceToken.findOne({ token });
+    if (!tokenDoc) return res.status(404).json({ error: 'Not found', message: 'Token no encontrado' });
+    if (tokenDoc.used) return res.status(400).json({ error: 'Used', message: 'Token ya fue usado' });
+    if (new Date() > new Date(tokenDoc.expiresAt)) return res.status(400).json({ error: 'Expired', message: 'Token expirado' });
+
+    res.json({ success: true, data: { price: tokenDoc.price, roomId: tokenDoc.roomId, guestName: tokenDoc.guestName, expiresAt: tokenDoc.expiresAt } });
+  } catch (error) {
+    console.error('Error getting guest price token:', error);
+    res.status(500).json({ error: 'Error', message: error.message });
+  }
+};
+
+// PUBLIC: Consumir un token (marcar como usado)
+exports.consumeGuestPriceToken = async (req, res) => {
+  try {
+    const { token } = req.params;
+    const GuestPriceToken = require('../models/GuestPriceToken');
+    const tokenDoc = await GuestPriceToken.findOne({ token });
+    if (!tokenDoc) return res.status(404).json({ error: 'Not found', message: 'Token no encontrado' });
+    if (tokenDoc.used) return res.status(400).json({ error: 'Used', message: 'Token ya fue usado' });
+    if (new Date() > new Date(tokenDoc.expiresAt)) return res.status(400).json({ error: 'Expired', message: 'Token expirado' });
+
+    tokenDoc.used = true;
+    tokenDoc.usedAt = new Date();
+    await tokenDoc.save();
+
+    res.json({ success: true, message: 'Token consumido' });
+  } catch (error) {
+    console.error('Error consuming guest price token:', error);
+    res.status(500).json({ error: 'Error', message: error.message });
+  }
+};
+
 // ADMIN: Reenviar email de invitación
 exports.resendInvitationEmail = async (req, res) => {
   try {
@@ -801,7 +871,9 @@ exports.saveAssignment = async (req, res) => {
           return {
             ...existingRoom,
             guestName: updatedRoom.guestName ? updatedRoom.guestName.trim() : '',
-            guestWhatsapp: updatedRoom.guestWhatsapp ? updatedRoom.guestWhatsapp.trim() : ''
+            guestWhatsapp: updatedRoom.guestWhatsapp ? updatedRoom.guestWhatsapp.trim() : '',
+            nights: updatedRoom.nights != null ? Number(updatedRoom.nights) : (existingRoom.nights || 1),
+            customPrice: updatedRoom.customPrice != null && updatedRoom.customPrice !== '' ? Number(updatedRoom.customPrice) : (existingRoom.customPrice != null ? existingRoom.customPrice : null)
           };
         }
         return existingRoom;
@@ -815,7 +887,9 @@ exports.saveAssignment = async (req, res) => {
           return {
             ...existingRoom,
             guestName: updatedRoom.guestName ? updatedRoom.guestName.trim() : '',
-            guestWhatsapp: updatedRoom.guestWhatsapp ? updatedRoom.guestWhatsapp.trim() : ''
+            guestWhatsapp: updatedRoom.guestWhatsapp ? updatedRoom.guestWhatsapp.trim() : '',
+            nights: updatedRoom.nights != null ? Number(updatedRoom.nights) : (existingRoom.nights || 1),
+            customPrice: updatedRoom.customPrice != null && updatedRoom.customPrice !== '' ? Number(updatedRoom.customPrice) : (existingRoom.customPrice != null ? existingRoom.customPrice : null)
           };
         }
         return existingRoom;
@@ -890,6 +964,7 @@ exports.sendDiscountCodeWhatsApp = async (req, res) => {
   try {
     const { id } = req.params;
     const { discountCodeId } = req.body;
+    const { groups } = req.body; // optional groups payload
     
     // Verificar que la asignación existe
     const assignment = await GuestAssignment.findById(id);
@@ -910,28 +985,33 @@ exports.sendDiscountCodeWhatsApp = async (req, res) => {
       });
     }
     
-    // Recopilar todos los números de WhatsApp de los huéspedes
+    // Prepare recipients: either from provided groups or from all assignment rooms
     const allRooms = [...(assignment.casaHotelRooms || []), ...(assignment.boutiqueRooms || [])];
-    const guestsWithWhatsapp = allRooms.filter(room => 
-      room.guestWhatsapp && room.guestWhatsapp.trim() !== ''
-    );
-    
-    if (guestsWithWhatsapp.length === 0) {
-      return res.status(400).json({
-        error: 'No guests',
-        message: 'No hay huéspedes con número de WhatsApp registrado'
-      });
+
+    let recipients = [];
+    if (groups && Array.isArray(groups) && groups.length > 0) {
+      // groups: [{ name, start, end, pricing, selectedGuests: [roomId,...] }]
+      for (const g of groups) {
+        if (!g.selectedGuests || !Array.isArray(g.selectedGuests)) continue;
+        for (const roomId of g.selectedGuests) {
+          const guest = allRooms.find(r => r.roomId === roomId);
+          if (guest && guest.guestWhatsapp && guest.guestWhatsapp.trim()) {
+            recipients.push({ guest, group: g });
+          }
+        }
+      }
+    } else {
+      recipients = allRooms.filter(room => room && room.guestName && room.guestName.trim() && room.guestWhatsapp && room.guestWhatsapp.trim()).map(g => ({ guest: g, group: null }));
     }
-    
-    console.log(`📱 Enviando código de descuento ${discountCode.code} a ${guestsWithWhatsapp.length} huéspedes...`);
-    
+
+    if (recipients.length === 0) {
+      return res.status(400).json({ error: 'No guests', message: 'No hay huéspedes con número de WhatsApp registrado en las listas/grupos seleccionados' });
+    }
+
+    console.log(`📱 Enviando código de descuento ${discountCode.code} a ${recipients.length} huéspedes...`);
+
     // Enviar mensaje a cada huésped via WhatsApp
-    const results = {
-      total: guestsWithWhatsapp.length,
-      sent: 0,
-      failed: 0,
-      errors: []
-    };
+    const results = { total: recipients.length, sent: 0, failed: 0, errors: [] };
     
     // Función para formatear número de teléfono
     const formatPhoneNumber = (phone) => {
@@ -949,13 +1029,17 @@ exports.sendDiscountCodeWhatsApp = async (req, res) => {
       return phone.startsWith('+') ? phone : '+' + cleaned;
     };
     
-    for (const guest of guestsWithWhatsapp) {
+    // Cargar modelo de tokens
+    const GuestPriceToken = require('../models/GuestPriceToken');
+
+    for (const entry of recipients) {
+      const guest = entry.guest;
+      const group = entry.group; // may be null
       try {
-        // Formatear el número de teléfono
         const formattedPhone = formatPhoneNumber(guest.guestWhatsapp);
         
         // Determinar el tipo de habitación y enlace correspondiente
-        const isBoutique = guest.roomId && guest.roomId.startsWith('BT');
+        const isBoutique = guest.roomId && String(guest.roomId).startsWith('BT');
         // 🆕 Usar URL base configurable según entorno
         const baseUrl = process.env.FRONTEND_URL 
           ? `${process.env.FRONTEND_URL}${isBoutique ? 'boutique' : 'reservas'}`
@@ -968,65 +1052,79 @@ exports.sendDiscountCodeWhatsApp = async (req, res) => {
         const brideName = assignment.brideName || 'la pareja';
         const roomName = guest.name || guest.roomId || 'Habitacion asignada';
         
-        // Generar enlace directo con parámetros de reserva
-        const checkInDate = new Date(discountCode.validFrom).toISOString().split('T')[0];
-        const checkOutDate = new Date(discountCode.validUntil).toISOString().split('T')[0];
-        
-        // 🆕 Obtener el Room _id basado en el tipo de habitación
+        // Determinar la tarifa final para este huésped
+        let finalPrice = null;
+
+        // Preferir precio personalizado por habitación si existe
+        if (guest.customPrice && !isNaN(parseFloat(guest.customPrice))) {
+          finalPrice = parseFloat(guest.customPrice);
+        } else if (group && group.pricing) {
+          // Use group pricing
+          try {
+            const assignedRoom = await AssignmentRoom.findOne({ roomId: guest.roomId });
+            if (assignedRoom && assignedRoom.roomType) {
+              const roomType = assignedRoom.roomType.type;
+              const lugar = assignedRoom.roomType.lugar;
+              const base = Number(group.pricing[lugar]?.[roomType] || 0);
+              const nights = guest.nights && !isNaN(Number(guest.nights)) ? Number(guest.nights) : (assignment.defaultNights || 1);
+              if (group.pricing.perNight === true) finalPrice = base * nights; else finalPrice = base;
+            }
+          } catch (err) {
+            console.error('⚠️ Error calculando precio desde group.pricing:', err.message);
+          }
+        } else {
+          // Fallback to assignment-level pricing or discount code finalPrice
+          try {
+            const assignedRoom = await AssignmentRoom.findOne({ roomId: guest.roomId });
+            if (assignedRoom && assignedRoom.roomType && assignment.pricing && assignment.pricing[assignedRoom.roomType.lugar]) {
+              const roomType = assignedRoom.roomType.type;
+              const lugar = assignedRoom.roomType.lugar;
+              const base = Number(assignment.pricing[lugar]?.[roomType] || 0);
+              const nights = guest.nights && !isNaN(Number(guest.nights)) ? Number(guest.nights) : (assignment.defaultNights || 1);
+              if (assignment.pricing.perNight === true) finalPrice = base * nights; else finalPrice = base;
+            }
+          } catch (err) {
+            console.error('⚠️ Error calculando precio desde assignment.pricing fallback:', err.message);
+          }
+        }
+
+        if (finalPrice == null) finalPrice = Number(discountCode.finalPrice || 0);
+
+        // Crear token seguro por huésped y guardarlo
+        const tokenValue = crypto.randomBytes(24).toString('hex');
+        const expiresAt = discountCode.validUntil ? new Date(discountCode.validUntil) : new Date(Date.now() + 7 * 24 * 3600 * 1000);
+        const tokenDoc = await GuestPriceToken.create({
+          token: tokenValue,
+          assignmentId: assignment._id,
+          roomId: guest.roomId || null,
+          guestName: guest.guestName || '',
+          phone: formattedPhone,
+          price: Number(finalPrice),
+          expiresAt
+        });
+
+        // Resolver el Room _id para preseleccionar en el booking (mejor UX)
         let roomMongoId = guest.roomId; // Default fallback
         try {
-          // Buscar la habitación asignada para obtener su tipo
           const assignedRoom = await AssignmentRoom.findOne({ roomId: guest.roomId });
           if (assignedRoom && assignedRoom.roomType) {
-            // Buscar el Room correspondiente por tipo y lugar
             const roomType = assignedRoom.roomType.type;
             const lugar = assignedRoom.roomType.lugar;
             const roomDoc = await Room.findOne({ type: roomType, lugar: lugar });
-            if (roomDoc) {
-              roomMongoId = roomDoc._id.toString();
-              console.log(`🔗 Mapeando ${guest.roomId} -> Room ${roomDoc.name} (_id: ${roomMongoId})`);
-            }
+            if (roomDoc) roomMongoId = roomDoc._id.toString();
           }
         } catch (err) {
           console.error(`⚠️ Error mapeando roomId a Room _id:`, err.message);
         }
-        
-        // Construir URL con parámetros
+
+        // Construir enlace seguro usando token
         const bookingParams = new URLSearchParams({
           room: roomMongoId,
-          checkIn: checkInDate,
-          checkOut: checkOutDate,
-          code: discountCode.code
+          gpt: tokenValue
         });
-        
         const bookingLink = `${baseUrl}?${bookingParams.toString()}`;
-        
-const message = `Hola ${guest.guestName}, muy buen día 
 
-Nos da mucho gusto saber que formarás parte de la celebración de ${brideName}.
-
-Hemos preparado un acceso exclusivo para tu hospedaje dentro del recinto:
-
-*Detalles de tu reservación asignada:*
-
-- Habitación: ${roomName}
-- Tipo de alojamiento: ${hotelType}
-- Tarifa preferencial 2 noches: $${discountCode.finalPrice.toFixed(2)} MXN
-- Código de acceso: ${discountCode.code}
-- Vigencia: ${new Date(discountCode.validFrom).toLocaleDateString('es-MX')} al ${new Date(discountCode.validUntil).toLocaleDateString('es-MX')}
-
-Para confirmar tu estancia, solo debes ingresar al siguiente enlace (la habitación ya está preseleccionada para ti):
-
-${bookingLink}
-
-Al aplicar el código indicado, se reflejará automáticamente la tarifa especial correspondiente al evento.
-
-Te recomendamos realizar tu reservación a la brevedad, ya que el acceso es exclusivo y por tiempo limitado.
-
-Será un placer recibirte en La Capilla.
-
-Atentamente,
-*Hotel La Capilla*`;
+        const message = `Hola ${guest.guestName}, muy buen día\n\nNos da mucho gusto saber que formarás parte de la celebración de ${brideName}.\n\nHemos preparado un acceso exclusivo para tu hospedaje dentro del recinto:\n\n*Detalles de tu reservación asignada:*\n\n- Habitación: ${roomName}\n- Tipo de alojamiento: ${hotelType}\n- Tarifa preferencial: $${Number(finalPrice).toFixed(2)} MXN\n- Código de acceso: ${discountCode.code}\n- Vigencia: ${new Date(discountCode.validFrom).toLocaleDateString('es-MX')} al ${new Date(discountCode.validUntil).toLocaleDateString('es-MX')}\n\nPara confirmar tu estancia, solo debes ingresar al siguiente enlace (la habitación ya está preseleccionada para ti):\n\n${bookingLink}\n\nAl ingresar, el precio mostrado está preaprobado para tu reservación.\n\nSerá un placer recibirte en La Capilla.\n\nAtentamente,\n*Hotel La Capilla*`;
 
         // Generar enlace de WhatsApp con mensaje prellenado
         const encodedMessage = encodeURIComponent(message);
