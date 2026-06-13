@@ -107,6 +107,12 @@ const GuestAssignmentSchema = new mongoose.Schema({
     enum: ['all', 'casa', 'boutique'],
     default: 'all'
   }
+  ,
+  // Grupos de fechas creados por el admin (persisten)
+  dateGroups: {
+    type: Array,
+    default: []
+  }
 });
 
 // Middleware para actualizar updatedAt
