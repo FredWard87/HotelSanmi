@@ -1052,8 +1052,8 @@ exports.sendDiscountCodeWhatsApp = async (req, res) => {
             : 'https://lacapillahotel.com/reservas');
         const hotelType = isBoutique ? 'Boutique' : 'Casa Hotel';
         
-        // Obtener nombre de la novia
-        const brideName = assignment.brideName || 'la pareja';
+        // Obtener nombre del evento
+        const eventName = assignment.eventName || 'este evento';
         const roomName = guest.name || guest.roomId || 'Habitacion asignada';
         
         // Determinar la tarifa final para este huésped
@@ -1136,8 +1136,37 @@ exports.sendDiscountCodeWhatsApp = async (req, res) => {
         if (group && group.end) bookingParams.set('checkOut', group.end);
         const bookingLink = `${baseUrl}?${bookingParams.toString()}`;
 
-        const discountCodeText = discountCode ? `- Código de acceso: ${discountCode.code}\n- Vigencia: ${new Date(discountCode.validFrom).toLocaleDateString('es-MX')} al ${new Date(discountCode.validUntil).toLocaleDateString('es-MX')}\n\n` : '';
-        const message = `Hola ${guest.guestName}, muy buen día\n\nNos da mucho gusto saber que formarás parte de la celebración de ${brideName}.\n\nHemos preparado un acceso exclusivo para tu hospedaje dentro del recinto:\n\n*Detalles de tu reservación asignada:*\n\n- Habitación: ${roomName}\n- Tipo de alojamiento: ${hotelType}\n- Tarifa preferencial: $${Number(finalPrice).toFixed(2)} MXN\n${discountCodeText}Para confirmar tu estancia, solo debes ingresar al siguiente enlace (la habitación ya está preseleccionada para ti):\n\n${bookingLink}\n\nAl ingresar, el precio mostrado está preaprobado para tu reservación.\n\nSerá un placer recibirte en La Capilla.\n\nAtentamente,\n*Hotel La Capilla*`;
+        const groupDates = group ? `${group.start || 'Pendiente'} al ${group.end || 'Pendiente'}` : 'Pendiente';
+        const codeLine = discountCode
+          ? `Código de descuento: ${discountCode.code}\nVigencia: ${new Date(discountCode.validFrom).toLocaleDateString('es-MX')} al ${new Date(discountCode.validUntil).toLocaleDateString('es-MX')}`
+          : 'Acceso exclusivo con tarifa preaprobada para este evento.';
+
+        const message = `Hola ${guest.guestName || 'huésped'}, muy buen día
+
+Nos da mucho gusto saber que formarás parte de la celebración de ${eventName}.
+
+Hemos preparado un acceso exclusivo para tu hospedaje dentro del recinto:
+
+*Detalles de tu reservación asignada:*
+
+* Habitación: ${roomName}
+* Tipo de alojamiento: ${hotelType}
+* Tarifa preferencial: $${Number(finalPrice).toFixed(2)} MXN
+* Fechas: ${groupDates}
+
+Para confirmar tu estancia, solo debes ingresar al siguiente enlace (la habitación ya está preseleccionada para ti):
+
+${bookingLink}
+
+Al aplicar el código indicado, se reflejará automáticamente la tarifa especial correspondiente al evento.
+${codeLine}
+
+Te recomendamos realizar tu reservación a la brevedad, ya que el acceso es exclusivo y por tiempo limitado.
+
+Será un placer recibirte en La Capilla.
+
+Atentamente,
+*Hotel La Capilla*`;
 
         // Generar enlace de WhatsApp con mensaje prellenado
         const encodedMessage = encodeURIComponent(message);
