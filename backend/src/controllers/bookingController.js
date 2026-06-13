@@ -3,6 +3,7 @@ const Booking = require('../models/Booking');
 const Room = require('../models/Room');
 const RoomBlock = require('../models/RoomBlock');
 const DiscountCode = require('../models/DiscountCode');
+const GuestPriceToken = require('../models/GuestPriceToken');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { generateAndSendVoucher, generateAndSendMultipleVouchers } = require('../services/pdfService');
 const { generateCheckinPDF } = require('../services/checkinPdfService');
@@ -771,6 +772,7 @@ exports.createBooking = async (req, res, next) => {
       advancePayment,
       paymentIntentId,
       paymentMethodId,
+      guestPriceToken,
       specialRequests,
       discountCode,
       chargeFullPrice,
@@ -812,6 +814,39 @@ exports.createBooking = async (req, res, next) => {
     }
 
     const isAdmin = req.user && req.user.role === 'admin';
+
+    let guestPriceTokenDoc = null;
+    let hasValidGuestPriceToken = false;
+    if (guestPriceToken && guestPriceToken.trim()) {
+      if (discountCode && discountCode.trim()) {
+        return res.status(400).json({
+          error: 'Invalid price token',
+          message: 'No puedes usar un código de descuento y un enlace de precio preaprobado al mismo tiempo'
+        });
+      }
+
+      guestPriceTokenDoc = await GuestPriceToken.findOne({ token: guestPriceToken.trim() });
+      if (!guestPriceTokenDoc) {
+        return res.status(404).json({
+          error: 'Guest price token not found',
+          message: 'El enlace de precio preaprobado ya no es válido'
+        });
+      }
+      if (guestPriceTokenDoc.used) {
+        return res.status(400).json({
+          error: 'Guest price token used',
+          message: 'El enlace de precio preaprobado ya fue usado'
+        });
+      }
+      if (new Date() > new Date(guestPriceTokenDoc.expiresAt)) {
+        return res.status(400).json({
+          error: 'Guest price token expired',
+          message: 'El enlace de precio preaprobado expiró'
+        });
+      }
+
+      hasValidGuestPriceToken = true;
+    }
 
     let hasValidDiscountCode = false;
     if (discountCode && discountCode.trim()) {
@@ -886,6 +921,15 @@ exports.createBooking = async (req, res, next) => {
       finalTax = 0;
       finalMunicipalTax = 0;
       console.log('🎁 Reserva GRATUITA detectada — precio: $0.00');
+    } else if (hasValidGuestPriceToken) {
+      finalTotal = Number(guestPriceTokenDoc.price);
+      isPrecioManual = true;
+      finalSubtotal = finalTotal / 1.20;
+      finalTax = finalSubtotal * 0.16;
+      finalMunicipalTax = finalSubtotal * 0.04;
+      discountAmount = Math.max(0, originalTotal - finalTotal);
+      console.log('🔗 Usando precio preaprobado por token:');
+      console.log('  - Total recibido del token:', finalTotal);
     } else if (isAdmin && typeof totalPrice === 'number' && totalPrice > 0) {
       finalTotal = totalPrice;
       isPrecioManual = true;
@@ -1002,7 +1046,8 @@ exports.createBooking = async (req, res, next) => {
       }
     }
 
-const bookingId = generateBookingId();
+    const bookingId = generateBookingId();
+    const advanceForSave = paymentIntentId ? initialPayment : (adminAdvancePayment || 0);
 
     const newBooking = new Booking({
       bookingId,
@@ -1012,7 +1057,7 @@ const bookingId = generateBookingId();
       checkIn: startDate,
       checkOut: endDate,
       nights,
-      pricePerNight: pricePerNight || 0,
+      pricePerNight: hasValidGuestPriceToken ? finalTotal / Number(nights) : (pricePerNight || 0),
       subtotalBeforeDiscount: originalSubtotal,
       discountCode: discountCodeDoc ? discountCodeDoc.code : null,
       discountCodeId: discountCodeDoc ? discountCodeDoc._id : null,
@@ -1023,7 +1068,7 @@ const bookingId = generateBookingId();
       totalPrice: finalTotal,
       initialPayment,
       secondNightPayment,
-      advancePayment: advance,
+      advancePayment: advanceForSave,
       secondNightPaid: false,
       paymentStatus,
       paymentIntentId: paymentIntentId || null,
@@ -1051,6 +1096,16 @@ const bookingId = generateBookingId();
       await discountCodeDoc.save();
     }
 
+    if (guestPriceTokenDoc) {
+      try {
+        guestPriceTokenDoc.used = true;
+        guestPriceTokenDoc.usedAt = new Date();
+        await guestPriceTokenDoc.save();
+      } catch (tokenErr) {
+        console.error('Error marcando token de precio como usado:', tokenErr.message);
+      }
+    }
+
     console.log(`\n📧 Preparando envío de email a ${guestInfo.email}...`);
     let emailResult = null;
     try {
@@ -1076,6 +1131,7 @@ const bookingId = generateBookingId();
       discountApplied: discountAmount > 0,
       discountAmount,
       discountCode: discountCodeDoc ? discountCodeDoc.code : null,
+      guestPriceTokenApplied: hasValidGuestPriceToken,
       emailSent: emailResult ? true : false,
       adminOverride: newBooking.adminOverride || false,
       isPrecioManual: isPrecioManual,
@@ -1263,7 +1319,7 @@ exports.createBulkBookings = async (req, res, next) => {
         totalPrice: finalTotal,
 initialPayment,
          secondNightPayment,
-         advancePayment: advance,
+advancePayment: adminAdvancePayment || 0,
          secondNightPaid: false,
         paymentStatus,
         paymentIntentId: paymentIntentId || null,
