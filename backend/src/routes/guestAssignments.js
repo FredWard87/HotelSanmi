@@ -59,6 +59,13 @@ router.get('/:id/discount-codes', guestAssignmentController.getDiscountCodesForA
 // ADMIN: Enviar código de descuento por WhatsApp
 router.post('/:id/send-discount-whatsapp', guestAssignmentController.sendDiscountCodeWhatsApp);
 
+// ADMIN: Guardar grupos de fechas para una asignación
+router.post('/:id/groups', guestAssignmentController.saveAssignmentGroups);
+
+// PUBLIC: Validar token de precio preaprobado
+router.get('/guest-price-token/:token', guestAssignmentController.getGuestPriceToken);
+router.post('/guest-price-token/:token/consume', guestAssignmentController.consumeGuestPriceToken);
+
 // ADMIN: Control de pagos - cruzar huéspedes con reservas
 router.get('/:id/payment-status', guestAssignmentController.getPaymentStatus);
 
