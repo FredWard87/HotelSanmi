@@ -975,14 +975,17 @@ exports.sendDiscountCodeWhatsApp = async (req, res) => {
       });
     }
     
-    // Buscar el código de descuento
+    // Buscar el código de descuento si se proporcionó
     const DiscountCode = require('../models/DiscountCode');
-    const discountCode = await DiscountCode.findById(discountCodeId);
-    if (!discountCode) {
-      return res.status(404).json({
-        error: 'Not found',
-        message: 'Código de descuento no encontrado'
-      });
+    let discountCode = null;
+    if (discountCodeId) {
+      discountCode = await DiscountCode.findById(discountCodeId);
+      if (!discountCode) {
+        return res.status(404).json({
+          error: 'Not found',
+          message: 'Código de descuento no encontrado'
+        });
+      }
     }
     
     // Prepare recipients: either from provided groups or from all assignment rooms
@@ -1088,11 +1091,17 @@ exports.sendDiscountCodeWhatsApp = async (req, res) => {
           }
         }
 
-        if (finalPrice == null) finalPrice = Number(discountCode.finalPrice || 0);
+        if (finalPrice == null) {
+          if (discountCode && discountCode.finalPrice != null) {
+            finalPrice = Number(discountCode.finalPrice || 0);
+          } else {
+            finalPrice = 0;
+          }
+        }
 
         // Crear token seguro por huésped y guardarlo
         const tokenValue = crypto.randomBytes(24).toString('hex');
-        const expiresAt = discountCode.validUntil ? new Date(discountCode.validUntil) : new Date(Date.now() + 7 * 24 * 3600 * 1000);
+        const expiresAt = discountCode && discountCode.validUntil ? new Date(discountCode.validUntil) : new Date(Date.now() + 7 * 24 * 3600 * 1000);
         const tokenDoc = await GuestPriceToken.create({
           token: tokenValue,
           assignmentId: assignment._id,
@@ -1124,7 +1133,8 @@ exports.sendDiscountCodeWhatsApp = async (req, res) => {
         });
         const bookingLink = `${baseUrl}?${bookingParams.toString()}`;
 
-        const message = `Hola ${guest.guestName}, muy buen día\n\nNos da mucho gusto saber que formarás parte de la celebración de ${brideName}.\n\nHemos preparado un acceso exclusivo para tu hospedaje dentro del recinto:\n\n*Detalles de tu reservación asignada:*\n\n- Habitación: ${roomName}\n- Tipo de alojamiento: ${hotelType}\n- Tarifa preferencial: $${Number(finalPrice).toFixed(2)} MXN\n- Código de acceso: ${discountCode.code}\n- Vigencia: ${new Date(discountCode.validFrom).toLocaleDateString('es-MX')} al ${new Date(discountCode.validUntil).toLocaleDateString('es-MX')}\n\nPara confirmar tu estancia, solo debes ingresar al siguiente enlace (la habitación ya está preseleccionada para ti):\n\n${bookingLink}\n\nAl ingresar, el precio mostrado está preaprobado para tu reservación.\n\nSerá un placer recibirte en La Capilla.\n\nAtentamente,\n*Hotel La Capilla*`;
+        const discountCodeText = discountCode ? `- Código de acceso: ${discountCode.code}\n- Vigencia: ${new Date(discountCode.validFrom).toLocaleDateString('es-MX')} al ${new Date(discountCode.validUntil).toLocaleDateString('es-MX')}\n\n` : '';
+        const message = `Hola ${guest.guestName}, muy buen día\n\nNos da mucho gusto saber que formarás parte de la celebración de ${brideName}.\n\nHemos preparado un acceso exclusivo para tu hospedaje dentro del recinto:\n\n*Detalles de tu reservación asignada:*\n\n- Habitación: ${roomName}\n- Tipo de alojamiento: ${hotelType}\n- Tarifa preferencial: $${Number(finalPrice).toFixed(2)} MXN\n${discountCodeText}Para confirmar tu estancia, solo debes ingresar al siguiente enlace (la habitación ya está preseleccionada para ti):\n\n${bookingLink}\n\nAl ingresar, el precio mostrado está preaprobado para tu reservación.\n\nSerá un placer recibirte en La Capilla.\n\nAtentamente,\n*Hotel La Capilla*`;
 
         // Generar enlace de WhatsApp con mensaje prellenado
         const encodedMessage = encodeURIComponent(message);
