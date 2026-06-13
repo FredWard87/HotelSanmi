@@ -1149,6 +1149,7 @@ exports.sendDiscountCodeWhatsApp = async (req, res) => {
           guestName: guest.guestName || 'Invitado',
           phone: formattedPhone,
           link: whatsappLink,
+          bookingLink,
           message: message
         });
         
