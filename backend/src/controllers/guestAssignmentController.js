@@ -1132,6 +1132,8 @@ exports.sendDiscountCodeWhatsApp = async (req, res) => {
           room: roomMongoId,
           gpt: tokenValue
         });
+        if (group && group.start) bookingParams.set('checkIn', group.start);
+        if (group && group.end) bookingParams.set('checkOut', group.end);
         const bookingLink = `${baseUrl}?${bookingParams.toString()}`;
 
         const discountCodeText = discountCode ? `- Código de acceso: ${discountCode.code}\n- Vigencia: ${new Date(discountCode.validFrom).toLocaleDateString('es-MX')} al ${new Date(discountCode.validUntil).toLocaleDateString('es-MX')}\n\n` : '';
