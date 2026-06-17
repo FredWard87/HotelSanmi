@@ -1,6 +1,7 @@
 // controllers/bookingController.js
 const Booking = require('../models/Booking');
 const Room = require('../models/Room');
+const AssignmentRoom = require('../models/AssignmentRoom');
 const RoomBlock = require('../models/RoomBlock');
 const DiscountCode = require('../models/DiscountCode');
 const GuestPriceToken = require('../models/GuestPriceToken');
@@ -155,6 +156,35 @@ async function checkRoomAvailabilityInternal(roomId, startDate, endDate, options
     room,
     blocks: overlappingBlocks
   };
+}
+
+async function getValidGuestPriceTokenForRoom(tokenValue, room) {
+  if (!tokenValue || !tokenValue.trim() || !room) return null;
+
+  const tokenDoc = await GuestPriceToken.findOne({ token: tokenValue.trim() });
+  if (!tokenDoc) return null;
+  if (tokenDoc.used) return null;
+  if (new Date() > new Date(tokenDoc.expiresAt)) return null;
+
+  if (!tokenDoc.roomId) return tokenDoc;
+
+  const tokenRoomId = String(tokenDoc.roomId);
+  const bookingRoomId = String(room._id);
+
+  if (tokenRoomId === bookingRoomId) return tokenDoc;
+
+  const assignmentRoom = await AssignmentRoom.findOne({ roomId: tokenRoomId }).lean();
+  if (assignmentRoom?.roomRefId && String(assignmentRoom.roomRefId) === bookingRoomId) {
+    return tokenDoc;
+  }
+  if (
+    assignmentRoom?.roomType?.type === room.type &&
+    assignmentRoom?.roomType?.lugar === room.lugar
+  ) {
+    return tokenDoc;
+  }
+
+  return null;
 }
 
 // ─────────────────────────────────────────────
@@ -599,7 +629,7 @@ exports.getDiscountCodeUsageStats = async (req, res, next) => {
 
 exports.checkAvailability = async (req, res, next) => {
   try {
-    const { roomId, checkIn, checkOut, discountCode } = req.query;
+    const { roomId, checkIn, checkOut, discountCode, guestPriceToken } = req.query;
 
     if (!roomId || !checkIn || !checkOut) {
       return res.status(400).json({ message: 'Se requieren roomId, checkIn y checkOut' });
@@ -612,7 +642,13 @@ exports.checkAvailability = async (req, res, next) => {
       return res.status(400).json({ message: 'La fecha de salida debe ser posterior a la fecha de entrada' });
     }
 
-    let ignoreBlocksForAvailability = false;
+    const room = await Room.findById(roomId);
+    if (!room) {
+      return res.status(404).json({ message: 'Habitación no encontrada' });
+    }
+
+    const validGuestPriceToken = await getValidGuestPriceTokenForRoom(guestPriceToken, room);
+    let ignoreBlocksForAvailability = !!validGuestPriceToken;
     if (discountCode && discountCode.trim()) {
       const discountCodeCheck = await DiscountCode.findOne({
         code: discountCode.toUpperCase().trim(),
@@ -637,6 +673,7 @@ exports.checkAvailability = async (req, res, next) => {
       blockedUnits: availability.blockedUnits,
       availableUnits: availability.availableUnits,
       isAvailable: availability.available,
+      guestPriceTokenApplied: !!validGuestPriceToken,
       blocks: availability.blocks.map(b => ({
         id: b._id,
         type: b.blockType,
@@ -815,6 +852,14 @@ exports.createBooking = async (req, res, next) => {
 
     const isAdmin = req.user && req.user.role === 'admin';
 
+    const roomForTokenCheck = await Room.findById(roomId);
+    if (!roomForTokenCheck) {
+      return res.status(404).json({
+        error: 'Room not found',
+        message: 'Habitación no encontrada'
+      });
+    }
+
     let guestPriceTokenDoc = null;
     let hasValidGuestPriceToken = false;
     if (guestPriceToken && guestPriceToken.trim()) {
@@ -825,23 +870,11 @@ exports.createBooking = async (req, res, next) => {
         });
       }
 
-      guestPriceTokenDoc = await GuestPriceToken.findOne({ token: guestPriceToken.trim() });
+      guestPriceTokenDoc = await getValidGuestPriceTokenForRoom(guestPriceToken, roomForTokenCheck);
       if (!guestPriceTokenDoc) {
-        return res.status(404).json({
-          error: 'Guest price token not found',
-          message: 'El enlace de precio preaprobado ya no es válido'
-        });
-      }
-      if (guestPriceTokenDoc.used) {
         return res.status(400).json({
-          error: 'Guest price token used',
-          message: 'El enlace de precio preaprobado ya fue usado'
-        });
-      }
-      if (new Date() > new Date(guestPriceTokenDoc.expiresAt)) {
-        return res.status(400).json({
-          error: 'Guest price token expired',
-          message: 'El enlace de precio preaprobado expiró'
+          error: 'Guest price token invalid',
+          message: 'El enlace de precio preaprobado no es válido para esta habitación, ya fue usado o expiró'
         });
       }
 
@@ -859,7 +892,7 @@ exports.createBooking = async (req, res, next) => {
       }
     }
 
-    const shouldIgnoreBlocks = isAdmin || hasValidDiscountCode;
+    const shouldIgnoreBlocks = isAdmin || hasValidDiscountCode || hasValidGuestPriceToken;
     const shouldIgnoreBookings = isAdmin;
 
     if (isAdmin) {
@@ -867,6 +900,9 @@ exports.createBooking = async (req, res, next) => {
     }
     if (hasValidDiscountCode) {
       console.log('🔓 CÓDIGO DE DESCUENTO VÁLIDO - IGNORANDO BLOQUEOS');
+    }
+    if (hasValidGuestPriceToken) {
+      console.log('🔓 ENLACE DE PRECIO PREAPROBADO VÁLIDO - IGNORANDO BLOQUEOS PARA LA HABITACIÓN ASIGNADA');
     }
 
     const availability = await checkRoomAvailabilityInternal(roomId, startDate, endDate, {
