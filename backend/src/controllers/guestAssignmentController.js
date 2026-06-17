@@ -1107,6 +1107,7 @@ exports.sendDiscountCodeWhatsApp = async (req, res) => {
           token: tokenValue,
           assignmentId: assignment._id,
           roomId: guest.roomId || null,
+          roomRefId,
           guestName: guest.guestName || '',
           phone: formattedPhone,
           price: Number(finalPrice),
@@ -1115,13 +1116,17 @@ exports.sendDiscountCodeWhatsApp = async (req, res) => {
 
         // Resolver el Room _id para preseleccionar en el booking (mejor UX)
         let roomMongoId = guest.roomId; // Default fallback
+        let roomRefId = null;
         try {
           const assignedRoom = await AssignmentRoom.findOne({ roomId: guest.roomId });
           if (assignedRoom && assignedRoom.roomType) {
             const roomType = assignedRoom.roomType.type;
             const lugar = assignedRoom.roomType.lugar;
             const roomDoc = await Room.findOne({ type: roomType, lugar: lugar });
-            if (roomDoc) roomMongoId = roomDoc._id.toString();
+            if (roomDoc) {
+              roomMongoId = roomDoc._id.toString();
+              roomRefId = roomDoc._id;
+            }
           }
         } catch (err) {
           console.error(`⚠️ Error mapeando roomId a Room _id:`, err.message);
