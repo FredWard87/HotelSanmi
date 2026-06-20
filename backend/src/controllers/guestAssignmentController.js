@@ -1100,20 +1100,6 @@ exports.sendDiscountCodeWhatsApp = async (req, res) => {
           }
         }
 
-        // Crear token seguro por huésped y guardarlo
-        const tokenValue = crypto.randomBytes(24).toString('hex');
-        const expiresAt = discountCode && discountCode.validUntil ? new Date(discountCode.validUntil) : new Date(Date.now() + 7 * 24 * 3600 * 1000);
-        const tokenDoc = await GuestPriceToken.create({
-          token: tokenValue,
-          assignmentId: assignment._id,
-          roomId: guest.roomId || null,
-          roomRefId,
-          guestName: guest.guestName || '',
-          phone: formattedPhone,
-          price: Number(finalPrice),
-          expiresAt
-        });
-
         // Resolver el Room _id para preseleccionar en el booking (mejor UX)
         let roomMongoId = guest.roomId; // Default fallback
         let roomRefId = null;
@@ -1131,6 +1117,20 @@ exports.sendDiscountCodeWhatsApp = async (req, res) => {
         } catch (err) {
           console.error(`⚠️ Error mapeando roomId a Room _id:`, err.message);
         }
+
+        // Crear token seguro por huésped y guardarlo
+        const tokenValue = crypto.randomBytes(24).toString('hex');
+        const expiresAt = discountCode && discountCode.validUntil ? new Date(discountCode.validUntil) : new Date(Date.now() + 7 * 24 * 3600 * 1000);
+        const tokenDoc = await GuestPriceToken.create({
+          token: tokenValue,
+          assignmentId: assignment._id,
+          roomId: guest.roomId || null,
+          roomRefId,
+          guestName: guest.guestName || '',
+          phone: formattedPhone,
+          price: Number(finalPrice),
+          expiresAt
+        });
 
         // Construir enlace seguro usando token
         const bookingParams = new URLSearchParams({
