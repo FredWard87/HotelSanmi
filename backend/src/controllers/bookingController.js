@@ -1448,7 +1448,7 @@ exports.getBookingById = async (req, res, next) => {
 exports.updateBooking = async (req, res, next) => {
   try {
     const { bookingId } = req.params;
-    const { checkIn, checkOut, roomId, guestInfo, status } = req.body;
+    const { checkIn, checkOut, roomId, guestInfo, status, totalPrice, initialPayment, secondNightPayment } = req.body;
 
     const booking = await Booking.findOne({ bookingId });
     if (!booking) {
@@ -1581,6 +1581,43 @@ exports.updateBooking = async (req, res, next) => {
 
     if (status) {
       booking.status = status;
+    }
+
+    // Permitir actualizaciones manuales de montos desde el panel de administración
+    if (totalPrice !== undefined && totalPrice !== null && totalPrice !== '') {
+      const parsedTotal = parseFloat(totalPrice);
+      if (!Number.isNaN(parsedTotal) && parsedTotal >= 0) {
+        booking.totalPrice = parsedTotal;
+      }
+    }
+    if (initialPayment !== undefined && initialPayment !== null && initialPayment !== '') {
+      const parsedInit = parseFloat(initialPayment);
+      if (!Number.isNaN(parsedInit) && parsedInit >= 0) {
+        booking.initialPayment = parsedInit;
+      }
+    }
+    if (secondNightPayment !== undefined && secondNightPayment !== null && secondNightPayment !== '') {
+      const parsedSecond = parseFloat(secondNightPayment);
+      if (!Number.isNaN(parsedSecond) && parsedSecond >= 0) {
+        booking.secondNightPayment = parsedSecond;
+      }
+    }
+
+    // Ajustar el estado de pago si los montos fueron modificados
+    try {
+      if (typeof booking.totalPrice === 'number' && typeof booking.initialPayment === 'number') {
+        if (booking.initialPayment >= booking.totalPrice) {
+          booking.paymentStatus = 'completed';
+        } else if (booking.initialPayment > 0) {
+          booking.paymentStatus = 'partial';
+        } else {
+          // mantener valor previo si aplica, o marcar como pending
+          booking.paymentStatus = booking.paymentStatus || 'pending';
+        }
+      }
+    } catch (e) {
+      // no bloquear la actualización si falla la lógica de estado de pago
+      console.warn('No se pudo recalcular paymentStatus automáticamente:', e);
     }
 
     booking.updatedAt = Date.now();
