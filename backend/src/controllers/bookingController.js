@@ -1639,7 +1639,8 @@ exports.updateBooking = async (req, res, next) => {
 exports.cancelBooking = async (req, res, next) => {
   try {
     const { bookingId } = req.params;
-    const { reason, processRefund = true } = req.body;
+    // Por seguridad, no procesar reembolsos automáticamente a menos que el cliente lo solicite explícitamente.
+    const { reason, processRefund = false } = req.body;
 
     const booking = await Booking.findOne({ bookingId });
     if (!booking) {
@@ -1651,6 +1652,7 @@ exports.cancelBooking = async (req, res, next) => {
     }
 
     let refundResult = null;
+    // Solo intentar reembolso si se solicitó y la reserva tiene información de pago procesado
     if (processRefund && (booking.stripeChargeId || booking.paymentIntentId) && booking.initialPayment > 0) {
       try {
         const chargeIdToRefund = booking.stripeChargeId ||
