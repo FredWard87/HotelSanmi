@@ -826,13 +826,13 @@ exports.exportAssignmentXlsx = async (req, res) => {
         const img = files.mapCasa[0];
         const imageId = workbook.addImage({ buffer: img.buffer, extension: 'png' });
         const wsCasa = workbook.getWorksheet('Casa Hotel');
-        if (wsCasa) wsCasa.addImage(imageId, { tl: { col: 9, row: 0 }, ext: { width: 360, height: 240 } });
+        if (wsCasa) wsCasa.addImage(imageId, { tl: { col: 13, row: 2 }, ext: { width: 500, height: 350 } });
       }
       if (files.mapBoutique && files.mapBoutique[0]) {
         const img = files.mapBoutique[0];
         const imageId = workbook.addImage({ buffer: img.buffer, extension: 'png' });
         const wsBout = workbook.getWorksheet('Hotel Boutique');
-        if (wsBout) wsBout.addImage(imageId, { tl: { col: 9, row: 0 }, ext: { width: 400, height: 260 } });
+        if (wsBout) wsBout.addImage(imageId, { tl: { col: 13, row: 2 }, ext: { width: 520, height: 370 } });
       }
     } catch (embedErr) {
       console.warn('No se pudieron incrustar las imágenes en el XLSX:', embedErr.message || embedErr);
