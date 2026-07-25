@@ -424,20 +424,28 @@ exports.getAllBookings = async (req, res, next) => {
     if (origin) {
       const originLower = String(origin).toLowerCase();
       if (originLower === 'stripe') {
-        filter.stripePaymentIntentId = { $exists: true };
+        filter.stripePaymentIntentId = { $exists: true, $ne: null, $ne: '' };
+      } else if (originLower === 'booking') {
+        filter.specialRequests = { $regex: 'BOOKING', $options: 'i' };
       } else if (originLower === 'whatsapp') {
         filter.specialRequests = { $regex: 'WHATSAPP', $options: 'i' };
       } else if (originLower === 'phone') {
         filter.specialRequests = { $regex: 'TELEFONO', $options: 'i' };
       } else if (originLower === 'reception') {
         filter.specialRequests = { $regex: 'RECEPCION', $options: 'i' };
-      } else if (originLower === 'booking') {
-        filter.specialRequests = { $regex: 'BOOKING', $options: 'i' };
       } else if (originLower === 'internal') {
-        filter.specialRequests = { $regex: 'WHATSAPP|TELEFONO|RECEPCION', $options: 'i' };
+        filter.$or = [
+          { stripePaymentIntentId: { $exists: false } },
+          { stripePaymentIntentId: null },
+          { stripePaymentIntentId: '' }
+        ];
       } else if (originLower === 'web') {
-        filter.stripePaymentIntentId = { $exists: false };
-        filter.specialRequests = { $not: { $regex: 'WHATSAPP|TELEFONO|RECEPCION|BOOKING', $options: 'i' } };
+        filter.$or = [
+          { stripePaymentIntentId: { $exists: false } },
+          { stripePaymentIntentId: null },
+          { stripePaymentIntentId: '' }
+        ];
+        filter.specialRequests = { $not: { $regex: 'BOOKING|WHATSAPP|TELEFONO|RECEPCION', $options: 'i' } };
       } else if (originLower === 'events') {
         filter.$or = [
           { discountCode: { $exists: true, $ne: null } },
