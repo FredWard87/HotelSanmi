@@ -13,12 +13,15 @@ const upload = multer({
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
       'application/vnd.ms-excel', // .xls
       'text/csv',
-      'text/plain'
+      'text/plain',
+      'image/png',
+      'image/jpeg',
+      'image/svg+xml'
     ];
-    if (allowedTypes.includes(file.mimetype) || file.originalname.match(/\.(xlsx|xls|csv|txt)$/i)) {
+    if (allowedTypes.includes(file.mimetype) || file.originalname.match(/\.(xlsx|xls|csv|txt|png|jpe?g)$/i)) {
       cb(null, true);
     } else {
-      cb(new Error('Solo se permiten archivos Excel (.xlsx, .xls) o CSV'));
+      cb(new Error('Solo se permiten archivos Excel (.xlsx, .xls), CSV o imágenes PNG/JPG')); 
     }
   }
 });
