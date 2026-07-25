@@ -8,6 +8,8 @@ const nodemailer = require('nodemailer');
 const fs = require('fs');
 const path = require('path');
 const ASSIGNMENT_ROOMS_SEED = require('../data/assignmentRoomsSeed');
+const XLSX = require('xlsx');
+const ExcelJS = require('exceljs');
 
 // Configurar transporter para emails
 const transporter = nodemailer.createTransport({
@@ -684,6 +686,148 @@ exports.exportAssignment = async (req, res) => {
   } catch (error) {
     console.error('Error exporting:', error);
     res.status(500).json({ error: 'Error al exportar' });
+  }
+};
+
+// ADMIN: Exportar a XLSX con dos hojas (Boutique y Casa Hotel) y columnas detalladas — usando ExcelJS para estilos
+exports.exportAssignmentXlsx = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const assignment = await GuestAssignment.findById(id).lean();
+    if (!assignment) return res.status(404).json({ error: 'No encontrada', message: 'Asignación no encontrada' });
+
+    const bookings = await Booking.find({ status: 'active' }).lean();
+
+    function normalizePhoneLocal(phone) {
+      if (!phone) return '';
+      return phone.replace(/[\s\-\+\(\)]/g, '').replace(/^52/, '').replace(/^1/, '').slice(-10);
+    }
+
+    const matchBookingForGuest = (guestName, guestWhatsapp) => {
+      const phoneNorm = normalizePhoneLocal(guestWhatsapp);
+      const nameLower = (guestName || '').toLowerCase().trim();
+      const nameParts = nameLower.split(/\s+/).filter(Boolean);
+      let matched = null;
+      for (const b of bookings) {
+        if (phoneNorm && phoneNorm.length >= 7) {
+          const bp = normalizePhoneLocal(b.guestInfo?.phone);
+          if (bp && bp === phoneNorm) { matched = b; break; }
+        }
+        const bookingFullName = `${b.guestInfo?.firstName || ''} ${b.guestInfo?.lastName || ''}`.toLowerCase().trim();
+        if (bookingFullName && nameParts.length > 0) {
+          const allPartsMatch = nameParts.every(part => bookingFullName.includes(part));
+          const reverseMatch = bookingFullName.split(/\s+/).filter(Boolean).every(part => nameLower.includes(part));
+          if (allPartsMatch || reverseMatch) { matched = b; break; }
+        }
+      }
+      return matched;
+    };
+
+    const headers = [
+      'NOMBRE', 'NUM. HABITACION', 'CAMAS', 'NUMERO HUESPEDES', 'NOMBRE HUESPED', 'CHECK IN', 'CHECK OUT', 'TOTAL', 'PAGADO', 'RESTANTE', 'FECHA ANTICIPO', 'STATUS', 'LISTA DE ESPERA'
+    ];
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Hotel La Capilla';
+    workbook.created = new Date();
+
+    const createSheet = (title, roomsArray) => {
+      const ws = workbook.addWorksheet(title);
+
+      // Column definitions with widths
+      ws.columns = [
+        { header: 'NOMBRE', key: 'name', width: 30 },
+        { header: 'NUM. HABITACION', key: 'number', width: 16 },
+        { header: 'CAMAS', key: 'bed', width: 18 },
+        { header: 'NUMERO HUESPEDES', key: 'capacity', width: 18 },
+        { header: 'NOMBRE HUESPED', key: 'guestName', width: 32 },
+        { header: 'CHECK IN', key: 'checkIn', width: 16 },
+        { header: 'CHECK OUT', key: 'checkOut', width: 16 },
+        { header: 'TOTAL', key: 'total', width: 14 },
+        { header: 'PAGADO', key: 'paid', width: 12 },
+        { header: 'RESTANTE', key: 'pending', width: 12 },
+        { header: 'FECHA ANTICIPO', key: 'advanceDate', width: 18 },
+        { header: 'STATUS', key: 'status', width: 12 },
+        { header: 'LISTA DE ESPERA', key: 'waitlist', width: 22 }
+      ];
+
+      // Header styling
+      ws.getRow(1).font = { name: 'Arial', size: 11, bold: true };
+      ws.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+      ws.getRow(1).height = 22;
+      ws.getRow(1).eachCell((cell) => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD4AF37' } };
+        cell.border = {
+          top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' }
+        };
+      });
+
+      // Add rows
+      roomsArray.forEach(r => {
+        const booking = matchBookingForGuest(r.guestName, r.guestWhatsapp);
+        const total = booking?.totalPrice ?? (r.customPrice != null ? Number(r.customPrice) : 0);
+        const paid = booking?.initialPayment ?? 0;
+        const pending = Math.max(0, (total || 0) - (paid || 0));
+        const statusText = booking?.paymentStatus === 'completed' ? 'PAGADO' : (booking?.paymentStatus === 'partial' ? 'PARCIAL' : '');
+
+        ws.addRow({
+          name: r.name || '',
+          number: r.number != null ? String(r.number) : (r.roomId || ''),
+          bed: r.bed || '',
+          capacity: r.capacity != null ? String(r.capacity) : '',
+          guestName: r.guestName || '',
+          checkIn: booking?.checkIn ? new Date(booking.checkIn) : '',
+          checkOut: booking?.checkOut ? new Date(booking.checkOut) : '',
+          total: total || 0,
+          paid: paid || 0,
+          pending: pending || 0,
+          advanceDate: '',
+          status: statusText,
+          waitlist: r.description || ''
+        });
+      });
+
+      // Format currency columns and dates, and apply conditional fills
+      ws.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return; // header
+        const totalCell = row.getCell('total');
+        const paidCell = row.getCell('paid');
+        const pendingCell = row.getCell('pending');
+        const checkInCell = row.getCell('checkIn');
+        const checkOutCell = row.getCell('checkOut');
+
+        totalCell.numFmt = '"$"#,##0.00';
+        paidCell.numFmt = '"$"#,##0.00';
+        pendingCell.numFmt = '"$"#,##0.00';
+
+        if (checkInCell.value instanceof Date) checkInCell.numFmt = 'dd/mm/yyyy';
+        if (checkOutCell.value instanceof Date) checkOutCell.numFmt = 'dd/mm/yyyy';
+
+        // Conditional coloring for pending/paid
+        if ((pendingCell.value || 0) > 0) {
+          pendingCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFCDD2' } }; // red-ish
+          pendingCell.font = { color: { argb: 'FFD32F2F' }, bold: true };
+        } else {
+          pendingCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F5E9' } }; // green-ish
+          pendingCell.font = { color: { argb: 'FF2E7D32' }, bold: true };
+        }
+      });
+
+      return ws;
+    };
+
+    createSheet('Casa Hotel', assignment.casaHotelRooms || []);
+    createSheet('Hotel Boutique', assignment.boutiqueRooms || []);
+
+    // Write to buffer
+    const buffer = await workbook.xlsx.writeBuffer();
+    const filename = `asignacion-${(assignment.eventName || 'export').replace(/[^a-z0-9\-]/gi, '-')}.xlsx`;
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    return res.send(buffer);
+  } catch (error) {
+    console.error('Error exporting xlsx:', error);
+    res.status(500).json({ error: 'Error al exportar XLSX', message: error.message });
   }
 };
 
