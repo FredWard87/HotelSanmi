@@ -819,20 +819,21 @@ exports.exportAssignmentXlsx = async (req, res) => {
     createSheet('Casa Hotel', assignment.casaHotelRooms || []);
     createSheet('Hotel Boutique', assignment.boutiqueRooms || []);
 
+    const wsMapCasa = workbook.addWorksheet('Mapa Casa Hotel');
+    const wsMapBoutique = workbook.addWorksheet('Mapa Hotel Boutique');
+
     // If uploaded map images are present (POST multipart), embed them
     try {
       const files = req.files || {};
       if (files.mapCasa && files.mapCasa[0]) {
         const img = files.mapCasa[0];
         const imageId = workbook.addImage({ buffer: img.buffer, extension: 'png' });
-        const wsCasa = workbook.getWorksheet('Casa Hotel');
-        if (wsCasa) wsCasa.addImage(imageId, { tl: { col: 13, row: 2 }, ext: { width: 1500, height: 1350 } });
+        wsMapCasa.addImage(imageId, { tl: { col: 0, row: 0 }, ext: { width: 900, height: 640 } });
       }
       if (files.mapBoutique && files.mapBoutique[0]) {
         const img = files.mapBoutique[0];
         const imageId = workbook.addImage({ buffer: img.buffer, extension: 'png' });
-        const wsBout = workbook.getWorksheet('Hotel Boutique');
-        if (wsBout) wsBout.addImage(imageId, { tl: { col: 13, row: 2 }, ext: { width: 1520, height: 1370 } });
+        wsMapBoutique.addImage(imageId, { tl: { col: 0, row: 0 }, ext: { width: 920, height: 660 } });
       }
     } catch (embedErr) {
       console.warn('No se pudieron incrustar las imágenes en el XLSX:', embedErr.message || embedErr);
