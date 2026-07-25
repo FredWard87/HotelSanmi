@@ -1451,7 +1451,7 @@ exports.getBookingById = async (req, res, next) => {
 exports.updateBooking = async (req, res, next) => {
   try {
     const { bookingId } = req.params;
-    const { checkIn, checkOut, roomId, guestInfo, status, totalPrice, initialPayment, secondNightPayment } = req.body;
+    const { checkIn, checkOut, roomId, guestInfo, status, totalPrice, initialPayment, secondNightPayment, roomName } = req.body;
 
     const booking = await Booking.findOne({ bookingId });
     if (!booking) {
@@ -1484,7 +1484,7 @@ exports.updateBooking = async (req, res, next) => {
 
         if (roomId && roomId !== booking.roomId.toString()) {
           booking.roomId = newRoomId;
-          booking.roomName = availability.room.name;
+          booking.roomName = roomName || availability.room.name;
         }
       } else {
         if (roomId && roomId !== booking.roomId.toString()) {
@@ -1493,9 +1493,13 @@ exports.updateBooking = async (req, res, next) => {
             return res.status(404).json({ error: 'Room not found', message: 'Habitación no encontrada' });
           }
           booking.roomId = newRoomId;
-          booking.roomName = room.name;
+          booking.roomName = roomName || room.name;
         }
       }
+    }
+
+    if (roomName) {
+      booking.roomName = roomName;
     }
 
     if (checkIn && checkOut) {
