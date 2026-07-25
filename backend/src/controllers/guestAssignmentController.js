@@ -819,6 +819,25 @@ exports.exportAssignmentXlsx = async (req, res) => {
     createSheet('Casa Hotel', assignment.casaHotelRooms || []);
     createSheet('Hotel Boutique', assignment.boutiqueRooms || []);
 
+    // If uploaded map images are present (POST multipart), embed them
+    try {
+      const files = req.files || {};
+      if (files.mapCasa && files.mapCasa[0]) {
+        const img = files.mapCasa[0];
+        const imageId = workbook.addImage({ buffer: img.buffer, extension: 'png' });
+        const wsCasa = workbook.getWorksheet('Casa Hotel');
+        if (wsCasa) wsCasa.addImage(imageId, { tl: { col: 9, row: 0 }, ext: { width: 360, height: 240 } });
+      }
+      if (files.mapBoutique && files.mapBoutique[0]) {
+        const img = files.mapBoutique[0];
+        const imageId = workbook.addImage({ buffer: img.buffer, extension: 'png' });
+        const wsBout = workbook.getWorksheet('Hotel Boutique');
+        if (wsBout) wsBout.addImage(imageId, { tl: { col: 9, row: 0 }, ext: { width: 400, height: 260 } });
+      }
+    } catch (embedErr) {
+      console.warn('No se pudieron incrustar las imágenes en el XLSX:', embedErr.message || embedErr);
+    }
+
     // Write to buffer
     const buffer = await workbook.xlsx.writeBuffer();
     const filename = `asignacion-${(assignment.eventName || 'export').replace(/[^a-z0-9\-]/gi, '-')}.xlsx`;
