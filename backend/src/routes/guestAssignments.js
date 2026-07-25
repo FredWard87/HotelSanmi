@@ -46,6 +46,8 @@ router.delete('/:id', guestAssignmentController.deleteAssignment);
 
 // ADMIN: Exportar a CSV
 router.get('/:id/export', guestAssignmentController.exportAssignment);
+// ADMIN: Exportar a XLSX con dos hojas
+router.get('/:id/export-xlsx', guestAssignmentController.exportAssignmentXlsx);
 
 // ADMIN: Carga masiva desde Excel (acepta JSON o archivo)
 router.post('/bulk', upload.single('file'), guestAssignmentController.bulkUpload);
