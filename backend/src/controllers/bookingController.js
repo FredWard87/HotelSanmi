@@ -394,7 +394,7 @@ async function sendCancellationEmail(booking, refundResult = null) {
 
 exports.getAllBookings = async (req, res, next) => {
   try {
-    const { status, startDate, endDate, limit } = req.query;
+    const { status, startDate, endDate, limit, page, pageSize, search } = req.query;
     const isAdmin = req.user && req.user.role === 'admin';
 
     const filter = {};
@@ -410,32 +410,35 @@ exports.getAllBookings = async (req, res, next) => {
       filter.checkOut = { $lte: end };
     }
 
-    console.log('[getAllBookings] user:', req.user?.email || 'anon', '| filter:', JSON.stringify(filter), '| limit:', limit || (isAdmin ? 'sin límite' : '500'));
+    if (search && search.trim()) {
+      const term = search.trim();
+      filter.$or = [
+        { bookingId: { $regex: term, $options: 'i' } },
+        { 'guestInfo.firstName': { $regex: term, $options: 'i' } },
+        { 'guestInfo.lastName': { $regex: term, $options: 'i' } },
+        { 'guestInfo.email': { $regex: term, $options: 'i' } },
+        { roomName: { $regex: term, $options: 'i' } },
+      ];
+    }
+
+    const size = Number(pageSize) || 50;
+    const pageNum = Number(page) || 1;
+    const skip = (pageNum - 1) * size;
+
+    const total = await Booking.countDocuments(filter);
 
     const query = Booking.find(filter)
       .populate('roomId', 'name type totalUnits')
       .populate('discountCodeId', 'code description discountType discountValue')
-      .sort({ createdAt: -1 });
-
-    // Si se pasa limit explícito en query params, usarlo
-    // Si es admin sin limit explícito → sin límite (trae todas)
-    // Si no es admin sin limit explícito → límite de 500
-    if (limit !== undefined && limit !== null && limit !== '') {
-      query.limit(Number(limit));
-    } else if (!isAdmin) {
-      query.limit(500);
-    }
-    // admin sin limit explícito → sin .limit() → trae todas
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(size);
 
     const bookings = await query;
 
-    console.log('[getAllBookings] → returning', bookings.length, 'bookings');
+    console.log('[getAllBookings] user:', req.user?.email || 'anon', '| filter:', JSON.stringify(filter), '| page:', pageNum, '| size:', size, '| returned:', bookings.length);
 
-    const ellen = bookings.find(b => b.bookingId === 'LC-2026-378565JM1');
-    console.log('[getAllBookings] Ellen booking found?', !!ellen,
-      ellen ? `| status:${ellen.status} | roomName:${ellen.roomName}` : '');
-
-    res.json(bookings);
+    res.json({ bookings, total, page: pageNum, pageSize: size });
   } catch (error) {
     console.error('[getAllBookings] ERROR:', error);
     next(error);
