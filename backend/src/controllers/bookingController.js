@@ -394,7 +394,7 @@ async function sendCancellationEmail(booking, refundResult = null) {
 
 exports.getAllBookings = async (req, res, next) => {
   try {
-    const { status, startDate, endDate, limit, page, pageSize, search } = req.query;
+    const { status, startDate, endDate, limit, page, pageSize, search, origin } = req.query;
     const isAdmin = req.user && req.user.role === 'admin';
 
     const filter = {};
@@ -419,6 +419,31 @@ exports.getAllBookings = async (req, res, next) => {
         { 'guestInfo.email': { $regex: term, $options: 'i' } },
         { roomName: { $regex: term, $options: 'i' } },
       ];
+    }
+
+    if (origin) {
+      const originLower = String(origin).toLowerCase();
+      if (originLower === 'stripe') {
+        filter.stripePaymentIntentId = { $exists: true };
+      } else if (originLower === 'whatsapp') {
+        filter.specialRequests = { $regex: 'WHATSAPP', $options: 'i' };
+      } else if (originLower === 'phone') {
+        filter.specialRequests = { $regex: 'TELEFONO', $options: 'i' };
+      } else if (originLower === 'reception') {
+        filter.specialRequests = { $regex: 'RECEPCION', $options: 'i' };
+      } else if (originLower === 'booking') {
+        filter.specialRequests = { $regex: 'BOOKING', $options: 'i' };
+      } else if (originLower === 'internal') {
+        filter.specialRequests = { $regex: 'WHATSAPP|TELEFONO|RECEPCION', $options: 'i' };
+      } else if (originLower === 'web') {
+        filter.stripePaymentIntentId = { $exists: false };
+        filter.specialRequests = { $not: { $regex: 'WHATSAPP|TELEFONO|RECEPCION|BOOKING', $options: 'i' } };
+      } else if (originLower === 'events') {
+        filter.$or = [
+          { discountCode: { $exists: true, $ne: null } },
+          { discountCodeId: { $exists: true } }
+        ];
+      }
     }
 
     const size = Number(pageSize) || 50;
