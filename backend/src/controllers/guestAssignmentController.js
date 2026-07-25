@@ -734,6 +734,12 @@ exports.exportAssignmentXlsx = async (req, res) => {
     const createSheet = (title, roomsArray) => {
       const ws = workbook.addWorksheet(title);
 
+      const mapRows = 36;
+      ws.insertRows(1, mapRows);
+      for (let i = 1; i <= mapRows; i++) {
+        ws.getRow(i).height = 18;
+      }
+
       // Column definitions with widths
       ws.columns = [
         { header: 'NOMBRE', key: 'name', width: 30 },
@@ -751,11 +757,11 @@ exports.exportAssignmentXlsx = async (req, res) => {
         { header: 'LISTA DE ESPERA', key: 'waitlist', width: 22 }
       ];
 
-      // Header styling
-      ws.getRow(1).font = { name: 'Arial', size: 11, bold: true };
-      ws.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
-      ws.getRow(1).height = 22;
-      ws.getRow(1).eachCell((cell) => {
+      const headerRow = ws.getRow(mapRows + 1);
+      headerRow.font = { name: 'Arial', size: 11, bold: true };
+      headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+      headerRow.height = 22;
+      headerRow.eachCell((cell) => {
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD4AF37' } };
         cell.border = {
           top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' }
@@ -789,7 +795,7 @@ exports.exportAssignmentXlsx = async (req, res) => {
 
       // Format currency columns and dates, and apply conditional fills
       ws.eachRow((row, rowNumber) => {
-        if (rowNumber === 1) return; // header
+        if (rowNumber <= mapRows + 1) return; // header and map space
         const totalCell = row.getCell('total');
         const paidCell = row.getCell('paid');
         const pendingCell = row.getCell('pending');
@@ -816,24 +822,21 @@ exports.exportAssignmentXlsx = async (req, res) => {
       return ws;
     };
 
-    createSheet('Casa Hotel', assignment.casaHotelRooms || []);
-    createSheet('Hotel Boutique', assignment.boutiqueRooms || []);
+    const wsCasa = createSheet('Casa Hotel', assignment.casaHotelRooms || []);
+    const wsBoutique = createSheet('Hotel Boutique', assignment.boutiqueRooms || []);
 
-    const wsMapCasa = workbook.addWorksheet('Mapa Casa Hotel');
-    const wsMapBoutique = workbook.addWorksheet('Mapa Hotel Boutique');
-
-    // If uploaded map images are present (POST multipart), embed them
+    // If uploaded map images are present (POST multipart), embed them in their respective sheets
     try {
       const files = req.files || {};
       if (files.mapCasa && files.mapCasa[0]) {
         const img = files.mapCasa[0];
         const imageId = workbook.addImage({ buffer: img.buffer, extension: 'png' });
-        wsMapCasa.addImage(imageId, { tl: { col: 0, row: 0 }, ext: { width: 900, height: 640 } });
+        wsCasa.addImage(imageId, { tl: { col: 0, row: 0 }, ext: { width: 900, height: 600 } });
       }
       if (files.mapBoutique && files.mapBoutique[0]) {
         const img = files.mapBoutique[0];
         const imageId = workbook.addImage({ buffer: img.buffer, extension: 'png' });
-        wsMapBoutique.addImage(imageId, { tl: { col: 0, row: 0 }, ext: { width: 920, height: 660 } });
+        wsBoutique.addImage(imageId, { tl: { col: 0, row: 0 }, ext: { width: 920, height: 620 } });
       }
     } catch (embedErr) {
       console.warn('No se pudieron incrustar las imágenes en el XLSX:', embedErr.message || embedErr);
