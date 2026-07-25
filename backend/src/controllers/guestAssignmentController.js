@@ -735,7 +735,6 @@ exports.exportAssignmentXlsx = async (req, res) => {
       const ws = workbook.addWorksheet(title);
 
       const mapRows = 36;
-      ws.insertRows(1, mapRows);
       for (let i = 1; i <= mapRows; i++) {
         ws.getRow(i).height = 18;
       }
