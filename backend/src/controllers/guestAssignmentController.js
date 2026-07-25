@@ -734,12 +734,6 @@ exports.exportAssignmentXlsx = async (req, res) => {
     const createSheet = (title, roomsArray) => {
       const ws = workbook.addWorksheet(title);
 
-      const mapRows = 36;
-      for (let i = 1; i <= mapRows; i++) {
-        ws.getRow(i).height = 18;
-      }
-
-      // Column definitions with widths
       ws.columns = [
         { header: 'NOMBRE', key: 'name', width: 30 },
         { header: 'NUM. HABITACION', key: 'number', width: 16 },
@@ -756,7 +750,7 @@ exports.exportAssignmentXlsx = async (req, res) => {
         { header: 'LISTA DE ESPERA', key: 'waitlist', width: 22 }
       ];
 
-      const headerRow = ws.getRow(mapRows + 1);
+      const headerRow = ws.getRow(1);
       headerRow.font = { name: 'Arial', size: 11, bold: true };
       headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
       headerRow.height = 22;
@@ -767,7 +761,6 @@ exports.exportAssignmentXlsx = async (req, res) => {
         };
       });
 
-      // Add rows
       roomsArray.forEach(r => {
         const booking = matchBookingForGuest(r.guestName, r.guestWhatsapp);
         const total = booking?.totalPrice ?? (r.customPrice != null ? Number(r.customPrice) : 0);
@@ -792,9 +785,8 @@ exports.exportAssignmentXlsx = async (req, res) => {
         });
       });
 
-      // Format currency columns and dates, and apply conditional fills
       ws.eachRow((row, rowNumber) => {
-        if (rowNumber <= mapRows + 1) return; // header and map space
+        if (rowNumber === 1) return;
         const totalCell = row.getCell('total');
         const paidCell = row.getCell('paid');
         const pendingCell = row.getCell('pending');
@@ -808,12 +800,11 @@ exports.exportAssignmentXlsx = async (req, res) => {
         if (checkInCell.value instanceof Date) checkInCell.numFmt = 'dd/mm/yyyy';
         if (checkOutCell.value instanceof Date) checkOutCell.numFmt = 'dd/mm/yyyy';
 
-        // Conditional coloring for pending/paid
         if ((pendingCell.value || 0) > 0) {
-          pendingCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFCDD2' } }; // red-ish
+          pendingCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFCDD2' } };
           pendingCell.font = { color: { argb: 'FFD32F2F' }, bold: true };
         } else {
-          pendingCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F5E9' } }; // green-ish
+          pendingCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F5E9' } };
           pendingCell.font = { color: { argb: 'FF2E7D32' }, bold: true };
         }
       });
@@ -824,18 +815,20 @@ exports.exportAssignmentXlsx = async (req, res) => {
     const wsCasa = createSheet('Casa Hotel', assignment.casaHotelRooms || []);
     const wsBoutique = createSheet('Hotel Boutique', assignment.boutiqueRooms || []);
 
-    // If uploaded map images are present (POST multipart), embed them in their respective sheets
+    // If uploaded map images are present (POST multipart), embed them at the end of their respective sheets
     try {
       const files = req.files || {};
       if (files.mapCasa && files.mapCasa[0]) {
         const img = files.mapCasa[0];
         const imageId = workbook.addImage({ buffer: img.buffer, extension: 'png' });
-        wsCasa.addImage(imageId, { tl: { col: 0, row: 0 }, ext: { width: 900, height: 600 } });
+        const lastRowCasa = Math.max(wsCasa.lastRow ? wsCasa.lastRow.number : 1, wsCasa.rowCount);
+        wsCasa.addImage(imageId, { tl: { col: 0, row: lastRowCasa + 1 }, ext: { width: 900, height: 600 } });
       }
       if (files.mapBoutique && files.mapBoutique[0]) {
         const img = files.mapBoutique[0];
         const imageId = workbook.addImage({ buffer: img.buffer, extension: 'png' });
-        wsBoutique.addImage(imageId, { tl: { col: 0, row: 0 }, ext: { width: 920, height: 620 } });
+        const lastRowBoutique = Math.max(wsBoutique.lastRow ? wsBoutique.lastRow.number : 1, wsBoutique.rowCount);
+        wsBoutique.addImage(imageId, { tl: { col: 0, row: lastRowBoutique + 1 }, ext: { width: 920, height: 620 } });
       }
     } catch (embedErr) {
       console.warn('No se pudieron incrustar las imágenes en el XLSX:', embedErr.message || embedErr);
