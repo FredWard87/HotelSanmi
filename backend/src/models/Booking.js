@@ -5,6 +5,7 @@ const BookingSchema = new mongoose.Schema({
   bookingId: { type: String, unique: true, required: true }, // LC-2025-XXXXX
   roomId: { type: mongoose.Schema.Types.ObjectId, ref: 'Room', required: true },
   roomName: { type: String, required: true },
+  guestAssignmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'GuestAssignment', default: null },
   guestInfo: {
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
