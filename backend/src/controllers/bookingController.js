@@ -7,6 +7,7 @@ const DiscountCode = require('../models/DiscountCode');
 const GuestPriceToken = require('../models/GuestPriceToken');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { generateAndSendVoucher, generateAndSendMultipleVouchers } = require('../services/pdfService');
+const { normalizeGuestAssignmentId } = require('../utils/bookingAssociation');
 const { generateCheckinPDF } = require('../services/checkinPdfService');
 const crypto = require('crypto');
 
@@ -394,7 +395,7 @@ async function sendCancellationEmail(booking, refundResult = null) {
 
 exports.getAllBookings = async (req, res, next) => {
   try {
-    const { status, startDate, endDate, limit, page, pageSize, search, origin } = req.query;
+    const { status, startDate, endDate, limit, page, pageSize, search, origin, guestAssignmentId } = req.query;
     const isAdmin = req.user && req.user.role === 'admin';
 
     const filter = {};
@@ -419,6 +420,13 @@ exports.getAllBookings = async (req, res, next) => {
         { 'guestInfo.email': { $regex: term, $options: 'i' } },
         { roomName: { $regex: term, $options: 'i' } },
       ];
+    }
+
+    if (guestAssignmentId) {
+      const normalizedGuestAssignmentId = normalizeGuestAssignmentId(guestAssignmentId);
+      if (normalizedGuestAssignmentId) {
+        filter.guestAssignmentId = normalizedGuestAssignmentId;
+      }
     }
 
     if (origin) {
@@ -850,6 +858,7 @@ exports.createBooking = async (req, res, next) => {
       discountCode,
       chargeFullPrice,
       isFree,
+      guestAssignmentId,
     } = req.body;
 
     console.log('=== CREANDO RESERVA ===');
@@ -1120,11 +1129,13 @@ exports.createBooking = async (req, res, next) => {
 
     const bookingId = generateBookingId();
     const advanceForSave = paymentIntentId ? initialPayment : (adminAdvancePayment || 0);
+    const normalizedGuestAssignmentId = normalizeGuestAssignmentId(guestAssignmentId);
 
     const newBooking = new Booking({
       bookingId,
       roomId: availability.room._id,
       roomName: availability.room.name,
+      guestAssignmentId: normalizedGuestAssignmentId,
       guestInfo,
       checkIn: startDate,
       checkOut: endDate,
@@ -1224,7 +1235,7 @@ exports.createBooking = async (req, res, next) => {
 
 exports.createBulkBookings = async (req, res, next) => {
   try {
-    const { guestInfo, bookings, origin } = req.body;
+    const { guestInfo, bookings, origin, guestAssignmentId: topLevelGuestAssignmentId } = req.body;
 
     if (!guestInfo || !guestInfo.email || guestInfo.email.trim() === '') {
       return res.status(400).json({
@@ -1265,6 +1276,7 @@ exports.createBulkBookings = async (req, res, next) => {
         specialRequests,
         isFree,
         manualPrice,
+        guestAssignmentId: itemGuestAssignmentId,
       } = item;
 
       if (!roomId || !checkIn || !checkOut || !nights || nights <= 0) {
@@ -1371,11 +1383,13 @@ exports.createBulkBookings = async (req, res, next) => {
 
       const bookingId = generateBookingId();
       const finalRoomName = roomName && roomName.trim() !== '' ? roomName : availability.room.name;
+      const normalizedGuestAssignmentId = normalizeGuestAssignmentId(itemGuestAssignmentId || topLevelGuestAssignmentId);
 
       const newBooking = new Booking({
         bookingId,
         roomId: availability.room._id,
         roomName: finalRoomName,
+        guestAssignmentId: normalizedGuestAssignmentId,
         guestInfo,
         checkIn: startDate,
         checkOut: endDate,
