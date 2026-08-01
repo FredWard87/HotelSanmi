@@ -10,35 +10,84 @@ const Room = require('./models/Room');
 const User = require('./models/User'); // Importamos el modelo de Usuario
 const seedRooms = require('./data/roomsSeed');
 
+const cached = global.mongoose || { conn: null, promise: null };
+global.mongoose = cached;
+
 class App {
   constructor() {
     this.app = express();
-    this.connectDB();
     this.config();
     this.routes();
+    this.connectDB();
   }
 
   async connectDB() {
-    if (mongoose.connection.readyState >= 1) return;
+    if (cached.conn && mongoose.connection.readyState === 1) {
+      return cached.conn;
+    }
 
-    try {
-      console.log('🔗 Intentando conectar a MongoDB...');
-      await mongoose.connect(process.env.MONGODB_URI);
+    if (cached.promise) {
+      return cached.promise;
+    }
+
+    cached.promise = mongoose.connect(process.env.MONGODB_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    }).then(async (mongooseInstance) => {
+      cached.conn = mongooseInstance;
       console.log('✅ MongoDB conectado');
-      
-      // 1. Seed de Habitaciones
+
+      await this.ensureInitialData();
+      this.registerConnectionEvents();
+
+      return mongooseInstance;
+    }).catch((err) => {
+      cached.promise = null;
+      console.error('❌ Error de conexión:', err.message);
+      throw err;
+    });
+
+    return cached.promise;
+  }
+
+  async ensureInitialData() {
+    try {
       const roomCount = await Room.countDocuments();
       if (roomCount === 0) {
         console.log('🌱 Sembrando habitaciones...');
         await Room.insertMany(seedRooms);
       }
-
-      // 2. Seed de Usuarios (Admin y Empleado)
       await this.seedUsers();
-
     } catch (err) {
-      console.error('❌ Error de conexión:', err.message);
+      console.error('❌ Error inicializando datos:', err.message);
     }
+  }
+
+  registerConnectionEvents() {
+    mongoose.connection.on('error', (err) => {
+      console.error('❌ MongoDB connection error:', err);
+    });
+
+    mongoose.connection.on('disconnected', () => {
+      console.warn('⚠️ MongoDB disconnected');
+      cached.conn = null;
+      cached.promise = null;
+    });
+
+    mongoose.connection.on('reconnected', () => {
+      console.log('🔁 MongoDB reconnected');
+    });
+  }
+
+  async ensureConnected(req, res, next) {
+    if (mongoose.connection.readyState !== 1) {
+      try {
+        await this.connectDB();
+      } catch (err) {
+        return next(err);
+      }
+    }
+    next();
   }
 
   async seedUsers() {
@@ -74,7 +123,7 @@ class App {
   }
 
   routes() {
-    this.app.use('/api', indexRoutes);
+    this.app.use('/api', this.ensureConnected.bind(this), indexRoutes);
 
     this.app.get('/health', (req, res) => {
       res.status(200).json({ 
