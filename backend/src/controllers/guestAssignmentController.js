@@ -846,6 +846,61 @@ exports.exportAssignmentXlsx = async (req, res) => {
   }
 };
 
+// ADMIN: Asignar/actualizar el huésped de una habitación específica dentro de una boda
+// Sincroniza casaHotelRooms/boutiqueRooms cuando se asigna una reserva desde el panel admin
+exports.updateRoomGuest = async (req, res) => {
+  try {
+    const { id, roomId } = req.params;
+    const { guestName, guestWhatsapp } = req.body;
+
+    const assignment = await GuestAssignment.findById(id);
+    if (!assignment) {
+      return res.status(404).json({ error: 'Not found', message: 'Asignación no encontrada' });
+    }
+
+    let updated = false;
+
+    const applyUpdate = (rooms) => {
+      if (!Array.isArray(rooms)) return rooms;
+      return rooms.map(room => {
+        if (room.roomId === roomId) {
+          updated = true;
+          return {
+            ...room,
+            guestName: guestName !== undefined ? String(guestName).trim() : room.guestName,
+            guestWhatsapp: guestWhatsapp !== undefined ? String(guestWhatsapp).trim() : room.guestWhatsapp,
+          };
+        }
+        return room;
+      });
+    };
+
+    assignment.casaHotelRooms = applyUpdate(assignment.casaHotelRooms);
+    assignment.boutiqueRooms = applyUpdate(assignment.boutiqueRooms);
+
+    if (!updated) {
+      return res.status(404).json({
+        error: 'Room not found',
+        message: `No se encontró la habitación "${roomId}" en esta asignación`,
+      });
+    }
+
+    assignment.markModified('casaHotelRooms');
+    assignment.markModified('boutiqueRooms');
+    assignment.updatedAt = new Date();
+    await assignment.save();
+
+    res.json({
+      success: true,
+      message: 'Huésped asignado correctamente a la habitación',
+      data: assignment,
+    });
+  } catch (error) {
+    console.error('Error updating room guest:', error);
+    res.status(500).json({ error: 'Error al asignar huésped', message: error.message });
+  }
+};
+
 // ADMIN: Carga masiva desde Excel
 exports.bulkUpload = async (req, res) => {
   try {
