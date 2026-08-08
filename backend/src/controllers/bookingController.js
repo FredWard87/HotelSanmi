@@ -1640,6 +1640,11 @@ exports.updateBooking = async (req, res, next) => {
       booking.guestInfo = { ...booking.guestInfo.toObject(), ...guestInfo };
     }
 
+    if (req.body.guestAssignmentId !== undefined) {
+      const normalizedGuestAssignmentId = normalizeGuestAssignmentId(req.body.guestAssignmentId);
+      booking.guestAssignmentId = normalizedGuestAssignmentId;
+    }
+
     if (status) {
       booking.status = status;
     }
