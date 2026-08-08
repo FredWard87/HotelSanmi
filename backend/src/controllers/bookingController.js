@@ -404,11 +404,18 @@ exports.getAllBookings = async (req, res, next) => {
       filter.status = status;
     }
 
-    if (startDate && endDate) {
-      const start = formatDateWithTimezone(startDate);
-      const end = formatDateWithTimezone(endDate);
-      filter.checkIn = { $gte: start };
-      filter.checkOut = { $lte: end };
+    if (startDate || endDate) {
+      const start = startDate ? formatDateWithTimezone(startDate) : null;
+      const end = endDate ? formatDateWithTimezone(endDate) : null;
+
+      if (start && end) {
+        filter.checkIn = { $gte: start };
+        filter.checkOut = { $lte: end };
+      } else if (start) {
+        filter.checkIn = { $gte: start };
+      } else if (end) {
+        filter.checkIn = { $lte: end };
+      }
     }
 
     if (search && search.trim()) {
