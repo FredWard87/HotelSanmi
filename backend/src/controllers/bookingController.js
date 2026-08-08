@@ -1,4 +1,5 @@
 // controllers/bookingController.js
+const mongoose = require('mongoose');
 const Booking = require('../models/Booking');
 const Room = require('../models/Room');
 const AssignmentRoom = require('../models/AssignmentRoom');
