@@ -1516,7 +1516,13 @@ exports.updateBooking = async (req, res, next) => {
     const shouldIgnoreBlocks = isAdmin;
 
     if ((checkIn && checkOut) || roomId) {
-      const newRoomId = roomId || booking.roomId;
+      let newRoomId = roomId || booking.roomId;
+      if (!mongoose.Types.ObjectId.isValid(newRoomId)) {
+        const assignmentRoom = await AssignmentRoom.findOne({ roomId: String(newRoomId) });
+        if (assignmentRoom?.roomRefId && mongoose.Types.ObjectId.isValid(assignmentRoom.roomRefId)) {
+          newRoomId = assignmentRoom.roomRefId;
+        }
+      }
       const newCheckIn = formatDateWithTimezone(checkIn || booking.checkIn);
       const newCheckOut = formatDateWithTimezone(checkOut || booking.checkOut);
 
