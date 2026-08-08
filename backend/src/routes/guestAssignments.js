@@ -75,6 +75,9 @@ router.post('/guest-price-token/:token/consume', guestAssignmentController.consu
 // ADMIN: Control de pagos - cruzar huéspedes con reservas
 router.get('/:id/payment-status', guestAssignmentController.getPaymentStatus);
 
+// ADMIN: Asignar huésped a una habitación específica (sincroniza con Booking)
+router.patch('/:id/rooms/:roomId/guest', guestAssignmentController.updateRoomGuest);
+
 // PUBLICO: Obtener asignacion por token
 router.get('/token/:token', guestAssignmentController.getAssignmentByToken);
 
