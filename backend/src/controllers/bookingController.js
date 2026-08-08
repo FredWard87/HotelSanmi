@@ -1518,12 +1518,43 @@ exports.updateBooking = async (req, res, next) => {
 
     if ((checkIn && checkOut) || roomId) {
       let newRoomId = roomId || booking.roomId;
+
+      // Si newRoomId NO es un ObjectId válido (ej. "CH1"), resolverlo en caliente
+      // consultando AssignmentRoom y matcheando contra Room por type + lugar.
+      // No requiere que roomRefId esté guardado en la base de datos.
       if (!mongoose.Types.ObjectId.isValid(newRoomId)) {
         const assignmentRoom = await AssignmentRoom.findOne({ roomId: String(newRoomId) });
-        if (assignmentRoom?.roomRefId && mongoose.Types.ObjectId.isValid(assignmentRoom.roomRefId)) {
+
+        if (!assignmentRoom) {
+          return res.status(400).json({
+            error: 'Invalid room reference',
+            message: `No se encontró ninguna habitación con id "${newRoomId}".`,
+          });
+        }
+
+        // 1) Si ya tiene roomRefId guardado y es válido, úsalo (camino rápido)
+        if (assignmentRoom.roomRefId && mongoose.Types.ObjectId.isValid(assignmentRoom.roomRefId)) {
           newRoomId = assignmentRoom.roomRefId;
+        } else if (assignmentRoom.roomType?.type && assignmentRoom.roomType?.lugar) {
+          // 2) Fallback: buscar el Room real por type + lugar, sin tocar la base
+          const matchedRoom = await Room.findOne({
+            type: assignmentRoom.roomType.type,
+            lugar: assignmentRoom.roomType.lugar,
+          });
+          if (matchedRoom) {
+            newRoomId = matchedRoom._id;
+          }
+        }
+
+        // Guardia final: si aún no se pudo resolver, error claro en vez de CastError
+        if (!mongoose.Types.ObjectId.isValid(newRoomId)) {
+          return res.status(400).json({
+            error: 'Invalid room reference',
+            message: `No se pudo resolver la habitación "${roomId || newRoomId}" a un cuarto válido. Verifica que exista un Room con type="${assignmentRoom.roomType?.type}" y lugar="${assignmentRoom.roomType?.lugar}".`,
+          });
         }
       }
+
       const newCheckIn = formatDateWithTimezone(checkIn || booking.checkIn);
       const newCheckOut = formatDateWithTimezone(checkOut || booking.checkOut);
 
