@@ -257,7 +257,7 @@ exports.getAllAssignmentRooms = async (req, res) => {
 // ADMIN: Crear nueva asignación
 exports.createAssignment = async (req, res) => {
   try {
-    const { eventName, brideEmail, groomEmail, brideName, bridePhone, hotelType } = req.body;
+    const { eventName, brideEmail, groomEmail, brideName, bridePhone, hotelType, startDate, endDate } = req.body;
 
     // Validaciones
     if (!eventName || !brideEmail || !brideName) {
@@ -346,7 +346,9 @@ exports.createAssignment = async (req, res) => {
       boutiqueRooms: boutiqueAssignments,
       status: 'pending',
       invitationSentAt: null,
-      hotelType: hotelType || 'all'
+      hotelType: hotelType || 'all',
+      startDate: startDate || null,
+      endDate: endDate || null
     });
 
     await assignment.save();
@@ -391,6 +393,8 @@ exports.createAssignment = async (req, res) => {
       emailSent,
       emailError,
       hotelType: assignment.hotelType,
+      startDate: assignment.startDate,
+      endDate: assignment.endDate,
       stats: {
         totalRooms,
         filledRooms: 0,
