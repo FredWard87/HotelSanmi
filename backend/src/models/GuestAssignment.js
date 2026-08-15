@@ -112,6 +112,14 @@ const GuestAssignmentSchema = new mongoose.Schema({
   dateGroups: {
     type: Array,
     default: []
+  },
+  startDate: {
+    type: String,
+    required: false
+  },
+  endDate: {
+    type: String,
+    required: false
   }
 });
 
