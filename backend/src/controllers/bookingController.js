@@ -1516,6 +1516,12 @@ exports.updateBooking = async (req, res, next) => {
     const isAdmin = req.user && req.user.role === 'admin';
     const shouldIgnoreBlocks = isAdmin;
 
+    // Sin ningún pago real: en estas reservas initialPayment es el anticipo ESPERADO, no lo cobrado
+    const wasUnpaid = booking.paymentStatus === 'pending'
+      && !(Number(booking.advancePayment) > 0)
+      && !booking.stripePaymentIntentId && !booking.paymentIntentId;
+    const prevInitialPayment = booking.initialPayment;
+
     if ((checkIn && checkOut) || roomId) {
       let newRoomId = roomId || booking.roomId;
 
@@ -1707,9 +1713,23 @@ exports.updateBooking = async (req, res, next) => {
       }
     }
 
+    // Saldo pendiente = total − anticipo. El panel reenvía el saldo viejo aunque cambien
+    // noches o total (al agregar una noche quedaba el saldo anterior). No se toca si ya se liquidó.
+    // ponytail: si el saldo ya estaba pagado y luego sube el total, la diferencia nueva no se registra; marcarlo a mano.
+    const amountsOrDatesChanged = (checkIn && checkOut) || totalPrice != null || initialPayment != null;
+    if (amountsOrDatesChanged && !booking.secondNightPaid && !booking.secondNightNotePaid) {
+      booking.secondNightPayment = Math.max(0, Number(booking.totalPrice || 0) - Number(booking.initialPayment || 0));
+    }
+
     // Ajustar el estado de pago si los montos fueron modificados
     try {
-      if (typeof booking.totalPrice === 'number' && typeof booking.initialPayment === 'number') {
+      // Si no había pagos y el anticipo no se cambió a mano, sigue pendiente
+      // (antes cualquier edición la marcaba 'partial' por el anticipo esperado)
+      const anticipoEditado = initialPayment != null && initialPayment !== ''
+        && Number(initialPayment) !== Number(prevInitialPayment);
+      if (wasUnpaid && !anticipoEditado) {
+        booking.paymentStatus = 'pending';
+      } else if (typeof booking.totalPrice === 'number' && typeof booking.initialPayment === 'number') {
         if (booking.initialPayment >= booking.totalPrice) {
           booking.paymentStatus = 'completed';
         } else if (booking.initialPayment > 0) {

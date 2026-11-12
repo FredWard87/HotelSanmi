@@ -79,6 +79,11 @@ function generateFullPaymentVoucherPDF(booking) {
       const municipalTax = booking.municipalTax !== undefined ? booking.municipalTax : (booking.subtotal * 0.04);
       const totalWithTaxes = (booking.subtotal || 0) + (booking.tax || 0) + municipalTax;
 
+      // Reserva sin ningún pago (p. ej. creada desde el admin sin anticipo): no decir "pagado"
+      const unpaid = isUnpaid(booking);
+      const free = booking.isFree === true;
+      const headerStatus = free ? 'RESERVA SIN COSTO' : unpaid ? 'PAGO PENDIENTE' : 'PAGO COMPLETADO';
+
       // ENCABEZADO
       doc.rect(0, 0, pageWidth, 120).fill('white');
       doc.rect(0, 0, pageWidth, 3).fill(gold);
@@ -100,7 +105,7 @@ function generateFullPaymentVoucherPDF(booking) {
           });
 
           doc.fontSize(11).fillColor(mediumGray).font('Helvetica');
-          doc.text('PAGO COMPLETADO', margin, logoY + logoHeight + 32, {
+          doc.text(headerStatus, margin, logoY + logoHeight + 32, {
             align: 'center',
             width: contentWidth
           });
@@ -110,13 +115,13 @@ function generateFullPaymentVoucherPDF(booking) {
           doc.fontSize(13).fillColor(gold).font('Helvetica');
           doc.text('CONFIRMACIÓN DE RESERVA', margin, 35, { align: 'center', width: contentWidth });
           doc.fontSize(11).fillColor(mediumGray).font('Helvetica');
-          doc.text('PAGO COMPLETADO', margin, 55, { align: 'center', width: contentWidth });
+          doc.text(headerStatus, margin, 55, { align: 'center', width: contentWidth });
         }
       } catch (logoError) {
         doc.fontSize(13).fillColor(gold).font('Helvetica');
         doc.text('CONFIRMACIÓN DE RESERVA', margin, 35, { align: 'center', width: contentWidth });
         doc.fontSize(11).fillColor(mediumGray).font('Helvetica');
-        doc.text('PAGO COMPLETADO', margin, 55, { align: 'center', width: contentWidth });
+        doc.text(headerStatus, margin, 55, { align: 'center', width: contentWidth });
       }
 
       doc.moveDown(1);
@@ -223,7 +228,7 @@ function generateFullPaymentVoucherPDF(booking) {
       doc.moveTo(margin + 15, dividerY).lineTo(margin + contentWidth - 15, dividerY).lineWidth(1.5).stroke(gold);
 
       doc.fontSize(11).font('Helvetica-Bold').fillColor(charcoal);
-      doc.text('TOTAL PAGADO', labelX, tableY + lineHeight * currentRow + 12);
+      doc.text(free ? 'TOTAL' : unpaid ? 'TOTAL A PAGAR' : 'TOTAL PAGADO', labelX, tableY + lineHeight * currentRow + 12);
       doc.fontSize(13).fillColor(gold);
       doc.text(`${totalWithTaxes.toFixed(2)} MXN`, valueX, tableY + lineHeight * currentRow + 10, { width: 90, align: 'right' });
 
@@ -238,13 +243,18 @@ function generateFullPaymentVoucherPDF(booking) {
       doc.moveDown(1);
 
       const cardPaymentY = doc.y;
+      const statusColor = unpaid ? gold : successGreen;
       doc.roundedRect(margin, cardPaymentY, contentWidth, 95, 8)
-        .lineWidth(2).strokeColor(successGreen).fillAndStroke(successBg, successGreen);
-      doc.fontSize(10).font('Helvetica-Bold').fillColor(successGreen);
-      doc.text('PAGO COMPLETO REALIZADO', margin + 15, cardPaymentY + 14);
+        .lineWidth(2).strokeColor(statusColor).fillAndStroke(unpaid ? lightGray : successBg, statusColor);
+      doc.fontSize(10).font('Helvetica-Bold').fillColor(statusColor);
+      doc.text(free ? 'RESERVA SIN COSTO' : unpaid ? 'PAGO PENDIENTE' : 'PAGO COMPLETO REALIZADO', margin + 15, cardPaymentY + 14);
       doc.fontSize(8.5).font('Helvetica').fillColor(mediumGray);
       doc.text(`Monto total: $${totalWithTaxes.toFixed(2)} MXN`, margin + 15, cardPaymentY + 32);
-      doc.text(`Método de pago: Stripe (Tarjeta)`, margin + 15, cardPaymentY + 48);
+      doc.text(
+        free ? 'Esta reserva no requiere ningún pago'
+          : unpaid ? 'Aún no se ha registrado ningún pago para esta reserva'
+          : `Método de pago: ${paymentMethodText(booking)}`,
+        margin + 15, cardPaymentY + 48);
       doc.y = cardPaymentY + 95;
       doc.moveDown(1.5);
 
@@ -263,7 +273,9 @@ function generateFullPaymentVoucherPDF(booking) {
       const lineSpacing = 12;
       const instructions = [
         'Presenta este voucher en recepción al momento del check-in',
-        'Tu reserva está completamente pagada, no requiere pagos adicionales',
+        free ? 'Tu reserva no tiene costo, no requiere pagos'
+          : unpaid ? 'El pago de tu reserva está pendiente; contáctanos para completarlo'
+          : 'Tu reserva está completamente pagada, no requiere pagos adicionales',
         'Conserva este documento como comprobante oficial de tu reserva',
         'Para cualquier duda o cambio, contáctanos directamente'
       ];
@@ -399,6 +411,9 @@ function generatePartialPaymentVoucherPDF(booking) {
       const totalWithTaxes = (booking.subtotal || 0) + (booking.tax || 0) + municipalTax;
       const initialPayment = booking.initialPayment || (totalWithTaxes * 0.5);
       const pendingPayment = totalWithTaxes - initialPayment;
+      // El anticipo de recepción puede no ser 50%: el porcentaje sale del monto real
+      const initPct = percentOf(initialPayment, totalWithTaxes);
+      const restPct = 100 - initPct;
 
       // ENCABEZADO
       doc.rect(0, 0, pageWidth, 120).fill('white');
@@ -416,13 +431,13 @@ function generatePartialPaymentVoucherPDF(booking) {
           doc.fontSize(13).fillColor(gold).font('Helvetica-Bold');
           doc.text('CONFIRMACIÓN DE RESERVA', margin, logoY + logoHeight + 12, { align: 'center', width: contentWidth });
           doc.fontSize(11).fillColor(mediumGray).font('Helvetica');
-          doc.text('PAGO PARCIAL - 50% BALANCE PENDIENTE', margin, logoY + logoHeight + 32, { align: 'center', width: contentWidth });
+          doc.text(`PAGO PARCIAL - ${restPct}% BALANCE PENDIENTE`, margin, logoY + logoHeight + 32, { align: 'center', width: contentWidth });
           doc.y = logoY + logoHeight + 60;
         } else {
           doc.fontSize(13).fillColor(gold).font('Helvetica');
           doc.text('CONFIRMACIÓN DE RESERVA', margin, 35, { align: 'center', width: contentWidth });
           doc.fontSize(11).fillColor(mediumGray).font('Helvetica');
-          doc.text('PAGO PARCIAL - 50% BALANCE PENDIENTE', margin, 55, { align: 'center', width: contentWidth });
+          doc.text(`PAGO PARCIAL - ${restPct}% BALANCE PENDIENTE`, margin, 55, { align: 'center', width: contentWidth });
         }
       } catch (logoError) {
         doc.fontSize(13).fillColor(gold).font('Helvetica');
@@ -571,7 +586,7 @@ function generatePartialPaymentVoucherPDF(booking) {
       currentRow++;
 
       doc.fontSize(9).font('Helvetica').fillColor(charcoal);
-      doc.text('Pago Inicial (50%)', labelX, tableY + lineHeight * currentRow + 8);
+      doc.text(`Pago Inicial (${initPct}%)`, labelX, tableY + lineHeight * currentRow + 8);
       doc.text(`${initialPayment.toFixed(2)} MXN`, valueX, tableY + lineHeight * currentRow + 8, { width: 90, align: 'right' });
       currentRow++;
 
@@ -596,11 +611,11 @@ function generatePartialPaymentVoucherPDF(booking) {
       doc.roundedRect(margin, card1Y, contentWidth, cardHeight1, 8)
         .lineWidth(2).strokeColor(successGreen).fillAndStroke(successBg, successGreen);
       doc.fontSize(10).font('Helvetica-Bold').fillColor(successGreen);
-      doc.text('PAGO INICIAL REALIZADO (50%)', margin + 15, card1Y + 14);
+      doc.text(`PAGO INICIAL REALIZADO (${initPct}%)`, margin + 15, card1Y + 14);
       doc.fontSize(8.5).font('Helvetica').fillColor(mediumGray);
       doc.text(`Cantidad: $${initialPayment.toFixed(2)} MXN`, margin + 15, card1Y + 28);
       doc.text(`Fecha: ${new Date(booking.createdAt).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}`, margin + 15, card1Y + 40);
-      doc.text(`Método: Stripe (Tarjeta)`, margin + 250, card1Y + 40);
+      doc.text(`Método: ${paymentMethodText(booking)}`, margin + 250, card1Y + 40);
       doc.y = card1Y + cardHeight1;
       doc.moveDown(1.5);
 
@@ -609,7 +624,7 @@ function generatePartialPaymentVoucherPDF(booking) {
       doc.roundedRect(margin, card2Y, contentWidth, cardHeight2, 8)
         .lineWidth(2).strokeColor(warningOrange).fillAndStroke(warningBg, warningOrange);
       doc.fontSize(10).font('Helvetica-Bold').fillColor(warningOrange);
-      doc.text('PENDIENTE: PAGO EN RECEPCIÓN (50%)', margin + 15, card2Y + 18);
+      doc.text(`PENDIENTE: PAGO EN RECEPCIÓN (${restPct}%)`, margin + 15, card2Y + 18);
       doc.fontSize(16).font('Helvetica-Bold').fillColor(warningOrange);
       doc.text(`$${pendingPayment.toFixed(2)} MXN`, margin + 15, card2Y + 38);
       doc.fontSize(8.5).font('Helvetica').fillColor(mediumGray);
@@ -635,7 +650,7 @@ function generatePartialPaymentVoucherPDF(booking) {
       const lineSpacing2 = 11;
       const instructions2 = [
         'Presenta este voucher digital en recepción al momento del check-in',
-        'El pago del 50% restante debe realizarse al momento del check-in',
+        'El pago del saldo restante debe realizarse al momento del check-in',
         'Métodos aceptados: Efectivo, tarjetas de crédito y débito',
         'Conserva este documento como comprobante oficial de tu reserva',
         'Para cualquier duda o cambio, contáctanos directamente'
@@ -740,9 +755,24 @@ function generatePartialPaymentVoucherPDF(booking) {
 // PDF VOUCHER — SELECTOR
 // ─────────────────────────────────────────────
 
+// Sin ningún pago registrado. initialPayment guarda el anticipo ESPERADO, no lo cobrado,
+// así que el estado real se lee de paymentStatus.
+function isUnpaid(booking) {
+  return booking.paymentStatus === 'pending' && booking.isFree !== true;
+}
+
+// Solo es "Stripe" si hubo un cobro con tarjeta; si no, lo registró recepción/admin
+function paymentMethodText(booking) {
+  return booking.stripePaymentIntentId || booking.paymentIntentId ? 'Stripe (Tarjeta)' : 'Registrado en recepción';
+}
+
+function percentOf(part, total) {
+  return total > 0 ? Math.round((part / total) * 100) : 0;
+}
+
 function generateVoucherPDF(booking) {
-  // Reserva gratuita o pago completo → voucher simple
-  if (booking.isFree || booking.nights === 1 || booking.initialPayment >= booking.totalPrice) {
+  // Reserva gratuita, sin pago o pago completo → voucher simple (sin pago dice "PAGO PENDIENTE")
+  if (booking.isFree || isUnpaid(booking) || booking.nights === 1 || booking.initialPayment >= booking.totalPrice) {
     return generateFullPaymentVoucherPDF(booking);
   }
   return generatePartialPaymentVoucherPDF(booking);
@@ -891,6 +921,8 @@ async function sendPartialPaymentEmail(booking, pdfBuffer) {
     const totalWithTaxes = (booking.subtotal || 0) + (booking.tax || 0) + municipalTax;
     const initialPayment = booking.initialPayment || (totalWithTaxes * 0.5);
     const pendingPayment = totalWithTaxes - initialPayment;
+    const initPct = percentOf(initialPayment, totalWithTaxes);
+    const restPct = 100 - initPct;
 
     const attachments = [
       { filename: `Voucher_${booking.bookingId}.pdf`, content: pdfBuffer, contentType: 'application/pdf' }
@@ -954,7 +986,7 @@ async function sendPartialPaymentEmail(booking, pdfBuffer) {
                 Hola <strong>${booking.guestInfo.firstName}</strong>,
               </p>
               <p style="margin-bottom:15px;">
-                ¡Gracias por tu reserva en <strong>La Capilla Hotel</strong>! Tu pago del 50% inicial ha sido procesado correctamente.
+                ¡Gracias por tu reserva en <strong>La Capilla Hotel</strong>! Tu pago inicial (${initPct}%) ha sido registrado correctamente.
               </p>
 
               <div class="booking-id">NÚMERO DE RESERVA: ${booking.bookingId}</div>
@@ -973,14 +1005,14 @@ async function sendPartialPaymentEmail(booking, pdfBuffer) {
                 <div class="section-title">Estado de Pagos</div>
                 <div class="payment-status completed">
                   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                    <span style="font-weight:bold;">Pago Inicial (50%)</span>
+                    <span style="font-weight:bold;">Pago Inicial (${initPct}%)</span>
                     <span class="status-badge completed">COMPLETADO</span>
                   </div>
-                  <div style="font-size:13px;color:#666;">Cantidad: <strong>${initialPayment.toFixed(2)} MXN</strong></div>
+                  <div style="font-size:13px;color:#666;">Cantidad: <strong>${initialPayment.toFixed(2)} MXN</strong> · Método: ${paymentMethodText(booking)}</div>
                 </div>
                 <div class="payment-status pending">
                   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                    <span style="font-weight:bold;">Balance Pendiente (50%)</span>
+                    <span style="font-weight:bold;">Balance Pendiente (${restPct}%)</span>
                     <span class="status-badge pending">PENDIENTE</span>
                   </div>
                   <div style="font-size:13px;color:#FF6F00;"><strong>${pendingPayment.toFixed(2)} MXN</strong> a pagar en recepción</div>
@@ -992,7 +1024,7 @@ async function sendPartialPaymentEmail(booking, pdfBuffer) {
 
               <div class="alert">
                 <div class="alert-title">IMPORTANTE</div>
-                <p>Se adjunta tu <strong>Voucher de Pago</strong> para presentar en recepción. Este documento prueba que has pagado el 50% inicial y muestra el monto pendiente a liquidar.</p>
+                <p>Se adjunta tu <strong>Voucher de Pago</strong> para presentar en recepción. Este documento prueba tu pago inicial y muestra el monto pendiente a liquidar.</p>
                 <p><em>**Todas las políticas del hotel están detalladas en el PDF adjunto**</em></p>
               </div>
 
@@ -1000,7 +1032,7 @@ async function sendPartialPaymentEmail(booking, pdfBuffer) {
                 <div class="section-title">Cómo Completar tu Pago</div>
                 <ol style="margin-left:20px;">
                   <li>Presenta este correo electrónico de forma digital en recepción</li>
-                  <li>El día del check-in, realiza el pago del 50% restante</li>
+                  <li>El día del check-in, realiza el pago del saldo restante</li>
                   <li>Aceptamos: efectivo, tarjeta de crédito y débito</li>
                   <li>Recibirás tu recibo final al momento del pago</li>
                 </ol>
@@ -1163,7 +1195,8 @@ async function sendConfirmationOnlyEmail(booking, pdfBuffer) {
 
 function sendVoucherEmail(booking, pdfBuffer) {
   // Reserva gratuita → email de confirmación pura sin mención de pagos
-  if (booking.isFree === true) {
+  // Sin ningún pago (p. ej. reserva del admin sin anticipo) → misma confirmación, sin decir que pagó
+  if (booking.isFree === true || isUnpaid(booking)) {
     return sendConfirmationOnlyEmail(booking, pdfBuffer);
   }
   // Pago completo (1 noche o pago total)
@@ -1273,7 +1306,9 @@ async function sendMultiBookingEmail(bookings, pdfBuffers) {
               <div class="section-title">Cómo Completar tu Pago</div>
               <ul>
                 <li>Presenta este correo electrónico de forma digital en recepción.</li>
-                <li>El día del check-in, realiza el pago del 50% restante.</li>
+                <li>${bookings.every(b => b.paymentStatus === 'partial')
+                  ? 'El día del check-in, realiza el pago del saldo restante.'
+                  : 'El día del check-in, realiza el pago pendiente de tu reserva.'}</li>
                 <li>Aceptamos: efectivo, tarjeta de crédito y débito.</li>
                 <li>Recibirás tu recibo final al momento del pago.</li>
               </ul>
