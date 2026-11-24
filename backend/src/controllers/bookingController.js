@@ -1284,6 +1284,7 @@ exports.createBulkBookings = async (req, res, next) => {
         specialRequests,
         isFree,
         manualPrice,
+        requiresInvoice,
         guestAssignmentId: itemGuestAssignmentId,
       } = item;
 
@@ -1349,15 +1350,11 @@ exports.createBulkBookings = async (req, res, next) => {
         finalTax = 0;
         finalMunicipalTax = 0;
         finalTotal = 0;
-      } else if (isManualPrice && typeof totalPrice === 'number' && totalPrice >= 0) {
-        finalSubtotal = Number(totalPrice);
-        finalTax = 0;
-        finalMunicipalTax = 0;
-        finalTotal = Number(totalPrice);
       } else {
-        finalSubtotal = originalSubtotal;
-        finalTax = originalSubtotal * 0.16;
-        finalMunicipalTax = originalSubtotal * 0.04;
+        // Precio (manual o automático) es ANTES de impuestos; solo se suman si se emitirá factura
+        finalSubtotal = isManualPrice && typeof totalPrice === 'number' && totalPrice >= 0 ? Number(totalPrice) : originalSubtotal;
+        finalTax = requiresInvoice === true ? finalSubtotal * 0.16 : 0;
+        finalMunicipalTax = requiresInvoice === true ? finalSubtotal * 0.04 : 0;
         finalTotal = finalSubtotal + finalTax + finalMunicipalTax;
       }
 
@@ -1426,6 +1423,7 @@ exports.createBulkBookings = async (req, res, next) => {
         createdByRole: req.user ? req.user.role : 'guest',
         adminOverride: isAdmin && availability.blockedUnits > 0,
         isPrecioManual: isManualPrice,
+        requiresInvoice: requiresInvoice === true,
         isFree: isFree === true || String(manualPrice).trim().toLowerCase() === 'gratis',
       });
 

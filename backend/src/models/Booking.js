@@ -19,6 +19,8 @@ const BookingSchema = new mongoose.Schema({
   pricePerNight: { type: Number, required: true },
   // 🆕 Campo para reservas gratuitas
   isFree: { type: Boolean, default: false },
+  // Si se emitirá factura: el precio capturado es antes de impuestos y se le suma IVA 16% + municipal 4%
+  requiresInvoice: { type: Boolean, default: false },
   // 🆕 Campos para código de descuento
   subtotalBeforeDiscount: { type: Number, default: 0 }, // Subtotal original antes del descuento
   discountCode: { type: String, default: null }, // Código usado (ej: "BODA2025")
