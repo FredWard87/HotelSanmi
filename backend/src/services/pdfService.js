@@ -4,6 +4,11 @@ const fs = require('fs');
 const path = require('path');
 const Room = require('../models/Room');
 
+// Reservas del panel sin factura se guardan con IVA 0; los códigos de descuento ya traen impuestos incluidos.
+const taxNoteText = (b) => b.isFree ? null
+  : ((b.tax || 0) > 0 || b.discountCode) ? 'Incluye IVA (16%) e Impuesto Municipal (4%)'
+  : 'Su reservación NO incluye impuestos.';
+
 // 🔥 Configurar transporte de email
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
@@ -233,6 +238,7 @@ function generateFullPaymentVoucherPDF(booking) {
       doc.text(`${totalWithTaxes.toFixed(2)} MXN`, valueX, tableY + lineHeight * currentRow + 10, { width: 90, align: 'right' });
 
       doc.y = tableY + lineHeight * rowCount + 8;
+      if (taxNoteText(booking)) doc.fontSize(8.5).font('Helvetica-Oblique').fillColor('#666666').text(taxNoteText(booking), margin + 15, doc.y + 6);
       doc.moveDown(1.5);
 
       // ESTADO DE PAGO
@@ -595,6 +601,7 @@ function generatePartialPaymentVoucherPDF(booking) {
       doc.text(`${pendingPayment.toFixed(2)} MXN`, valueX, tableY + lineHeight * currentRow + 8, { width: 90, align: 'right' });
 
       doc.y = tableY + lineHeight * rowCount + 8;
+      if (taxNoteText(booking)) doc.fontSize(8.5).font('Helvetica-Oblique').fillColor('#666666').text(taxNoteText(booking), margin + 15, doc.y + 6);
       doc.moveDown(1.5);
 
       // ESTADO DE PAGOS
@@ -867,7 +874,7 @@ async function sendFullPaymentEmail(booking, pdfBuffer) {
                   </div>
                   <div style="font-size:13px;color:#666;">
                     Monto total: <strong>${totalWithTaxes.toFixed(2)} MXN</strong>
-                    <div style="font-size:11px;color:#888;margin-top:5px;">Incluye IVA (16%) e Impuesto Municipal (4%)</div>
+                    ${taxNoteText(booking) ? `<div style="font-size:11px;color:#888;margin-top:5px;">${taxNoteText(booking)}</div>` : ''}
                   </div>
                 </div>
               </div>
@@ -1018,7 +1025,7 @@ async function sendPartialPaymentEmail(booking, pdfBuffer) {
                   <div style="font-size:13px;color:#FF6F00;"><strong>${pendingPayment.toFixed(2)} MXN</strong> a pagar en recepción</div>
                 </div>
                 <div style="font-size:11px;color:#888;margin-top:10px;padding:10px;background:#f9f9f9;border-radius:5px;">
-                  <strong>Nota:</strong> Todos los pagos incluyen IVA (16%) e Impuesto Municipal (4%)
+                  <strong>Nota:</strong> ${taxNoteText(booking)}
                 </div>
               </div>
 
